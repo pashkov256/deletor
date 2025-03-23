@@ -15,24 +15,24 @@ import (
 func main() {
 	app := &cli.App{
 		Name:  "deletor",
-		Usage: "Утилита для удаления файлов по расширению и размеру",
+		Usage: "A utility for deleting files by extension and size",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "extensions",
 				Aliases:  []string{"e"},
-				Usage:    "Список расширений файлов через запятую (например, mp4,zip,ttf)",
+				Usage:    "Comma-separated list of file extensions (e.g. mp4,zip,rtf)",
 				Required: true,
 			},
 			&cli.StringFlag{
 				Name:     "directory",
 				Aliases:  []string{"d"},
-				Usage:    "Директория для поиска файлов",
+				Usage:    "File search directory",
 				Required: true,
 			},
 			&cli.StringFlag{
 				Name:    "size",
 				Aliases: []string{"s"},
-				Usage:   "Максимальный размер файла (например, 10mb, 1gb)",
+				Usage:   "Maximum file size (for example, 10mb, 1gb)",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -169,7 +169,7 @@ func toBytes(sizeStr string) (int64, error) {
 	case "tb":
 		multiplier = 1024 * 1024 * 1024 * 1024
 	default:
-		return 0, fmt.Errorf("неизвестная единица измерения: %s", unit)
+		return 0, fmt.Errorf("unknown unit of measurement: %s", unit)
 	}
 
 	bytes := num * multiplier
