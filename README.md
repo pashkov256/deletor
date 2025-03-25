@@ -16,7 +16,7 @@
 
 Download and install the package using `go get`:
 ```bash
- go get github.com/pashkov256/deletor
+go install github.com/pashkov256/deletor
 ```
 
 ## 🛠 Usage
