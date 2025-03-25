@@ -28,7 +28,7 @@ deletor -e mp4,zip -d ~/Downloads/ -s 10mb
 ### Arguments:
 - `-e, --extensions` - list of file extensions separated by commas (e.g., `mp4,zip,jpg`).
 - `-d, --directory` - path to the directory to search for files.
-- `-s, --size` *(optional)* - maximum file size (e.g., `10mb`, `1gb`).
+- `-s, --size` - maximum file size (e.g., `10b`,`10kb`,`10mb`,`10gb`).
 
 ## 🔥 Example
 ```bash
@@ -43,7 +43,7 @@ Output:
 7.48 MB  will be cleared.
 
 Delete these files? [y/n]: y
-✓ Deleted: 7.48 MB
+✓ Deleted: 2.52 MB
 ```
 
 ## 📜 License
