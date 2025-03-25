@@ -39,44 +39,55 @@ func main() {
 			ext := strings.Split(c.String("extensions"), ",")
 			dir := c.String("directory")
 			size := c.String("size")
+
 			sizeBytes, _ := toBytes(size)
 
 			toDeleteMap := make(map[string]string, 16)
+
 			files := make([]struct {
 				Name string
 				Size int64
 			}, 0, 0)
+
 			var totalClearSize int64
 
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if info == nil {
+					return nil
+				}
 				for i := 0; i < len(ext); i++ {
-					if info.Size() > sizeBytes {
+					if info.Size() > sizeBytes && fmt.Sprint(".", ext[i]) == filepath.Ext(info.Name()) {
 						files = append(files, struct {
 							Name string
 							Size int64
 						}{path, info.Size()})
 						toDeleteMap[path] = formatSize(info.Size())
 						totalClearSize += info.Size()
+						break
 					}
 
 				}
 				return nil
 			})
-			printFilesTable(toDeleteMap)
 
-			fmt.Println()
-			fmt.Println(formatSize(totalClearSize), " will be cleared.")
-			fmt.Println()
+			if totalClearSize != 0 {
 
-			actionIsDelete := askForConfirmation("Delete these files?")
+				printFilesTable(toDeleteMap)
 
-			if !actionIsDelete {
-				return nil
-			}
-			fmt.Println(formatSize(totalClearSize), " it was deleted.")
+				fmt.Println("\n", formatSize(totalClearSize), " will be cleared.\n")
 
-			for _, file := range files {
-				os.Remove(file.Name)
+				actionIsDelete := askForConfirmation("Delete these files?")
+
+				if !actionIsDelete {
+					return nil
+				}
+				fmt.Println(formatSize(totalClearSize), " it was deleted.")
+
+				for _, file := range files {
+					os.Remove(file.Name)
+				}
+			} else {
+				fmt.Println("No matching files were found")
 			}
 
 			return nil
@@ -99,16 +110,6 @@ func printFilesTable(files map[string]string) {
 
 	for name, file := range files {
 		fmt.Printf("%-*s  %s\n", maxSizeLen, file, name)
-	}
-}
-
-func deleteFiles(toDeleteMap map[string]string) {
-	for dir, _ := range toDeleteMap {
-		fmt.Println(dir)
-		err := os.Remove(dir)
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 }
 
