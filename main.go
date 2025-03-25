@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fatih/color"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -71,23 +72,24 @@ func main() {
 			})
 
 			if totalClearSize != 0 {
-
 				printFilesTable(toDeleteMap)
 
-				fmt.Println("\n", formatSize(totalClearSize), " will be cleared.\n")
+				fmt.Println()
+				fmt.Println(formatSize(totalClearSize), " will be cleared.\n")
 
 				actionIsDelete := askForConfirmation("Delete these files?")
 
 				if !actionIsDelete {
 					return nil
 				}
-				fmt.Println(formatSize(totalClearSize), " it was deleted.")
 
+				fmt.Println(color.New(color.FgGreen).SprintFunc()("✓"), "Deleted:", formatSize(totalClearSize))
 				for _, file := range files {
 					os.Remove(file.Name)
 				}
 			} else {
-				fmt.Println("No matching files were found")
+				red := color.New(color.FgRed).SprintFunc()
+				fmt.Println(red("Error:"), "File not found")
 			}
 
 			return nil
@@ -98,26 +100,30 @@ func main() {
 	if err != nil {
 	}
 }
-
 func printFilesTable(files map[string]string) {
+	yellow := color.New(color.FgYellow).SprintFunc()
+	white := color.New(color.FgWhite).SprintFunc()
+
 	maxSizeLen := 0
-	for _, file := range files {
-		sizeStr := len(file)
-		if sizeStr > maxSizeLen {
-			maxSizeLen = sizeStr
+	for _, size := range files {
+		if len(size) > maxSizeLen {
+			maxSizeLen = len(size)
 		}
 	}
 
-	for name, file := range files {
-		fmt.Printf("%-*s  %s\n", maxSizeLen, file, name)
+	for path, size := range files {
+		fmt.Printf("%s  %s\n", yellow(fmt.Sprintf("%-*s", maxSizeLen, size)), white(path))
 	}
 }
 
 func askForConfirmation(s string) bool {
+	bold := color.New(color.Bold).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+
 	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("%s %s ", bold(s), green("[y/n]:"))
 
 	for {
-		fmt.Printf("%s [y/n]: ", s)
 
 		response, err := reader.ReadString('\n')
 		if err != nil {

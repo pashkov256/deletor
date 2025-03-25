@@ -43,7 +43,7 @@ Output:
 7.48 MB  will be cleared.
 
 Delete these files? [y/n]: y
-7.48 MB  it was deleted.
+✓ Deleted: 7.48 MB
 ```
 
 ## 📜 License
