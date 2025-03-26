@@ -14,7 +14,7 @@
 - 📊 **Table Output**: Displays files in a clean, formatted table with sizes aligned for readability.
 ## 📦 Installation
 
-Download and install the package using `go get`:
+Install the package using:
 ```bash
 go install github.com/pashkov256/deletor
 ```
