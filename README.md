@@ -13,8 +13,6 @@
 
 - 📊 **Table Output**: Displays files in a clean, formatted table with sizes aligned for readability.
 ## 📦 Installation
-
-Install the package using:
 ```bash
 go install github.com/pashkov256/deletor
 ```
