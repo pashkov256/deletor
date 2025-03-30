@@ -6,12 +6,18 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 	cli "github.com/urfave/cli/v2"
 )
+
+type Task struct {
+	info os.FileInfo
+}
 
 func main() {
 	app := &cli.App{
@@ -49,27 +55,40 @@ func main() {
 				Name string
 				Size int64
 			}, 0, 0)
+			var wg sync.WaitGroup
+			numCPU := runtime.NumCPU()
+			taskCh := make(chan Task, numCPU)
 
 			var totalClearSize int64
 
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				wg.Add(1)
 				if info == nil {
 					return nil
 				}
-				for i := 0; i < len(ext); i++ {
-					if info.Size() > sizeBytes && fmt.Sprint(".", ext[i]) == filepath.Ext(info.Name()) {
-						files = append(files, struct {
-							Name string
-							Size int64
-						}{path, info.Size()})
-						toDeleteMap[path] = formatSize(info.Size())
-						totalClearSize += info.Size()
-						break
+				go func() {
+					taskCh <- Task{info: info}
+					defer wg.Done()
+					for i := 0; i < len(ext); i++ {
+						if info.Size() > sizeBytes && fmt.Sprint(".", ext[i]) == filepath.Ext(info.Name()) {
+							files = append(files, struct {
+								Name string
+								Size int64
+							}{path, info.Size()})
+							toDeleteMap[path] = formatSize(info.Size())
+							totalClearSize += info.Size()
+							break
+						}
+
 					}
 
-				}
+					<-taskCh
+				}()
+
 				return nil
 			})
+
+			wg.Wait()
 
 			if totalClearSize != 0 {
 				printFilesTable(toDeleteMap)
