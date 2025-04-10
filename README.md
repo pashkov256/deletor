@@ -51,3 +51,7 @@ Delete these files? [y/n]: y
 ## 📜 License
 This project is distributed under the MIT license.
 
+
+## 🛠 Contribute
+[CONTRIBUTING.md](https://github.com/pashkov256/deletor/blob/main/CONTRIBUTING.md)
+
