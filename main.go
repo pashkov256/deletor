@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
 	cli "github.com/urfave/cli/v2"
@@ -106,7 +107,7 @@ func main() {
 				for _, file := range files {
 					os.Remove(file.Name)
 				}
-				// logDeletionToFile()
+				logDeletionToFile(toDeleteMap)
 			} else {
 				red := color.New(color.FgRed).SprintFunc()
 				fmt.Println(red("Error:"), "File not found")
@@ -225,10 +226,18 @@ func formatSize(bytes int64) string {
 	}
 }
 
-func logDeletionToFile() {
-	//create Timestamp
-	//create output logs data
-	//exits file?
-	// no: create file
-	// update deletion log file
+func logDeletionToFile(files map[string]string) {
+	const (
+		DELETION_FILE_NAME = "deletor.log"
+	)
+	var deletionLogs string
+	deletionTimestamp := time.Now().Format("2006-01-02 15:04:05")
+	for path, size := range files {
+		deletionLogs += fmt.Sprintf("[%s] %s | %s\n", deletionTimestamp, path, size)
+	}
+	fmt.Println(deletionLogs)
+	err := os.WriteFile(DELETION_FILE_NAME, []byte(deletionLogs), 0644)
+	if err != nil {
+		fmt.Println("failed: deletion log save")
+	}
 }
