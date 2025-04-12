@@ -237,8 +237,15 @@ func logDeletionToFile(files map[string]string) {
 		deletionLogs += fmt.Sprintf("[%s] %s | %s\n", deletionTimestamp, path, size)
 	}
 	fmt.Println(deletionLogs)
-	err := os.WriteFile(DELETION_FILE_NAME, []byte(deletionLogs), 0644)
+	file, err := os.OpenFile(DELETION_FILE_NAME, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println(yellow("Error:"), "Failed to open deleted files")
+		return
+	}
+	_, err = file.WriteString(deletionLogs)
 	if err != nil {
 		fmt.Println(yellow("Error:"), "Failed to save deleted files")
+		return
 	}
+	defer file.Close()
 }
