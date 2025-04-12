@@ -227,6 +227,7 @@ func formatSize(bytes int64) string {
 }
 
 func logDeletionToFile(files map[string]string) {
+	yellow := color.New(color.FgYellow).SprintFunc()
 	const (
 		DELETION_FILE_NAME = "deletor.log"
 	)
@@ -238,6 +239,6 @@ func logDeletionToFile(files map[string]string) {
 	fmt.Println(deletionLogs)
 	err := os.WriteFile(DELETION_FILE_NAME, []byte(deletionLogs), 0644)
 	if err != nil {
-		fmt.Println("failed: deletion log save")
+		fmt.Println(yellow("Error:"), "Failed to save deleted files")
 	}
 }
