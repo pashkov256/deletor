@@ -106,6 +106,7 @@ func main() {
 				for _, file := range files {
 					os.Remove(file.Name)
 				}
+				// logDeletionToFile()
 			} else {
 				red := color.New(color.FgRed).SprintFunc()
 				fmt.Println(red("Error:"), "File not found")
@@ -222,4 +223,12 @@ func formatSize(bytes int64) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
+}
+
+func logDeletionToFile() {
+	//create Timestamp
+	//create output logs data
+	//exits file?
+	// no: create file
+	// update deletion log file
 }
