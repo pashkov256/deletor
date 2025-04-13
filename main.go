@@ -42,6 +42,10 @@ func main() {
 				Aliases: []string{"s"},
 				Usage:   "Maximum file size (for example, 10mb, 1gb)",
 			},
+			&cli.StringFlag{
+				Name:  "exclude",
+				Usage: "Exclude specific files/paths (for example, temp, backup/)",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			ext := strings.Split(c.String("extensions"), ",")
@@ -71,6 +75,7 @@ func main() {
 					taskCh <- Task{info: info}
 					defer wg.Done()
 					for i := 0; i < len(ext); i++ {
+						// TODO: exclude specific
 						if info.Size() > sizeBytes && fmt.Sprint(".", ext[i]) == filepath.Ext(info.Name()) {
 							files = append(files, struct {
 								Name string
