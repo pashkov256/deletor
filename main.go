@@ -84,7 +84,6 @@ func main() {
 					if c.String("exclude") != "" {
 						for _, excludePattern := range exclude {
 							excludeDirPathPattern := fmt.Sprintf("/%s", excludePattern)
-							fmt.Println(excludeDirPathPattern)
 							if strings.Contains(path, excludeDirPathPattern) {
 								return
 							} else if strings.HasPrefix(info.Name(), excludePattern) {
