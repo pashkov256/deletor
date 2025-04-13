@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/joho/godotenv"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -21,6 +22,17 @@ type Task struct {
 }
 
 func main() {
+	err := godotenv.Load()
+	requiredExtensionFlag := false
+	if err != nil {
+		requiredExtensionFlag = true
+	}
+
+	ext := strings.Split(os.Getenv("EXTENSIONS"), ",")
+	if len(ext) == 0 {
+		requiredExtensionFlag = true
+	}
+
 	app := &cli.App{
 		Name:  "deletor",
 		Usage: "A utility for deleting files by extension and size",
@@ -29,7 +41,7 @@ func main() {
 				Name:     "extensions",
 				Aliases:  []string{"e"},
 				Usage:    "Comma-separated list of file extensions (e.g. mp4,zip,rtf)",
-				Required: true,
+				Required: requiredExtensionFlag,
 			},
 			&cli.StringFlag{
 				Name:     "directory",
@@ -44,7 +56,9 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			ext := strings.Split(c.String("extensions"), ",")
+			if requiredExtensionFlag {
+				ext = strings.Split(c.String("extensions"), ",")
+			}
 			dir := c.String("directory")
 			size := c.String("size")
 
@@ -117,7 +131,7 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
 	}
 }
