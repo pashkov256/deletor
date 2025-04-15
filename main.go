@@ -13,11 +13,38 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/joho/godotenv"
 	cli "github.com/urfave/cli/v2"
 )
 
 type Task struct {
 	info os.FileInfo
+}
+
+var extensionFromFlag bool
+var sizeFromFlag bool
+var ext []string
+var size string
+
+func init() {
+	extensionFromFlag = false
+	sizeFromFlag = false
+
+	err := godotenv.Load()
+	if err != nil {
+		extensionFromFlag = true
+		sizeFromFlag = true
+	}
+
+	ext = strings.Split(os.Getenv("EXTENSIONS"), ",")
+	if len(ext) == 1 && ext[0] == "" {
+		extensionFromFlag = true
+	}
+
+	size = os.Getenv("MAX_SIZE")
+	if size == "" {
+		sizeFromFlag = true
+	}
 }
 
 func main() {
@@ -29,13 +56,13 @@ func main() {
 				Name:     "extensions",
 				Aliases:  []string{"e"},
 				Usage:    "Comma-separated list of file extensions (e.g. mp4,zip,rtf)",
-				Required: true,
+				Required: extensionFromFlag,
 			},
 			&cli.StringFlag{
 				Name:     "directory",
 				Aliases:  []string{"d"},
 				Usage:    "File search directory",
-				Required: true,
+				Required: sizeFromFlag,
 			},
 			&cli.StringFlag{
 				Name:    "size",
@@ -48,9 +75,13 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			ext := strings.Split(c.String("extensions"), ",")
+			if extensionFromFlag {
+				ext = strings.Split(c.String("extensions"), ",")
+			}
 			dir := c.String("directory")
-			size := c.String("size")
+			if sizeFromFlag {
+				size = c.String("size")
+			}
 			exclude := strings.Split(c.String("exclude"), ",")
 			extMap := make(map[string]bool)
 
