@@ -42,11 +42,21 @@ func main() {
 				Aliases: []string{"s"},
 				Usage:   "Maximum file size (for example, 10mb, 1gb)",
 			},
+			&cli.StringFlag{
+				Name:  "exclude",
+				Usage: "Exclude specific files/paths (e.g. data,backup)",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			ext := strings.Split(c.String("extensions"), ",")
 			dir := c.String("directory")
 			size := c.String("size")
+			exclude := strings.Split(c.String("exclude"), ",")
+			extMap := make(map[string]bool)
+
+			for _, extItem := range ext {
+				extMap[fmt.Sprint(".", extItem)] = true
+			}
 
 			sizeBytes, _ := toBytes(size)
 
@@ -70,17 +80,24 @@ func main() {
 				go func() {
 					taskCh <- Task{info: info}
 					defer wg.Done()
-					for i := 0; i < len(ext); i++ {
-						if info.Size() > sizeBytes && fmt.Sprint(".", ext[i]) == filepath.Ext(info.Name()) {
-							files = append(files, struct {
-								Name string
-								Size int64
-							}{path, info.Size()})
-							toDeleteMap[path] = formatSize(info.Size())
-							totalClearSize += info.Size()
-							break
-						}
 
+					if c.String("exclude") != "" {
+						for _, excludePattern := range exclude {
+							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") {
+								return
+							} else if strings.HasPrefix(info.Name(), excludePattern) {
+								return
+							}
+						}
+					}
+
+					if info.Size() > sizeBytes && extMap[filepath.Ext(info.Name())] {
+						files = append(files, struct {
+							Name string
+							Size int64
+						}{path, info.Size()})
+						toDeleteMap[path] = formatSize(info.Size())
+						totalClearSize += info.Size()
 					}
 
 					<-taskCh
