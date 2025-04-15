@@ -44,7 +44,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "exclude",
-				Usage: "Exclude specific files/paths (e.g. data,backup/)",
+				Usage: "Exclude specific files/paths (e.g. data,backup)",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -83,8 +83,7 @@ func main() {
 
 					if c.String("exclude") != "" {
 						for _, excludePattern := range exclude {
-							excludeDirPathPattern := fmt.Sprintf("/%s", excludePattern)
-							if strings.Contains(path, excludeDirPathPattern) {
+							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") {
 								return
 							} else if strings.HasPrefix(info.Name(), excludePattern) {
 								return
