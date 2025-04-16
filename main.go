@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/schollz/progressbar/v3"
 	"github.com/joho/godotenv"
+	"github.com/schollz/progressbar/v3"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -81,23 +81,25 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if extensionFromFlag {
-				ext = strings.Split(c.String("extensions"), ",")
-			}
+			var mutex sync.Mutex
 			dir := c.String("directory")
-			if sizeFromFlag {
-				size = c.String("size")
-			}
 			exclude := strings.Split(c.String("exclude"), ",")
 			progress := c.Bool("progress")
 			extMap := make(map[string]bool)
+
+			if extensionFromFlag {
+				ext = strings.Split(c.String("extensions"), ",")
+			}
+
+			if sizeFromFlag {
+				size = c.String("size")
+			}
 
 			for _, extItem := range ext {
 				extMap[fmt.Sprint(".", extItem)] = true
 			}
 
 			sizeBytes, _ := toBytes(size)
-
 			toDeleteMap := make(map[string]string, 16)
 
 			files := make([]struct {
@@ -162,12 +164,15 @@ func main() {
 
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 				wg.Add(1)
+
 				if info == nil {
 					return nil
 				}
 				go func() {
+					mutex.Lock()
 					taskCh <- Task{info: info}
 					defer wg.Done()
+					defer mutex.Unlock()
 
 					if c.String("exclude") != "" {
 						for _, excludePattern := range exclude {
