@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/schollz/progressbar/v3"
 	"github.com/joho/godotenv"
 	cli "github.com/urfave/cli/v2"
 )
@@ -73,6 +74,11 @@ func main() {
 				Name:  "exclude",
 				Usage: "Exclude specific files/paths (e.g. data,backup)",
 			},
+			&cli.BoolFlag{
+				Name:    "progress",
+				Aliases: []string{"p"},
+				Usage:   "Display a progress bar during file scanning",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if extensionFromFlag {
@@ -83,6 +89,7 @@ func main() {
 				size = c.String("size")
 			}
 			exclude := strings.Split(c.String("exclude"), ",")
+			progress := c.Bool("progress")
 			extMap := make(map[string]bool)
 
 			for _, extItem := range ext {
@@ -102,6 +109,56 @@ func main() {
 			taskCh := make(chan Task, numCPU)
 
 			var totalClearSize int64
+			var totalScanSize int64
+			var progressChan chan int64
+
+			if progress {
+				filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+					if info == nil {
+						return nil
+					}
+
+					if c.String("exclude") != "" {
+						for _, excludePattern := range exclude {
+							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") {
+								return nil
+							} else if strings.HasPrefix(info.Name(), excludePattern) {
+								return nil
+							}
+						}
+					}
+
+					if info.Size() > sizeBytes && extMap[filepath.Ext(info.Name())] {
+						totalScanSize += info.Size()
+					}
+
+					return nil
+				})
+
+				bar := progressbar.NewOptions64(
+					totalScanSize,
+					progressbar.OptionSetDescription("Scanning files..."),
+					progressbar.OptionSetWriter(os.Stderr),
+					progressbar.OptionShowBytes(true),
+					progressbar.OptionShowTotalBytes(true),
+					progressbar.OptionUseIECUnits(true),
+					progressbar.OptionSetWidth(10),
+					progressbar.OptionThrottle(65*time.Millisecond),
+					progressbar.OptionShowCount(),
+					progressbar.OptionOnCompletion(func() {
+						fmt.Fprint(os.Stderr, "\n")
+					}),
+					progressbar.OptionSpinnerType(14),
+					progressbar.OptionFullWidth(),
+					progressbar.OptionSetRenderBlankState(true))
+
+				progressChan = make(chan int64)
+				go func() {
+					for incr := range progressChan {
+						bar.Add64(incr)
+					}
+				}()
+			}
 
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 				wg.Add(1)
@@ -129,6 +186,9 @@ func main() {
 						}{path, info.Size()})
 						toDeleteMap[path] = formatSize(info.Size())
 						totalClearSize += info.Size()
+						if progress {
+							progressChan <- info.Size()
+						}
 					}
 
 					<-taskCh
