@@ -1,9 +1,13 @@
-# Deletor - Utility for Deleting Files by Extension and Size
+
+
+# [Deletor](https://pashkov256.github.io/deletor-doc) - Utility for Deleting Files by Extension and Size
 [![Go Reference](https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg)](https://pkg.go.dev/github.com/pashkov256/deletor)
 ![code helpers](https://www.codetriage.com/pashkov256/tcache/badges/users.svg)
 
 **Deletor** is a command-line utility for deleting files based on their extension and size. It allows you to find and delete files in a specified directory that match the given criteria (file extension and minimum size).
 
+## Web docs
+ [https://pashkov256.github.io/deletor-doc](https://pashkov256.github.io/deletor-doc)
 
 
 ## Features
