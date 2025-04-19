@@ -1,56 +1,43 @@
 
 
-# [Deletor](https://pashkov256.github.io/deletor-doc) - Utility for Deleting Files by Extension and Size
+# [Deletor](https://pashkov256.github.io/deletor-doc) - Interactive File Management Tool
 [![Go Reference](https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg)](https://pkg.go.dev/github.com/pashkov256/deletor)
-![code helpers](https://www.codetriage.com/pashkov256/tcache/badges/users.svg)
+![Open Issues](https://img.shields.io/github/issues/pashkov256/deletor)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-**Deletor** is a command-line utility for deleting files based on their extension and size. It allows you to find and delete files in a specified directory that match the given criteria (file extension and minimum size).
+**Deletor** file management with its intuitive TUI interface, combining powerful file deletion capabilities with visual navigation.
 
-## Web docs
- [https://pashkov256.github.io/deletor-doc](https://pashkov256.github.io/deletor-doc)
 
 
 ## Features
-- 🗑️ **Delete by Extension**: Deletes files with specified extensions (e.g., .mp4, .zip).
+- 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
+- 🗑️ **Delete by Extension**: Deletes files with specified extensions (e.g., .mp4, .zip)
+- 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
+- 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
+- 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
+- ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
+- 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
+- 📊 **Formatted Output**: Clean, aligned display of file information
 
-- 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb).
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor.gif" alt="Project Banner" />
+</p>
 
-- 📂 **Recursive Search**: Scans the directory and all its subdirectories.
-
-- 🛠️ **Confirmation Prompt**: Asks for confirmation before deleting files.
-
-- 📊 **Table Output**: Displays files in a clean, formatted table with sizes aligned for readability.
 ## 📦 Installation
 ```bash
 go install github.com/pashkov256/deletor
 ```
 
+
+
 ## 🛠 Usage
 
 ```bash
-deletor -e mp4,zip -d ~/Downloads/ -s 10mb
+deletor -d ~/Downloads/ 
 ```
 
-### Arguments:
-- `-e, --extensions` - list of file extensions separated by commas (e.g., `mp4,zip,jpg`).
-- `-d, --directory` - path to the directory to search for files.
-- `-s, --size` - maximum file size (e.g., `10b`,`10kb`,`10mb`,`10gb`).
-
-## 🔥 Example
-```bash
-deletor -e mp4,zip -d ~/Downloads/ -s 18kb
-```
-Output:
-```bash
-2.96 MB    /home/user/Downloads/sample.zip
-155.14 KB  /home/user/Downloads/image.jpg
-370.86 KB  /home/user/Downloads/document.png
-
-7.48 MB  will be cleared.
-
-Delete these files? [y/n]: y
-✓ Deleted: 2.52 MB
-```
+## Web docs
+[https://pashkov256.github.io/deletor-doc](https://pashkov256.github.io/deletor-doc)
 
 ## 📜 License
 This project is distributed under the MIT license.
