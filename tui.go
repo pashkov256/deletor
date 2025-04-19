@@ -159,13 +159,11 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 	options := []string{
 		"Show hidden files",
 		"Confirm deletion",
-		"Show progress",
 	}
 
 	optionState := map[string]bool{
 		"Show hidden files": false,
 		"Confirm deletion": false,
-		"Show progress":    true,
 	}
 
 	return model{
@@ -500,8 +498,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "option1":
 				m.focusedElement = "option2"
 			case "option2":
-				m.focusedElement = "option3"
-			case "option3":
 				m.focusedElement = "dirButton"
 			case "dirButton":
 				m.focusedElement = "button"
@@ -542,7 +538,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, m.loadFiles()
 				}
-			case "option1", "option2", "option3":
+			case "option1", "option2":
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
@@ -595,7 +591,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.loadFiles()
 				}
 			}
-		case key.Matches(msg, key.NewBinding(key.WithKeys("1", "2", "3"))):
+		case key.Matches(msg, key.NewBinding(key.WithKeys("1", "2"))):
 			// Toggle options with number keys only when inputs are not focused
 			idx := int(msg.String()[0] - '1')
 			if idx >= 0 && idx < len(m.options) {

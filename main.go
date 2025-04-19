@@ -6,16 +6,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	"github.com/schollz/progressbar/v3"
-	cli "github.com/urfave/cli/v2"
+	"flag"
 )
 
 type Task struct {
@@ -49,222 +46,43 @@ func init() {
 }
 
 func main() {
-	app := &cli.App{
-		Name:  "deletor",
-		Usage: "A utility for deleting files by extension and size",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "tui",
-				Aliases: []string{"t"},
-				Usage:   "Use terminal user interface mode",
-			},
-			&cli.StringFlag{
-				Name:     "extensions",
-				Aliases:  []string{"e"},
-				Usage:    "Comma-separated list of file extensions (e.g. mp4,zip,rtf)",
-				Required: false,
-			},
-			&cli.StringFlag{
-				Name:     "directory",
-				Aliases:  []string{"d"},
-				Usage:    "File search directory",
-				Required: false,
-			},
-			&cli.StringFlag{
-				Name:    "size",
-				Aliases: []string{"s"},
-				Usage:   "Maximum file size (for example, 10mb, 1gb)",
-				Required: false,
-			},
-			&cli.StringFlag{
-				Name:  "exclude",
-				Usage: "Exclude specific files/paths (e.g. data,backup)",
-			},
-			&cli.BoolFlag{
-				Name:    "progress",
-				Aliases: []string{"p"},
-				Usage:   "Display a progress bar during file scanning",
-			},
-		},
-		Action: func(c *cli.Context) error {
-			if c.Bool("tui") {
-				dir := c.String("directory")
-				if dir == "" {
-					var err error
-					dir, err = os.Getwd()
-					if err != nil {
-						return err
-					}
-				}
-				
-				var sizeBytes int64
-				if c.String("size") != "" {
-					var err error
-					sizeBytes, err = toBytes(c.String("size"))
-					if err != nil {
-						return fmt.Errorf("invalid size format: %v", err)
-					}
-				}
+	// Parse command line arguments
+	extensions := flag.String("e", "", "File extensions to delete (comma-separated)")
+	size := flag.String("s", "", "Minimum file size to delete (e.g. 10kb, 10mb, 10b)")
+	dir := flag.String("d", ".", "Directory to scan")
+	flag.Parse()
 
-				extensions := []string{}
-				if c.String("extensions") != "" {
-					extensions = strings.Split(c.String("extensions"), ",")
-				}
-
-				return startTUI(dir, extensions, sizeBytes)
-			}
-
-			var mutex sync.Mutex
-			dir := c.String("directory")
-			exclude := strings.Split(c.String("exclude"), ",")
-			progress := c.Bool("progress")
-			extMap := make(map[string]bool)
-
-			if extensionFromFlag {
-				ext = strings.Split(c.String("extensions"), ",")
-			}
-
-			if sizeFromFlag {
-				size = c.String("size")
-			}
-
-			for _, extItem := range ext {
-				extMap[fmt.Sprint(".", extItem)] = true
-			}
-
-			sizeBytes, _ := toBytes(size)
-			toDeleteMap := make(map[string]string, 16)
-
-			files := make([]struct {
-				Name string
-				Size int64
-			}, 0, 0)
-			var wg sync.WaitGroup
-			numCPU := runtime.NumCPU()
-			taskCh := make(chan Task, numCPU)
-
-			var totalClearSize int64
-			var totalScanSize int64
-			var progressChan chan int64
-
-			if progress {
-				filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-					if info == nil {
-						return nil
-					}
-
-					if c.String("exclude") != "" {
-						for _, excludePattern := range exclude {
-							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") {
-								return nil
-							} else if strings.HasPrefix(info.Name(), excludePattern) {
-								return nil
-							}
-						}
-					}
-
-					if info.Size() > sizeBytes && extMap[filepath.Ext(info.Name())] {
-						totalScanSize += info.Size()
-					}
-
-					return nil
-				})
-
-				bar := progressbar.NewOptions64(
-					totalScanSize,
-					progressbar.OptionSetDescription("Scanning files..."),
-					progressbar.OptionSetWriter(os.Stderr),
-					progressbar.OptionShowBytes(true),
-					progressbar.OptionUseIECUnits(true),
-					progressbar.OptionSetWidth(10),
-					progressbar.OptionThrottle(65*time.Millisecond),
-					progressbar.OptionShowCount(),
-					progressbar.OptionOnCompletion(func() {
-						fmt.Fprint(os.Stderr, "\n")
-					}),
-					progressbar.OptionSpinnerType(14),
-					progressbar.OptionFullWidth(),
-					progressbar.OptionSetRenderBlankState(true))
-
-				progressChan = make(chan int64)
-				go func() {
-					for incr := range progressChan {
-						bar.Add64(incr)
-					}
-				}()
-			}
-
-			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-				wg.Add(1)
-
-				if info == nil {
-					return nil
-				}
-				go func() {
-					mutex.Lock()
-					taskCh <- Task{info: info}
-					defer wg.Done()
-					defer mutex.Unlock()
-
-					if c.String("exclude") != "" {
-						for _, excludePattern := range exclude {
-							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") {
-								return
-							} else if strings.HasPrefix(info.Name(), excludePattern) {
-								return
-							}
-						}
-					}
-
-					if info.Size() > sizeBytes && extMap[filepath.Ext(info.Name())] {
-						files = append(files, struct {
-							Name string
-							Size int64
-						}{path, info.Size()})
-						toDeleteMap[path] = formatSize(info.Size())
-						totalClearSize += info.Size()
-						if progress {
-							progressChan <- info.Size()
-						}
-					}
-
-					<-taskCh
-				}()
-
-				return nil
-			})
-
-			wg.Wait()
-
-			if totalClearSize != 0 {
-				printFilesTable(toDeleteMap)
-
-				fmt.Println()
-				fmt.Println(formatSize(totalClearSize), " will be cleared.\n")
-
-				actionIsDelete := askForConfirmation("Delete these files?")
-
-				if !actionIsDelete {
-					return nil
-				}
-
-				fmt.Println(color.New(color.FgGreen).SprintFunc()("✓"), "Deleted:", formatSize(totalClearSize))
-				for _, file := range files {
-					os.Remove(file.Name)
-				}
-				logDeletionToFile(toDeleteMap)
-			} else {
-				red := color.New(color.FgRed).SprintFunc()
-				fmt.Println(red("Error:"), "File not found")
-			}
-
-			return nil
-		},
+	// Convert extensions to slice
+	var extSlice []string
+	if *extensions != "" {
+		extSlice = strings.Split(*extensions, ",")
+		for i := range extSlice {
+			extSlice[i] = strings.TrimSpace(extSlice[i])
+		}
 	}
 
-	err := app.Run(os.Args)
+	// Convert size to bytes
+	var minSize int64
+	if *size != "" {
+		sizeBytes, err := toBytes(*size)
+		if err != nil {
+			fmt.Printf("Error parsing size: %v\n", err)
+			os.Exit(1)
+		}
+		minSize = sizeBytes
+	}
+
+	// Get absolute path
+	absPath, err := filepath.Abs(*dir)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error getting absolute path: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Start TUI
+	if err := startTUI(absPath, extSlice, minSize); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
