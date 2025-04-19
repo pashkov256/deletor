@@ -41,9 +41,39 @@ func TestPrintFilesTable(t *testing.T) {
 }
 
 func TestAskForConfirmation(t *testing.T) {
-	got := math.Abs(-1)
-	if got != 1 {
-		t.Errorf("Abs(-1) = %f; want 1", got)
+	type args struct {
+		userInput string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"yLowerCase", args{"y\n"}, true},
+		{"yUpperCase", args{"Y\n"}, true},
+		{"yesLowerCase", args{"YES\n"}, true},
+		{"yesUpperCase", args{"yes\n"}, true},
+		{"nLowerCase", args{"n\n"}, false},
+		{"nUpperCase", args{"N\n"}, false},
+		{"noLowerCase", args{"no\n"}, false},
+		{"noUpperCase", args{"NO\n"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalStdin := os.Stdin
+			defer func() { os.Stdin = originalStdin }()
+
+			r, w, _ := os.Pipe()
+			os.Stdin = r
+			go func() {
+				w.Write([]byte(tt.args.userInput))
+				w.Close()
+			}()
+			got := askForConfirmation("Delete these files?")
+			if got != tt.want {
+				t.Errorf("gotAskForConfirmation = %v\n wantAskForConfirmation = %v", got, tt.want)
+			}
+		})
 	}
 }
 
