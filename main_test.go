@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"math"
 	"os"
 	"testing"
 )
@@ -78,9 +77,29 @@ func TestAskForConfirmation(t *testing.T) {
 }
 
 func TestToBytes(t *testing.T) {
-	got := math.Abs(-1)
-	if got != 1 {
-		t.Errorf("Abs(-1) = %f; want 1", got)
+	type args struct {
+		sizeStr string
+	}
+
+	tests := []struct {
+		name       string
+		args       args
+		wantToByte int64
+	}{
+		{"minB", args{"0b"}, 0},
+		{"100B", args{"100b"}, 100},
+		{"minKB", args{"0k"}, 0},
+		{"100KB", args{"100kb"}, 102400},
+		{"minMB", args{"0mb"}, 0},
+		{"100MB", args{"100mb"}, 104857600},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, _ := toBytes(tt.args.sizeStr); got != tt.wantToByte {
+				t.Errorf("gotToBytes = %v\n wantToBytes = %v", got, tt.wantToByte)
+			}
+		})
 	}
 }
 
