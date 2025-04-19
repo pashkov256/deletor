@@ -1,6 +1,6 @@
 
 
-# [Deletor](https://pashkov256.github.io/deletor-doc) - Interactive File Management Tool
+# [Deletor](https://pashkov256.github.io/deletor-doc) - Interactive File Deletion Tool
 [![Go Reference](https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg)](https://pkg.go.dev/github.com/pashkov256/deletor)
 ![Open Issues](https://img.shields.io/github/issues/pashkov256/deletor)
 ![License](https://img.shields.io/badge/license-MIT-blue)

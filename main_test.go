@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -16,24 +17,38 @@ func TestPrintFilesTable(t *testing.T) {
 		args args
 		want string
 	}{
-		{"BytePrint", args{map[string]string{
-			"/Users/test/Documents/deletor/main.go": "8.04 KB",
-		}}, "8.04 KB  /Users/test/Documents/deletor/main.go\n"},
+		{
+			name: "BytePrint",
+			args: args{map[string]string{
+				"/Users/test/Documents/deletor/main.go": "8.04 KB",
+			}},
+			want: "8.04 KB  /Users/test/Documents/deletor/main.go\n",
+		},
 	}
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("failed to create pipe: %v", err)
-	}
-	os.Stdout = w
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Перехватываем вывод
+			old := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
 			printFilesTable(tt.args.files)
+
 			w.Close()
+			os.Stdout = old
+
 			var buf bytes.Buffer
 			io.Copy(&buf, r)
 			got := buf.String()
+
+			// Удаляем цветовые коды перед сравнением
+			got = strings.ReplaceAll(got, "\x1b[33m", "") // желтый
+			got = strings.ReplaceAll(got, "\x1b[0m", "")  // сброс
+			got = strings.ReplaceAll(got, "\x1b[37m", "") // белый
+
 			if got != tt.want {
-				t.Errorf("gotFormatSize = %v\n wantFormatSize = %v", got, tt.want)
+				t.Errorf("\ngot:\n%q\nwant:\n%q", got, tt.want)
 			}
 		})
 	}

@@ -1,4 +1,4 @@
-module github.com/pashkov/deletor
+module github.com/pashkov256/deletor
 
 go 1.21
 
