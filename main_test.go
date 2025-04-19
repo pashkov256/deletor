@@ -1,14 +1,42 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"math"
+	"os"
 	"testing"
 )
 
 func TestPrintFilesTable(t *testing.T) {
-	got := math.Abs(-1)
-	if got != 1 {
-		t.Errorf("Abs(-1) = %f; want 1", got)
+	type args struct {
+		files map[string]string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"BytePrint", args{map[string]string{
+			"/Users/test/Documents/deletor/main.go": "8.04 KB",
+		}}, "8.04 KB  /Users/test/Documents/deletor/main.go\n"},
+	}
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			printFilesTable(tt.args.files)
+			w.Close()
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+			got := buf.String()
+			if got != tt.want {
+				t.Errorf("gotFormatSize = %v\n wantFormatSize = %v", got, tt.want)
+			}
+		})
 	}
 }
 
