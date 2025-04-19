@@ -208,7 +208,7 @@ func main() {
 				printFilesTable(toDeleteMap)
 
 				fmt.Println()
-				fmt.Println(formatSize(totalClearSize), " will be cleared.\n")
+				fmt.Println(formatSize(totalClearSize), " will be cleared.")
 
 				actionIsDelete := askForConfirmation("Delete these files?")
 
