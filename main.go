@@ -53,22 +53,28 @@ func main() {
 		Name:  "deletor",
 		Usage: "A utility for deleting files by extension and size",
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "tui",
+				Aliases: []string{"t"},
+				Usage:   "Use terminal user interface mode",
+			},
 			&cli.StringFlag{
 				Name:     "extensions",
 				Aliases:  []string{"e"},
 				Usage:    "Comma-separated list of file extensions (e.g. mp4,zip,rtf)",
-				Required: extensionFromFlag,
+				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "directory",
 				Aliases:  []string{"d"},
 				Usage:    "File search directory",
-				Required: sizeFromFlag,
+				Required: false,
 			},
 			&cli.StringFlag{
 				Name:    "size",
 				Aliases: []string{"s"},
 				Usage:   "Maximum file size (for example, 10mb, 1gb)",
+				Required: false,
 			},
 			&cli.StringFlag{
 				Name:  "exclude",
@@ -81,6 +87,33 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			if c.Bool("tui") {
+				dir := c.String("directory")
+				if dir == "" {
+					var err error
+					dir, err = os.Getwd()
+					if err != nil {
+						return err
+					}
+				}
+				
+				var sizeBytes int64
+				if c.String("size") != "" {
+					var err error
+					sizeBytes, err = toBytes(c.String("size"))
+					if err != nil {
+						return fmt.Errorf("invalid size format: %v", err)
+					}
+				}
+
+				extensions := []string{}
+				if c.String("extensions") != "" {
+					extensions = strings.Split(c.String("extensions"), ",")
+				}
+
+				return startTUI(dir, extensions, sizeBytes)
+			}
+
 			var mutex sync.Mutex
 			dir := c.String("directory")
 			exclude := strings.Split(c.String("exclude"), ",")
@@ -142,7 +175,6 @@ func main() {
 					progressbar.OptionSetDescription("Scanning files..."),
 					progressbar.OptionSetWriter(os.Stderr),
 					progressbar.OptionShowBytes(true),
-					progressbar.OptionShowTotalBytes(true),
 					progressbar.OptionUseIECUnits(true),
 					progressbar.OptionSetWidth(10),
 					progressbar.OptionThrottle(65*time.Millisecond),
@@ -232,8 +264,10 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
+		log.Fatal(err)
 	}
 }
+
 func printFilesTable(files map[string]string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
@@ -258,7 +292,6 @@ func askForConfirmation(s string) bool {
 	fmt.Printf("%s %s ", bold(s), green("[y/n]:"))
 
 	for {
-
 		response, err := reader.ReadString('\n')
 		if err != nil {
 			log.Fatal(err)
@@ -317,28 +350,6 @@ func toBytes(sizeStr string) (int64, error) {
 	return int64(bytes), nil
 }
 
-func formatSize(bytes int64) string {
-	const (
-		KB = 1 << 10 // 1024
-		MB = 1 << 20 // 1024 * 1024
-		GB = 1 << 30 // 1024 * 1024 * 1024
-		TB = 1 << 40 // 1024 * 1024 * 1024 * 1024
-	)
-
-	switch {
-	case bytes >= TB:
-		return fmt.Sprintf("%.2f TB", float64(bytes)/TB)
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/GB)
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/MB)
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/KB)
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
-}
-
 func logDeletionToFile(files map[string]string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	const (
@@ -361,4 +372,4 @@ func logDeletionToFile(files map[string]string) {
 		return
 	}
 	defer file.Close()
-}
+} 
