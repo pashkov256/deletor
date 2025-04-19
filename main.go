@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"flag"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	"flag"
 )
 
 type Task struct {
@@ -190,4 +190,4 @@ func logDeletionToFile(files map[string]string) {
 		return
 	}
 	defer file.Close()
-} 
+}

@@ -38,12 +38,12 @@ var (
 			Width(100)
 
 	buttonFocusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#fff")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF6666")).
-			Background(lipgloss.Color("#FF6666")).
+				Foreground(lipgloss.Color("#fff")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#FF6666")).
+				Background(lipgloss.Color("#FF6666")).
 				Padding(0, 1).
-			Width(100)
+				Width(100)
 
 	dirButtonStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#fff")).
@@ -53,24 +53,23 @@ var (
 			Bold(true)
 
 	dirButtonFocusedStyle = lipgloss.NewStyle().
-	
-	Background(lipgloss.Color("#1E90FF")).
-			Foreground(lipgloss.Color("#fff")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#1E90FF")).
-			Width(100).
-			Bold(true)
+				Background(lipgloss.Color("#1E90FF")).
+				Foreground(lipgloss.Color("#fff")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#1E90FF")).
+				Width(100).
+				Bold(true)
 
 	optionStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
 
 	selectedOptionStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ad58b3")).
-			Bold(true)
+				Foreground(lipgloss.Color("#ad58b3")).
+				Bold(true)
 
 	optionFocusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#5f5fd7")).
-			Background(lipgloss.Color("#333333"))
+				Foreground(lipgloss.Color("#5f5fd7")).
+				Background(lipgloss.Color("#333333"))
 
 	infoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
@@ -89,19 +88,19 @@ func (i item) Title() string {
 	if i.size == 0 {
 		return "📂 " + filepath.Base(i.path)
 	}
-	
+
 	// Get filename and extension
 	filename := filepath.Base(i.path)
-	
+
 	// Format size with fixed width
 	sizeStr := formatSize(i.size)
-	
+
 	// Calculate padding to align size to the right
 	padding := 50 - len(filename) // Adjust this value based on your needs
 	if padding < 0 {
 		padding = 0
 	}
-	
+
 	return fmt.Sprintf("%s%s%s", filename, strings.Repeat(" ", padding), sizeStr)
 }
 
@@ -109,21 +108,21 @@ func (i item) Description() string { return i.path }
 func (i item) FilterValue() string { return i.path }
 
 type model struct {
-	list         list.Model
-	extInput     textinput.Model
-	sizeInput    textinput.Model
-	pathInput    textinput.Model
-	currentPath  string
-	extensions   []string
-	minSize     int64
-	options      []string
-	optionState  map[string]bool
-	err          error
-	focusedElement string // "path", "ext", "size", "button", "option1", "option2", "option3"
+	list                list.Model
+	extInput            textinput.Model
+	sizeInput           textinput.Model
+	pathInput           textinput.Model
+	currentPath         string
+	extensions          []string
+	minSize             int64
+	options             []string
+	optionState         map[string]bool
+	err                 error
+	focusedElement      string // "path", "ext", "size", "button", "option1", "option2", "option3"
 	waitingConfirmation bool
-	fileToDelete  *item
-	showDirs      bool
-	dirList       list.Model
+	fileToDelete        *item
+	showDirs            bool
+	dirList             list.Model
 }
 
 func initialModel(startDir string, extensions []string, minSize int64) model {
@@ -133,14 +132,14 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "File sizes (e.g. 10kb,10mb,10b)..."
-	
+
 	pathInput := textinput.New()
 	pathInput.SetValue(startDir)
-	
+
 	delegate := list.NewDefaultDelegate()
 	delegate.SetHeight(1)
 	delegate.SetSpacing(0)
-	
+
 	items := []list.Item{}
 	l := list.New(items, delegate, 0, 0)
 	l.SetShowHelp(false)
@@ -163,24 +162,24 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 
 	optionState := map[string]bool{
 		"Show hidden files": false,
-		"Confirm deletion": false,
+		"Confirm deletion":  false,
 	}
 
 	return model{
-		list:        l,
-		extInput:    extInput,
-		sizeInput:   sizeInput,
-		pathInput:   pathInput,
-		currentPath: startDir,
-		extensions:  extensions,
-		minSize:     minSize,
-		options:     options,
-		optionState: optionState,
-		focusedElement: "path",
+		list:                l,
+		extInput:            extInput,
+		sizeInput:           sizeInput,
+		pathInput:           pathInput,
+		currentPath:         startDir,
+		extensions:          extensions,
+		minSize:             minSize,
+		options:             options,
+		optionState:         optionState,
+		focusedElement:      "path",
 		waitingConfirmation: false,
-		fileToDelete: nil,
-		showDirs:     false,
-		dirList:      dirList,
+		fileToDelete:        nil,
+		showDirs:            false,
+		dirList:             dirList,
 	}
 }
 
@@ -300,7 +299,7 @@ func (m model) loadFiles() tea.Cmd {
 func (m model) loadDirs() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
-		
+
 		// Add parent directory with special display
 		parentDir := filepath.Dir(m.currentPath)
 		if parentDir != m.currentPath {
@@ -600,7 +599,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.loadFiles()
 			}
 		}
-	
+
 	case []list.Item:
 		if m.showDirs {
 			m.dirList.SetItems(msg)
@@ -696,7 +695,7 @@ func (m model) View() string {
 }
 
 func startTUI(startDir string, extensions []string, minSize int64) error {
-	p := tea.NewProgram(initialModel(startDir, extensions, minSize), 
+	p := tea.NewProgram(initialModel(startDir, extensions, minSize),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithFPS(30),
@@ -704,4 +703,4 @@ func startTUI(startDir string, extensions []string, minSize int64) error {
 	)
 	_, err := p.Run()
 	return err
-} 
+}
