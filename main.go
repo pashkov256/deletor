@@ -163,11 +163,10 @@ func main() {
 			}
 
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-				wg.Add(1)
-
 				if info == nil {
 					return nil
 				}
+				wg.Add(1)
 				go func() {
 					mutex.Lock()
 					taskCh <- Task{info: info}
