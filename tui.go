@@ -19,11 +19,11 @@ var (
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
+			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1)
 
 	sizeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#25A065"))
+			Foreground(lipgloss.Color("#1E90FF"))
 
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -32,48 +32,44 @@ var (
 			Width(100)
 
 	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF4444")).
+			Foreground(lipgloss.Color("#fff")).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF0000")).
-			Padding(0, 1).
-			Width(120)
+			BorderForeground(lipgloss.Color("#FF6666")).
+			Width(100)
 
 	buttonFocusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF6666")).
+			Foreground(lipgloss.Color("#fff")).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF0000")).
-			Padding(0, 1).
-			Width(120)
+			BorderForeground(lipgloss.Color("#FF6666")).
+			Background(lipgloss.Color("#FF6666")).
+				Padding(0, 1).
+			Width(100)
 
 	dirButtonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#25A065")).
-			Background(lipgloss.Color("#FFFDF5")).
+			Foreground(lipgloss.Color("#fff")).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#25A065")).
-			Padding(0, 2).
-			Width(120).
+			BorderForeground(lipgloss.Color("#1E90FF")).
+			Width(100).
 			Bold(true)
 
 	dirButtonFocusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
+	
+	Background(lipgloss.Color("#1E90FF")).
+			Foreground(lipgloss.Color("#fff")).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#25A065")).
-			Padding(0, 2).
-			Width(120).
+			BorderForeground(lipgloss.Color("#1E90FF")).
+			Width(100).
 			Bold(true)
 
 	optionStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
 
 	selectedOptionStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#25A065")).
+			Foreground(lipgloss.Color("#ad58b3")).
 			Bold(true)
 
 	optionFocusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#25A065")).
+			Foreground(lipgloss.Color("#5f5fd7")).
 			Background(lipgloss.Color("#333333"))
 
 	infoStyle = lipgloss.NewStyle().
@@ -199,6 +195,15 @@ func (m model) loadFiles() tea.Cmd {
 		var items []list.Item
 		currentDir := m.currentPath
 
+		// Add parent directory item
+		parentDir := filepath.Dir(currentDir)
+		if parentDir != currentDir {
+			items = append(items, item{
+				path: parentDir,
+				size: -1, // Special value for parent directory
+			})
+		}
+
 		// Parse extensions from input
 		extensions := strings.Split(m.extInput.Value(), ",")
 		for i := range extensions {
@@ -287,6 +292,9 @@ func (m model) loadFiles() tea.Cmd {
 			return items[i].(item).path < items[j].(item).path
 		})
 
+		// Update path input with current path
+		m.pathInput.SetValue(m.currentPath)
+
 		return items
 	}
 }
@@ -361,12 +369,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		// Fixed height for file/directory list
-		listHeight := 10
+		listHeight := 8
 		m.list.SetSize(msg.Width-2, listHeight)
 		m.dirList.SetSize(msg.Width-2, listHeight)
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle arrow keys first
+		if msg.String() == "up" || msg.String() == "down" {
+			if !m.showDirs {
+				m.list, cmd = m.list.Update(msg)
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		// Handle Enter on file list first
+		if msg.String() == "enter" && !m.showDirs && m.list.SelectedItem() != nil && m.focusedElement != "dirButton" && m.focusedElement != "button" {
+			selectedItem := m.list.SelectedItem().(item)
+			if selectedItem.size == -1 {
+				// Handle parent directory selection
+				m.currentPath = selectedItem.path
+				m.pathInput.SetValue(selectedItem.path)
+				return m, m.loadFiles()
+			}
+		}
+
 		// Handle Ctrl+C first
 		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
@@ -436,7 +464,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.sizeInput.Blur()
-				m.focusedElement = "dirButton"
+				m.focusedElement = "option1"
 				return m, nil
 			case "esc":
 				m.sizeInput.Blur()
@@ -468,16 +496,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusedElement = "size"
 			case "size":
 				m.sizeInput.Blur()
-				m.focusedElement = "dirButton"
-			case "dirButton":
-				m.focusedElement = "button"
-			case "button":
 				m.focusedElement = "option1"
 			case "option1":
 				m.focusedElement = "option2"
 			case "option2":
 				m.focusedElement = "option3"
 			case "option3":
+				m.focusedElement = "dirButton"
+			case "dirButton":
+				m.focusedElement = "button"
+			case "button":
 				m.pathInput.Focus()
 				m.focusedElement = "path"
 			}
@@ -490,6 +518,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "button":
 				if m.list.SelectedItem() != nil {
 					selectedItem := m.list.SelectedItem().(item)
+					if selectedItem.size == -1 {
+						// Handle parent directory selection
+						m.currentPath = selectedItem.path
+						m.pathInput.SetValue(selectedItem.path)
+						return m, m.loadFiles()
+					}
+					if !m.optionState["Confirm deletion"] {
+						// If confirm deletion is disabled, delete all files
+						for _, listItem := range m.list.Items() {
+							if fileItem, ok := listItem.(item); ok && fileItem.size != -1 {
+								err := os.Remove(fileItem.path)
+								if err != nil {
+									m.err = err
+								}
+							}
+						}
+						return m, m.loadFiles()
+					}
 					err := os.Remove(selectedItem.path)
 					if err != nil {
 						m.err = err
@@ -524,6 +570,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusedElement == "button" {
 				if m.list.SelectedItem() != nil {
 					selectedItem := m.list.SelectedItem().(item)
+					if selectedItem.size == -1 {
+						// Handle parent directory selection
+						m.currentPath = selectedItem.path
+						m.pathInput.SetValue(selectedItem.path)
+						return m, m.loadFiles()
+					}
+					if !m.optionState["Confirm deletion"] {
+						// If confirm deletion is disabled, delete all files
+						for _, listItem := range m.list.Items() {
+							if fileItem, ok := listItem.(item); ok && fileItem.size != -1 {
+								err := os.Remove(fileItem.path)
+								if err != nil {
+									m.err = err
+								}
+							}
+						}
+						return m, m.loadFiles()
+					}
 					err := os.Remove(selectedItem.path)
 					if err != nil {
 						m.err = err
@@ -557,11 +621,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		m.err = msg
 		return m, nil
-	}
-
-	if !m.showDirs {
-		m.list, cmd = m.list.Update(msg)
-		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -612,7 +671,7 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	// Change Directory button
-	dirButtonText := "Change Directory"
+	dirButtonText := "➡️ Change Directory"
 	if m.focusedElement == "dirButton" {
 		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render(dirButtonText))
 	} else {
@@ -621,7 +680,7 @@ func (m model) View() string {
 	s.WriteString("\n")
 
 	// Delete button
-	buttonText := "Delete Selected File"
+	buttonText := "🗑️ Delete Selected File"
 	if m.focusedElement == "button" {
 		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render(buttonText))
 	} else {
