@@ -93,7 +93,20 @@ func (i item) Title() string {
 	if i.size == 0 {
 		return "📂 " + filepath.Base(i.path)
 	}
-	return fmt.Sprintf("%s (%s)", filepath.Base(i.path), formatSize(i.size))
+	
+	// Get filename and extension
+	filename := filepath.Base(i.path)
+	
+	// Format size with fixed width
+	sizeStr := formatSize(i.size)
+	
+	// Calculate padding to align size to the right
+	padding := 50 - len(filename) // Adjust this value based on your needs
+	if padding < 0 {
+		padding = 0
+	}
+	
+	return fmt.Sprintf("%s%s%s", filename, strings.Repeat(" ", padding), sizeStr)
 }
 
 func (i item) Description() string { return i.path }
@@ -202,51 +215,72 @@ func (m model) loadFiles() tea.Cmd {
 			}
 		}
 
-		err := filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
+		// Create a channel for results
+		results := make(chan item, 1000)
+		done := make(chan bool)
 
-			// Skip directories
-			if info.IsDir() {
-				return nil
+		// Start a goroutine to collect results
+		go func() {
+			for item := range results {
+				items = append(items, item)
 			}
+			done <- true
+		}()
 
-			// Skip hidden files unless enabled
-			if !m.optionState["Show hidden files"] && strings.HasPrefix(filepath.Base(path), ".") {
-				return nil
-			}
-
-			// Check file size if specified
-			if minSize > 0 && info.Size() < minSize {
-				return nil
-			}
-
-			// Check file extension
-			if len(extensions) > 0 && extensions[0] != "" {
-				ext := strings.TrimPrefix(filepath.Ext(path), ".")
-				found := false
-				for _, allowedExt := range extensions {
-					if strings.EqualFold(ext, strings.TrimSpace(allowedExt)) {
-						found = true
-						break
-					}
-				}
-				if !found {
+		// Walk through directory in a separate goroutine
+		go func() {
+			err := filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
 					return nil
 				}
+
+				// Skip directories
+				if info.IsDir() {
+					return nil
+				}
+
+				// Skip hidden files unless enabled
+				if !m.optionState["Show hidden files"] && strings.HasPrefix(filepath.Base(path), ".") {
+					return nil
+				}
+
+				// Check file size if specified
+				if minSize > 0 && info.Size() < minSize {
+					return nil
+				}
+
+				// Check file extension
+				if len(extensions) > 0 && extensions[0] != "" {
+					ext := strings.TrimPrefix(filepath.Ext(path), ".")
+					found := false
+					for _, allowedExt := range extensions {
+						if strings.EqualFold(ext, strings.TrimSpace(allowedExt)) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						return nil
+					}
+				}
+
+				results <- item{
+					path: path,
+					size: info.Size(),
+				}
+				return nil
+			})
+
+			if err != nil {
+				close(results)
+				return
 			}
 
-			items = append(items, item{
-				path: path,
-				size: info.Size(),
-			})
-			return nil
-		})
+			close(results)
+		}()
 
-		if err != nil {
-			return err
-		}
+		// Wait for collection to complete
+		<-done
 
 		// Sort items by name for consistent ordering
 		sort.Slice(items, func(i, j int) bool {
@@ -276,23 +310,45 @@ func (m model) loadDirs() tea.Cmd {
 			return err
 		}
 
-		for _, entry := range entries {
-			if entry.IsDir() {
-				// Skip hidden directories unless enabled
-				if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
-				items = append(items, item{
-					path: filepath.Join(m.currentPath, entry.Name()),
-					size: 0,
-				})
+		// Create a channel for results
+		results := make(chan item, 100)
+		done := make(chan bool)
+
+		// Start a goroutine to collect results
+		go func() {
+			for item := range results {
+				items = append(items, item)
 			}
-		}
+			done <- true
+		}()
+
+		// Process entries in a separate goroutine
+		go func() {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					// Skip hidden directories unless enabled
+					if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
+						continue
+					}
+					results <- item{
+						path: filepath.Join(m.currentPath, entry.Name()),
+						size: 0,
+					}
+				}
+			}
+			close(results)
+		}()
+
+		// Wait for collection to complete
+		<-done
 
 		// Sort directories by name
 		sort.Slice(items, func(i, j int) bool {
 			return items[i].(item).path < items[j].(item).path
 		})
+
+		// Update path input with current path
+		m.pathInput.SetValue(m.currentPath)
 
 		return items
 	}
@@ -400,7 +456,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "tab":
-			// Cycle through focusable elements
+			// Cycle through focusable elements without reloading
 			switch m.focusedElement {
 			case "path":
 				m.pathInput.Blur()
@@ -515,7 +571,7 @@ func (m model) View() string {
 	var s strings.Builder
 
 	// Path input field
-	pathStyle := borderStyle.Copy().Width(120)
+	pathStyle := borderStyle.Copy()
 	if m.focusedElement == "path" {
 		s.WriteString(pathStyle.Render(m.pathInput.View()))
 	} else {
@@ -558,18 +614,18 @@ func (m model) View() string {
 	// Change Directory button
 	dirButtonText := "Change Directory"
 	if m.focusedElement == "dirButton" {
-		s.WriteString(dirButtonFocusedStyle.Render(dirButtonText))
+		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render(dirButtonText))
 	} else {
-		s.WriteString(dirButtonStyle.Render(dirButtonText))
+		s.WriteString(dirButtonStyle.Copy().Width(100).Render(dirButtonText))
 	}
 	s.WriteString("\n")
 
 	// Delete button
 	buttonText := "Delete Selected File"
 	if m.focusedElement == "button" {
-		s.WriteString(buttonFocusedStyle.Render(buttonText))
+		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render(buttonText))
 	} else {
-		s.WriteString(buttonStyle.Render(buttonText))
+		s.WriteString(buttonStyle.Copy().Width(100).Render(buttonText))
 	}
 	s.WriteString("\n\n")
 
@@ -588,7 +644,7 @@ func startTUI(startDir string, extensions []string, minSize int64) error {
 	p := tea.NewProgram(initialModel(startDir, extensions, minSize), 
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
-		tea.WithFPS(60),
+		tea.WithFPS(30),
 		tea.WithInputTTY(),
 	)
 	_, err := p.Run()
