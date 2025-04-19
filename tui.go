@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -36,7 +37,7 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#FF0000")).
 			Padding(0, 1).
-			Width(100)
+			Width(120)
 
 	buttonFocusedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
@@ -44,7 +45,25 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#FF0000")).
 			Padding(0, 1).
-			Width(100)
+			Width(120)
+
+	dirButtonStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#25A065")).
+			Background(lipgloss.Color("#FFFDF5")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#25A065")).
+			Padding(0, 2).
+			Width(120).
+			Bold(true)
+
+	dirButtonFocusedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#25A065")).
+			Padding(0, 2).
+			Width(120).
+			Bold(true)
 
 	optionStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
@@ -67,7 +86,16 @@ type item struct {
 	size int64
 }
 
-func (i item) Title() string       { return fmt.Sprintf("%s (%s)", filepath.Base(i.path), formatSize(i.size)) }
+func (i item) Title() string {
+	if i.size == -1 {
+		return "📂 .."
+	}
+	if i.size == 0 {
+		return "📂 " + filepath.Base(i.path)
+	}
+	return fmt.Sprintf("%s (%s)", filepath.Base(i.path), formatSize(i.size))
+}
+
 func (i item) Description() string { return i.path }
 func (i item) FilterValue() string { return i.path }
 
@@ -75,15 +103,18 @@ type model struct {
 	list         list.Model
 	extInput     textinput.Model
 	sizeInput    textinput.Model
+	pathInput    textinput.Model
 	currentPath  string
 	extensions   []string
 	minSize     int64
 	options      []string
 	optionState  map[string]bool
 	err          error
-	focusedElement string // "ext", "size", "button", "option1", "option2", "option3"
+	focusedElement string // "path", "ext", "size", "button", "option1", "option2", "option3"
 	waitingConfirmation bool
 	fileToDelete  *item
+	showDirs      bool
+	dirList       list.Model
 }
 
 func initialModel(startDir string, extensions []string, minSize int64) model {
@@ -93,6 +124,9 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "File sizes (e.g. 10kb,10mb,10b)..."
+	
+	pathInput := textinput.New()
+	pathInput.SetValue(startDir)
 	
 	delegate := list.NewDefaultDelegate()
 	delegate.SetHeight(1)
@@ -104,6 +138,13 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowFilter(false)
+
+	// Create directory list with same delegate
+	dirList := list.New([]list.Item{}, delegate, 0, 0)
+	dirList.SetShowHelp(false)
+	dirList.SetShowStatusBar(false)
+	dirList.SetFilteringEnabled(false)
+	dirList.SetShowFilter(false)
 
 	// Define options in fixed order
 	options := []string{
@@ -122,14 +163,17 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 		list:        l,
 		extInput:    extInput,
 		sizeInput:   sizeInput,
+		pathInput:   pathInput,
 		currentPath: startDir,
 		extensions:  extensions,
 		minSize:     minSize,
 		options:     options,
 		optionState: optionState,
-		focusedElement: "ext",
+		focusedElement: "path",
 		waitingConfirmation: false,
 		fileToDelete: nil,
+		showDirs:     false,
+		dirList:      dirList,
 	}
 }
 
@@ -204,6 +248,52 @@ func (m model) loadFiles() tea.Cmd {
 			return err
 		}
 
+		// Sort items by name for consistent ordering
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].(item).path < items[j].(item).path
+		})
+
+		return items
+	}
+}
+
+func (m model) loadDirs() tea.Cmd {
+	return func() tea.Msg {
+		var items []list.Item
+		
+		// Add parent directory with special display
+		parentDir := filepath.Dir(m.currentPath)
+		if parentDir != m.currentPath {
+			items = append(items, item{
+				path: parentDir,
+				size: -1, // Special value for parent directory
+			})
+		}
+
+		// Read current directory
+		entries, err := os.ReadDir(m.currentPath)
+		if err != nil {
+			return err
+		}
+
+		for _, entry := range entries {
+			if entry.IsDir() {
+				// Skip hidden directories unless enabled
+				if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
+					continue
+				}
+				items = append(items, item{
+					path: filepath.Join(m.currentPath, entry.Name()),
+					size: 0,
+				})
+			}
+		}
+
+		// Sort directories by name
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].(item).path < items[j].(item).path
+		})
+
 		return items
 	}
 }
@@ -214,27 +304,116 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// Set list height to 40% of terminal height or less if there's not enough space
-		listHeight := (msg.Height - 15) / 3 // Leave space for inputs and options
-		if listHeight < 5 {
-			listHeight = 5 // Minimum height for list
-		}
-		m.list.SetSize(msg.Width-2, listHeight) // -2 for minimal padding
+		// Fixed height for file/directory list
+		listHeight := 10
+		m.list.SetSize(msg.Width-2, listHeight)
+		m.dirList.SetSize(msg.Width-2, listHeight)
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
+		// Handle Ctrl+C first
+		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
+		}
+
+		// Handle directory selection first
+		if m.showDirs {
+			m.dirList, cmd = m.dirList.Update(msg)
+			cmds = append(cmds, cmd)
+
+			if msg.String() == "enter" && m.dirList.SelectedItem() != nil {
+				selectedDir := m.dirList.SelectedItem().(item)
+				m.currentPath = selectedDir.path
+				m.pathInput.SetValue(selectedDir.path)
+				m.showDirs = false
+				return m, m.loadFiles()
+			}
+			if msg.String() == "esc" {
+				m.showDirs = false
+				return m, nil
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+		// Handle input fields first to prevent unnecessary updates
+		if m.pathInput.Focused() {
+			switch msg.String() {
+			case "tab", "esc":
+				m.pathInput.Blur()
+				m.extInput.Focus()
+				m.focusedElement = "ext"
+				return m, nil
+			case "enter":
+				newPath := m.pathInput.Value()
+				if _, err := os.Stat(newPath); err == nil {
+					m.currentPath = newPath
+					return m, m.loadFiles()
+				}
+				m.err = fmt.Errorf("invalid path: %s", newPath)
+				return m, nil
+			default:
+				m.pathInput, cmd = m.pathInput.Update(msg)
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		if m.extInput.Focused() {
+			switch msg.String() {
+			case "tab", "esc":
+				m.extInput.Blur()
+				m.sizeInput.Focus()
+				m.focusedElement = "size"
+				return m, nil
+			default:
+				m.extInput, cmd = m.extInput.Update(msg)
+				cmds = append(cmds, cmd)
+				// Only reload files when input actually changes
+				if msg.String() != "tab" && msg.String() != "esc" {
+					cmds = append(cmds, m.loadFiles())
+				}
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		if m.sizeInput.Focused() {
+			switch msg.String() {
+			case "tab":
+				m.sizeInput.Blur()
+				m.focusedElement = "dirButton"
+				return m, nil
+			case "esc":
+				m.sizeInput.Blur()
+				m.focusedElement = "path"
+				m.pathInput.Focus()
+				return m, nil
+			default:
+				m.sizeInput, cmd = m.sizeInput.Update(msg)
+				cmds = append(cmds, cmd)
+				// Only reload files when input actually changes
+				if msg.String() != "tab" && msg.String() != "esc" {
+					cmds = append(cmds, m.loadFiles())
+				}
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		switch msg.String() {
 		case "tab":
 			// Cycle through focusable elements
 			switch m.focusedElement {
+			case "path":
+				m.pathInput.Blur()
+				m.extInput.Focus()
+				m.focusedElement = "ext"
 			case "ext":
 				m.extInput.Blur()
 				m.sizeInput.Focus()
 				m.focusedElement = "size"
 			case "size":
 				m.sizeInput.Blur()
+				m.focusedElement = "dirButton"
+			case "dirButton":
 				m.focusedElement = "button"
 			case "button":
 				m.focusedElement = "option1"
@@ -243,12 +422,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "option2":
 				m.focusedElement = "option3"
 			case "option3":
-				m.extInput.Focus()
-				m.focusedElement = "ext"
+				m.pathInput.Focus()
+				m.focusedElement = "path"
 			}
 			return m, nil
 		case "enter":
 			switch m.focusedElement {
+			case "dirButton":
+				m.showDirs = true
+				return m, m.loadDirs()
 			case "button":
 				if m.list.SelectedItem() != nil {
 					selectedItem := m.list.SelectedItem().(item)
@@ -262,39 +444,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
-					wasEnabled := m.optionState[optName]
-					m.optionState[optName] = !wasEnabled
-					
-					// If we're toggling Confirm deletion, reset all confirmation state
-					if optName == "Confirm deletion" {
-						m.waitingConfirmation = false
-						m.fileToDelete = nil
-						m.err = nil
-					}
-					
+					m.optionState[optName] = !m.optionState[optName]
 					return m, m.loadFiles()
 				}
 			}
-		}
-
-		// Handle input fields first
-		if m.extInput.Focused() {
-			m.extInput, cmd = m.extInput.Update(msg)
-			cmds = append(cmds, cmd)
-			cmds = append(cmds, m.loadFiles())
-			return m, tea.Batch(cmds...)
-		}
-		if m.sizeInput.Focused() {
-			m.sizeInput, cmd = m.sizeInput.Update(msg)
-			cmds = append(cmds, cmd)
-			cmds = append(cmds, m.loadFiles())
-			return m, tea.Batch(cmds...)
+		case "esc":
+			// Remove focus from inputs
+			m.pathInput.Blur()
+			m.extInput.Blur()
+			m.sizeInput.Blur()
+			m.focusedElement = "path"
+			m.pathInput.Focus()
+			return m, nil
 		}
 
 		switch {
-		case key.Matches(msg, key.NewBinding(key.WithKeys("q"))):
-			return m, tea.Quit
-
+		case key.Matches(msg, key.NewBinding(key.WithKeys("c"))):
+			if m.focusedElement == "dirButton" {
+				m.showDirs = true
+				return m, m.loadDirs()
+			}
 		case key.Matches(msg, key.NewBinding(key.WithKeys("d"))):
 			if m.focusedElement == "button" {
 				if m.list.SelectedItem() != nil {
@@ -306,29 +475,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.loadFiles()
 				}
 			}
-
 		case key.Matches(msg, key.NewBinding(key.WithKeys("1", "2", "3"))):
 			// Toggle options with number keys only when inputs are not focused
 			idx := int(msg.String()[0] - '1')
 			if idx >= 0 && idx < len(m.options) {
 				optName := m.options[idx]
 				m.optionState[optName] = !m.optionState[optName]
-				m.waitingConfirmation = false
-				m.fileToDelete = nil
 				return m, m.loadFiles()
 			}
-
-		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
-			// Remove focus from inputs
-			m.extInput.Blur()
-			m.sizeInput.Blur()
-			m.focusedElement = "ext"
-			m.extInput.Focus()
-			return m, nil
 		}
 	
 	case []list.Item:
-		m.list.SetItems(msg)
+		if m.showDirs {
+			m.dirList.SetItems(msg)
+		} else {
+			// Preserve selection when updating items
+			selectedIdx := m.list.Index()
+			m.list.SetItems(msg)
+			if selectedIdx < len(msg) {
+				m.list.Select(selectedIdx)
+			}
+		}
 		return m, nil
 
 	case error:
@@ -336,8 +503,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.list, cmd = m.list.Update(msg)
-	cmds = append(cmds, cmd)
+	if !m.showDirs {
+		m.list, cmd = m.list.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -345,12 +514,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var s strings.Builder
 
-	// Current path info
-	s.WriteString(titleStyle.Render(fmt.Sprintf(" Current path: %s ", m.currentPath)))
+	// Path input field
+	pathStyle := borderStyle.Copy().Width(120)
+	if m.focusedElement == "path" {
+		s.WriteString(pathStyle.Render(m.pathInput.View()))
+	} else {
+		s.WriteString(pathStyle.Render(m.pathInput.View()))
+	}
 	s.WriteString("\n\n")
 
-	// File list with border
-	s.WriteString(borderStyle.Render(m.list.View()))
+	// File or directory list with border
+	if m.showDirs {
+		s.WriteString(titleStyle.Render(" Available Directories "))
+		s.WriteString("\n")
+		s.WriteString(borderStyle.Render(m.dirList.View()))
+	} else {
+		s.WriteString(borderStyle.Render(m.list.View()))
+	}
 	s.WriteString("\n\n")
 
 	// Input fields
@@ -370,24 +550,31 @@ func (m model) View() string {
 			style = optionFocusedStyle
 		}
 		s.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
-		s.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "x", false: " "}[m.optionState[name]], name)))
+		s.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
 		s.WriteString("\n")
 	}
 	s.WriteString("\n")
 
-	// Delete button
-	if m.list.SelectedItem() != nil {
-		buttonText := "Delete Selected File"
-		if m.focusedElement == "button" {
-			s.WriteString(buttonFocusedStyle.Render(buttonText))
-		} else {
-			s.WriteString(buttonStyle.Render(buttonText))
-		}
-		s.WriteString("\n\n")
+	// Change Directory button
+	dirButtonText := "Change Directory"
+	if m.focusedElement == "dirButton" {
+		s.WriteString(dirButtonFocusedStyle.Render(dirButtonText))
+	} else {
+		s.WriteString(dirButtonStyle.Render(dirButtonText))
 	}
+	s.WriteString("\n")
+
+	// Delete button
+	buttonText := "Delete Selected File"
+	if m.focusedElement == "button" {
+		s.WriteString(buttonFocusedStyle.Render(buttonText))
+	} else {
+		s.WriteString(buttonStyle.Render(buttonText))
+	}
+	s.WriteString("\n\n")
 
 	// Help
-	s.WriteString("Press 'tab' to navigate • 'enter' to select • 'esc' to reset focus • 'ctrl+c' or 'q' to quit")
+	s.WriteString("Press 'tab' to navigate • 'enter' to select • '↑↓' move through files • 'esc' to reset focus • 'ctrl+c' to quit")
 
 	// Error
 	if m.err != nil {
@@ -398,7 +585,12 @@ func (m model) View() string {
 }
 
 func startTUI(startDir string, extensions []string, minSize int64) error {
-	p := tea.NewProgram(initialModel(startDir, extensions, minSize), tea.WithAltScreen())
+	p := tea.NewProgram(initialModel(startDir, extensions, minSize), 
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithFPS(60),
+		tea.WithInputTTY(),
+	)
 	_, err := p.Run()
 	return err
 } 
