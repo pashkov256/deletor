@@ -1,8 +1,6 @@
 module github.com/pashkov256/deletor
 
-go 1.22
-
-toolchain go1.23.5
+go 1.21
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0
@@ -10,7 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/fatih/color v1.16.0
 	github.com/joho/godotenv v1.5.1
-	github.com/schollz/progressbar/v3 v3.18.0
+	github.com/schollz/progressbar/v3 v3.14.2
 )
 
 require (

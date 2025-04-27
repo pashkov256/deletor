@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 var (
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
-	titleStyle = lipgloss.NewStyle().
+	dirTitleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1)
@@ -76,12 +76,12 @@ var (
 			Italic(true)
 )
 
-type item struct {
+type fileItem struct {
 	path string
 	size int64
 }
 
-func (i item) Title() string {
+func (i fileItem) Title() string {
 	if i.size == -1 {
 		return "📂 .."
 	}
@@ -89,14 +89,9 @@ func (i item) Title() string {
 		return "📂 " + filepath.Base(i.path)
 	}
 
-	// Get filename and extension
 	filename := filepath.Base(i.path)
-
-	// Format size with fixed width
 	sizeStr := formatSize(i.size)
-
-	// Calculate padding to align size to the right
-	padding := 50 - len(filename) // Adjust this value based on your needs
+	padding := 50 - len(filename)
 	if padding < 0 {
 		padding = 0
 	}
@@ -104,10 +99,10 @@ func (i item) Title() string {
 	return fmt.Sprintf("%s%s%s", filename, strings.Repeat(" ", padding), sizeStr)
 }
 
-func (i item) Description() string { return i.path }
-func (i item) FilterValue() string { return i.path }
+func (i fileItem) Description() string { return i.path }
+func (i fileItem) FilterValue() string { return i.path }
 
-type model struct {
+type CleanFilesModel struct {
 	list                list.Model
 	extInput            textinput.Model
 	sizeInput           textinput.Model
@@ -118,23 +113,23 @@ type model struct {
 	options             []string
 	optionState         map[string]bool
 	err                 error
-	focusedElement      string // "path", "ext", "size", "button", "option1", "option2", "option3"
+	focusedElement      string
 	waitingConfirmation bool
-	fileToDelete        *item
+	fileToDelete        *fileItem
 	showDirs            bool
 	dirList             list.Model
 }
 
-func initialModel(startDir string, extensions []string, minSize int64) model {
+func initialModel(startDir string, extensions []string, minSize int64) CleanFilesModel {
 	extInput := textinput.New()
 	extInput.Placeholder = "File extensions (e.g. js,png,zip)..."
-	extInput.Focus()
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "File sizes (e.g. 10kb,10mb,10b)..."
 
 	pathInput := textinput.New()
 	pathInput.SetValue(startDir)
+	pathInput.Focus()
 
 	delegate := list.NewDefaultDelegate()
 	delegate.SetHeight(1)
@@ -147,14 +142,12 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 	l.SetFilteringEnabled(false)
 	l.SetShowFilter(false)
 
-	// Create directory list with same delegate
 	dirList := list.New([]list.Item{}, delegate, 0, 0)
 	dirList.SetShowHelp(false)
 	dirList.SetShowStatusBar(false)
 	dirList.SetFilteringEnabled(false)
 	dirList.SetShowFilter(false)
 
-	// Define options in fixed order
 	options := []string{
 		"Show hidden files",
 		"Confirm deletion",
@@ -165,7 +158,7 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 		"Confirm deletion":  false,
 	}
 
-	return model{
+	return CleanFilesModel{
 		list:                l,
 		extInput:            extInput,
 		sizeInput:           sizeInput,
@@ -183,31 +176,28 @@ func initialModel(startDir string, extensions []string, minSize int64) model {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m CleanFilesModel) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, m.loadFiles())
 }
 
-func (m model) loadFiles() tea.Cmd {
+func (m CleanFilesModel) loadFiles() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
 		currentDir := m.currentPath
 
-		// Add parent directory item
 		parentDir := filepath.Dir(currentDir)
 		if parentDir != currentDir {
-			items = append(items, item{
+			items = append(items, fileItem{
 				path: parentDir,
-				size: -1, // Special value for parent directory
+				size: -1,
 			})
 		}
 
-		// Parse extensions from input
 		extensions := strings.Split(m.extInput.Value(), ",")
 		for i := range extensions {
 			extensions[i] = strings.TrimSpace(extensions[i])
 		}
 
-		// Parse size from input
 		var minSize int64
 		if m.sizeInput.Value() != "" {
 			sizeStr := strings.TrimSpace(m.sizeInput.Value())
@@ -217,11 +207,9 @@ func (m model) loadFiles() tea.Cmd {
 			}
 		}
 
-		// Create a channel for results
-		results := make(chan item, 1000)
+		results := make(chan fileItem, 1000)
 		done := make(chan bool)
 
-		// Start a goroutine to collect results
 		go func() {
 			for item := range results {
 				items = append(items, item)
@@ -229,29 +217,24 @@ func (m model) loadFiles() tea.Cmd {
 			done <- true
 		}()
 
-		// Walk through directory in a separate goroutine
 		go func() {
 			err := filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return nil
 				}
 
-				// Skip directories
 				if info.IsDir() {
 					return nil
 				}
 
-				// Skip hidden files unless enabled
 				if !m.optionState["Show hidden files"] && strings.HasPrefix(filepath.Base(path), ".") {
 					return nil
 				}
 
-				// Check file size if specified
 				if minSize > 0 && info.Size() < minSize {
 					return nil
 				}
 
-				// Check file extension
 				if len(extensions) > 0 && extensions[0] != "" {
 					ext := strings.TrimPrefix(filepath.Ext(path), ".")
 					found := false
@@ -266,7 +249,7 @@ func (m model) loadFiles() tea.Cmd {
 					}
 				}
 
-				results <- item{
+				results <- fileItem{
 					path: path,
 					size: info.Size(),
 				}
@@ -281,45 +264,38 @@ func (m model) loadFiles() tea.Cmd {
 			close(results)
 		}()
 
-		// Wait for collection to complete
 		<-done
 
-		// Sort items by name for consistent ordering
 		sort.Slice(items, func(i, j int) bool {
-			return items[i].(item).path < items[j].(item).path
+			return items[i].(fileItem).path < items[j].(fileItem).path
 		})
 
-		// Update path input with current path
 		m.pathInput.SetValue(m.currentPath)
 
 		return items
 	}
 }
 
-func (m model) loadDirs() tea.Cmd {
+func (m CleanFilesModel) loadDirs() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
 
-		// Add parent directory with special display
 		parentDir := filepath.Dir(m.currentPath)
 		if parentDir != m.currentPath {
-			items = append(items, item{
+			items = append(items, fileItem{
 				path: parentDir,
-				size: -1, // Special value for parent directory
+				size: -1,
 			})
 		}
 
-		// Read current directory
 		entries, err := os.ReadDir(m.currentPath)
 		if err != nil {
 			return err
 		}
 
-		// Create a channel for results
-		results := make(chan item, 100)
+		results := make(chan fileItem, 100)
 		done := make(chan bool)
 
-		// Start a goroutine to collect results
 		go func() {
 			for item := range results {
 				items = append(items, item)
@@ -327,15 +303,13 @@ func (m model) loadDirs() tea.Cmd {
 			done <- true
 		}()
 
-		// Process entries in a separate goroutine
 		go func() {
 			for _, entry := range entries {
 				if entry.IsDir() {
-					// Skip hidden directories unless enabled
 					if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
 						continue
 					}
-					results <- item{
+					results <- fileItem{
 						path: filepath.Join(m.currentPath, entry.Name()),
 						size: 0,
 					}
@@ -344,66 +318,49 @@ func (m model) loadDirs() tea.Cmd {
 			close(results)
 		}()
 
-		// Wait for collection to complete
 		<-done
 
-		// Sort directories by name
 		sort.Slice(items, func(i, j int) bool {
-			return items[i].(item).path < items[j].(item).path
+			return items[i].(fileItem).path < items[j].(fileItem).path
 		})
 
-		// Update path input with current path
 		m.pathInput.SetValue(m.currentPath)
 
 		return items
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// Fixed height for file/directory list
 		listHeight := 8
 		m.list.SetSize(msg.Width-2, listHeight)
 		m.dirList.SetSize(msg.Width-2, listHeight)
 		return m, nil
 
 	case tea.KeyMsg:
-		// Handle arrow keys first
 		if msg.String() == "up" || msg.String() == "down" {
-			if !m.showDirs {
+			if !m.showDirs && len(m.list.Items()) > 0 {
 				m.list, cmd = m.list.Update(msg)
 				cmds = append(cmds, cmd)
 				return m, tea.Batch(cmds...)
 			}
+			return m, nil
 		}
 
-		// Handle Enter on file list first
-		if msg.String() == "enter" && !m.showDirs && m.list.SelectedItem() != nil && m.focusedElement != "dirButton" && m.focusedElement != "button" {
-			selectedItem := m.list.SelectedItem().(item)
-			if selectedItem.size == -1 {
-				// Handle parent directory selection
-				m.currentPath = selectedItem.path
-				m.pathInput.SetValue(selectedItem.path)
-				return m, m.loadFiles()
-			}
-		}
-
-		// Handle Ctrl+C first
 		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
 		}
 
-		// Handle directory selection first
 		if m.showDirs {
 			m.dirList, cmd = m.dirList.Update(msg)
 			cmds = append(cmds, cmd)
 
 			if msg.String() == "enter" && m.dirList.SelectedItem() != nil {
-				selectedDir := m.dirList.SelectedItem().(item)
+				selectedDir := m.dirList.SelectedItem().(fileItem)
 				m.currentPath = selectedDir.path
 				m.pathInput.SetValue(selectedDir.path)
 				m.showDirs = false
@@ -416,7 +373,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle input fields first to prevent unnecessary updates
 		if m.pathInput.Focused() {
 			switch msg.String() {
 			case "tab", "esc":
@@ -449,7 +405,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.extInput, cmd = m.extInput.Update(msg)
 				cmds = append(cmds, cmd)
-				// Only reload files when input actually changes
 				if msg.String() != "tab" && msg.String() != "esc" {
 					cmds = append(cmds, m.loadFiles())
 				}
@@ -471,7 +426,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.sizeInput, cmd = m.sizeInput.Update(msg)
 				cmds = append(cmds, cmd)
-				// Only reload files when input actually changes
 				if msg.String() != "tab" && msg.String() != "esc" {
 					cmds = append(cmds, m.loadFiles())
 				}
@@ -481,7 +435,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "tab":
-			// Cycle through focusable elements without reloading
 			switch m.focusedElement {
 			case "path":
 				m.pathInput.Blur()
@@ -512,17 +465,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.loadDirs()
 			case "button":
 				if m.list.SelectedItem() != nil {
-					selectedItem := m.list.SelectedItem().(item)
+					selectedItem := m.list.SelectedItem().(fileItem)
 					if selectedItem.size == -1 {
-						// Handle parent directory selection
 						m.currentPath = selectedItem.path
 						m.pathInput.SetValue(selectedItem.path)
 						return m, m.loadFiles()
 					}
 					if !m.optionState["Confirm deletion"] {
-						// If confirm deletion is disabled, delete all files
 						for _, listItem := range m.list.Items() {
-							if fileItem, ok := listItem.(item); ok && fileItem.size != -1 {
+							if fileItem, ok := listItem.(fileItem); ok && fileItem.size != -1 {
 								err := os.Remove(fileItem.path)
 								if err != nil {
 									m.err = err
@@ -546,7 +497,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "esc":
-			// Remove focus from inputs
 			m.pathInput.Blur()
 			m.extInput.Blur()
 			m.sizeInput.Blur()
@@ -564,17 +514,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("d"))):
 			if m.focusedElement == "button" {
 				if m.list.SelectedItem() != nil {
-					selectedItem := m.list.SelectedItem().(item)
+					selectedItem := m.list.SelectedItem().(fileItem)
 					if selectedItem.size == -1 {
-						// Handle parent directory selection
 						m.currentPath = selectedItem.path
 						m.pathInput.SetValue(selectedItem.path)
 						return m, m.loadFiles()
 					}
 					if !m.optionState["Confirm deletion"] {
-						// If confirm deletion is disabled, delete all files
 						for _, listItem := range m.list.Items() {
-							if fileItem, ok := listItem.(item); ok && fileItem.size != -1 {
+							if fileItem, ok := listItem.(fileItem); ok && fileItem.size != -1 {
 								err := os.Remove(fileItem.path)
 								if err != nil {
 									m.err = err
@@ -591,7 +539,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, key.NewBinding(key.WithKeys("1", "2"))):
-			// Toggle options with number keys only when inputs are not focused
 			idx := int(msg.String()[0] - '1')
 			if idx >= 0 && idx < len(m.options) {
 				optName := m.options[idx]
@@ -604,7 +551,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.showDirs {
 			m.dirList.SetItems(msg)
 		} else {
-			// Preserve selection when updating items
 			selectedIdx := m.list.Index()
 			m.list.SetItems(msg)
 			if selectedIdx < len(msg) {
@@ -621,21 +567,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m CleanFilesModel) View() string {
 	var s strings.Builder
 
-	// Path input field
 	pathStyle := borderStyle.Copy()
 	if m.focusedElement == "path" {
-		s.WriteString(pathStyle.Render(m.pathInput.View()))
-	} else {
-		s.WriteString(pathStyle.Render(m.pathInput.View()))
+		pathStyle = pathStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
+	s.WriteString(pathStyle.Render(m.pathInput.View()))
 	s.WriteString("\n\n")
 
-	// File or directory list with border
 	if m.showDirs {
-		s.WriteString(titleStyle.Render(" Available Directories "))
+		s.WriteString(dirTitleStyle.Render(" Available Directories "))
 		s.WriteString("\n")
 		s.WriteString(borderStyle.Render(m.dirList.View()))
 	} else {
@@ -643,13 +586,20 @@ func (m model) View() string {
 	}
 	s.WriteString("\n\n")
 
-	// Input fields
-	s.WriteString(borderStyle.Render(m.extInput.View()))
+	extStyle := borderStyle.Copy()
+	if m.focusedElement == "ext" {
+		extStyle = extStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+	}
+	s.WriteString(extStyle.Render(m.extInput.View()))
 	s.WriteString("\n")
-	s.WriteString(borderStyle.Render(m.sizeInput.View()))
+
+	sizeStyle := borderStyle.Copy()
+	if m.focusedElement == "size" {
+		sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+	}
+	s.WriteString(sizeStyle.Render(m.sizeInput.View()))
 	s.WriteString("\n\n")
 
-	// Options at the bottom
 	s.WriteString("Options:\n")
 	for i, name := range m.options {
 		style := optionStyle
@@ -665,7 +615,6 @@ func (m model) View() string {
 	}
 	s.WriteString("\n")
 
-	// Change Directory button
 	dirButtonText := "➡️ Change Directory"
 	if m.focusedElement == "dirButton" {
 		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render(dirButtonText))
@@ -674,7 +623,6 @@ func (m model) View() string {
 	}
 	s.WriteString("\n")
 
-	// Delete button
 	buttonText := "🗑️ Delete Selected File"
 	if m.focusedElement == "button" {
 		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render(buttonText))
@@ -683,10 +631,8 @@ func (m model) View() string {
 	}
 	s.WriteString("\n\n")
 
-	// Help
 	s.WriteString("Press 'tab' to navigate • 'enter' to select • '↑↓' move through files • 'esc' to reset focus • 'ctrl+c' to quit")
 
-	// Error
 	if m.err != nil {
 		s.WriteString(fmt.Sprintf("\nError: %v", m.err))
 	}
@@ -694,13 +640,50 @@ func (m model) View() string {
 	return appStyle.Render(s.String())
 }
 
-func startTUI(startDir string, extensions []string, minSize int64) error {
-	p := tea.NewProgram(initialModel(startDir, extensions, minSize),
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-		tea.WithFPS(30),
-		tea.WithInputTTY(),
-	)
-	_, err := p.Run()
-	return err
+func NewCleanFiles(startDir string, extensions []string, minSize int64) *CleanFilesModel {
+	m := initialModel(startDir, extensions, minSize)
+	return &m
+}
+
+func toBytes(sizeStr string) (int64, error) {
+	var value float64
+	var unit string
+
+	_, err := fmt.Sscanf(sizeStr, "%f%s", &value, &unit)
+	if err != nil {
+		return 0, fmt.Errorf("invalid format")
+	}
+
+	unit = strings.ToLower(unit)
+	multiplier := int64(1)
+
+	switch unit {
+	case "b":
+		multiplier = 1
+	case "kb":
+		multiplier = 1024
+	case "mb":
+		multiplier = 1024 * 1024
+	case "gb":
+		multiplier = 1024 * 1024 * 1024
+	case "tb":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	default:
+		return 0, fmt.Errorf("unknown unit: %s", unit)
+	}
+
+	return int64(value * float64(multiplier)), nil
+}
+
+func formatSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
