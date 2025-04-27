@@ -367,6 +367,33 @@ func logDeletionToFile(files map[string]string) {
 func startTUI(dir string, extensions []string, minSize int64) error {
 	app := tui.NewApp(dir, extensions, minSize)
 	p := tea.NewProgram(app, tea.WithAltScreen())
+
+	setupRulesConfig()
+
 	_, err := p.Run()
 	return err
+}
+
+func setupRulesConfig() {
+	userConfigDir, _ := os.UserConfigDir()
+	filePathRuleConfig := filepath.Join(userConfigDir, "deletor", "rule.json")
+	os.MkdirAll(filepath.Dir(filePathRuleConfig), 0755)
+
+	_, err := os.Stat(filePathRuleConfig)
+
+	if err != nil {
+		baseRules := `
+{
+"path":"",
+"extensions":[],
+"excludes":[],
+"min_size":null
+}`
+
+		err := os.WriteFile(filePathRuleConfig, []byte(baseRules), 0644)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
