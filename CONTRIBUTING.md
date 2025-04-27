@@ -8,8 +8,6 @@ Here’s how you can help improve this project.
 
 ## 🚀 First-Time Contributors  
 If you’re new to open source, check out these **`good first issues`**:  
-- [#2] Add parallel processing for file deletions  
-- [#5] Log deleted files to a separate file  
 *(Look for the `good first issue` label in [Issues](https://github.com/pashkov256/deletor/issues)).*
 
 ---
