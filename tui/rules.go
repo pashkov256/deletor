@@ -1,0 +1,241 @@
+package tui
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	rules "github.com/pashkov256/deletor/internal/rules"
+)
+
+var (
+	rulesTitleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#1E90FF")).
+			Padding(0, 1)
+
+	rulesInputStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#666666")).
+			Padding(0, 0).
+			Width(100)
+
+	rulesInputFocusedStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#1E90FF")).
+				Padding(0, 0).
+				Width(100)
+
+	rulesPathStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#666666")).
+			Italic(true)
+)
+
+// RulesModel represents the rules management page
+type RulesModel struct {
+	extensionsInput   textinput.Model
+	sizeInput         textinput.Model
+	locationInput     textinput.Model
+	rules             rules.Rules
+	focusIndex        int
+	rulesPath         string
+	saveButtonFocused bool
+}
+
+// NewRulesModel creates a new rules management model
+func NewRulesModel() *RulesModel {
+	// Initialize inputs
+	currentRules := rules.GetRules()
+	extensionsInput := textinput.New()
+	extensionsInput.Placeholder = "File extensions (e.g. tmp,log,bak)"
+	extensionsInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	extensionsInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	extensionsInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	extensionsInput.SetValue(strings.Join(currentRules.Extensions, ","))
+
+	sizeInput := textinput.New()
+	sizeInput.Placeholder = "Minimum file size (e.g. 10kb)"
+	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	sizeInput.SetValue(currentRules.MinSize)
+
+	locationInput := textinput.New()
+	locationInput.Placeholder = "Target location (e.g. C:\\Users\\Downloads)"
+	locationInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	locationInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	locationInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	locationInput.SetValue(currentRules.Path)
+
+	// Get AppData path
+	rulesPath := filepath.Join(os.Getenv("APPDATA"), "deletor")
+
+	return &RulesModel{
+		extensionsInput:   extensionsInput,
+		sizeInput:         sizeInput,
+		locationInput:     locationInput,
+		focusIndex:        0,
+		rulesPath:         rulesPath,
+		saveButtonFocused: false,
+	}
+}
+
+func (m *RulesModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			return m, nil
+		case "tab", "shift+tab", "up", "down":
+			// Handle input focus cycling
+			if msg.String() == "tab" || msg.String() == "down" {
+				m.focusIndex = (m.focusIndex + 1) % 4
+			} else if msg.String() == "shift+tab" || msg.String() == "up" {
+				m.focusIndex = (m.focusIndex - 1 + 4) % 4
+			}
+
+			// Update input focus
+			for i, input := range []*textinput.Model{
+				&m.extensionsInput,
+				&m.sizeInput,
+				&m.locationInput,
+			} {
+				if i == m.focusIndex {
+					input.Focus()
+				} else {
+					input.Blur()
+				}
+			}
+
+			// Handle save button focus
+			m.saveButtonFocused = (m.focusIndex == 3)
+
+			return m, nil
+		case "enter":
+			// Save button is focused
+			if m.saveButtonFocused {
+				m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
+				m.rules.Path = m.locationInput.Value()
+				m.rules.MinSize = m.sizeInput.Value()
+
+				rules.UpdateRules(
+					m.locationInput.Value(),
+					m.sizeInput.Value(),
+					strings.Split(m.extensionsInput.Value(), ","),
+				)
+
+				rules.GetRulesPath()
+				return m, nil
+			}
+
+			// Otherwise, move to next field
+			if m.focusIndex < 3 {
+				m.focusIndex++
+				// Update input focus
+				for i, input := range []*textinput.Model{
+					&m.extensionsInput,
+					&m.sizeInput,
+					&m.locationInput,
+				} {
+					if i == m.focusIndex {
+						input.Focus()
+					} else {
+						input.Blur()
+					}
+				}
+
+				// Handle save button focus
+				m.saveButtonFocused = (m.focusIndex == 3)
+			}
+
+			return m, nil
+		}
+	}
+
+	// Handle input updates
+	var cmd tea.Cmd
+
+	// Update the currently focused input
+	switch m.focusIndex {
+
+	case 0:
+		m.extensionsInput, cmd = m.extensionsInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case 1:
+		m.sizeInput, cmd = m.sizeInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case 2:
+		m.locationInput, cmd = m.locationInput.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *RulesModel) View() string {
+	var s strings.Builder
+
+	// Title
+	s.WriteString(rulesTitleStyle.Render(" Rule Management "))
+	s.WriteString("\n\n")
+
+	// Instructions
+	s.WriteString("Enter rule details below:\n\n")
+
+	// Extensions input
+	extStyle := rulesInputStyle
+	if m.focusIndex == 0 {
+		extStyle = rulesInputFocusedStyle
+	}
+	s.WriteString(extStyle.Render("Extensions: " + m.extensionsInput.View()))
+	s.WriteString("\n")
+
+	// Size input
+	sizeStyle := rulesInputStyle
+	if m.focusIndex == 1 {
+		sizeStyle = rulesInputFocusedStyle
+	}
+	s.WriteString(sizeStyle.Render("Min Size: " + m.sizeInput.View()))
+	s.WriteString("\n")
+
+	// Location input
+	locStyle := rulesInputStyle
+	if m.focusIndex == 2 {
+		locStyle = rulesInputFocusedStyle
+	}
+	s.WriteString(locStyle.Render("Default path: " + m.locationInput.View()))
+	s.WriteString("\n\n")
+
+	// Save button
+	saveButtonStyle := lipgloss.NewStyle().
+		Padding(0, 3).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Background(lipgloss.Color("#1E90FF"))
+
+	if m.saveButtonFocused {
+		saveButtonStyle = saveButtonStyle.
+			Background(lipgloss.Color("#005fcc")).
+			Bold(true)
+	}
+
+	s.WriteString(saveButtonStyle.Render(" Save Settings "))
+	s.WriteString("\n\n")
+
+	// Help text
+	s.WriteString("Tab: cycle fields • Enter: save rule • Esc: return to menu\n\n")
+
+	// AppData path
+	s.WriteString(rulesPathStyle.Render(fmt.Sprintf("Rules are stored in: %s", rules.GetRulesPath())))
+
+	return appStyle.Render(s.String())
+}
