@@ -23,6 +23,7 @@ If you’re new to open source, check out these **`good first issues`**:
   - OS version  
   - Steps to reproduce  
   - Expected vs actual behavior  
+  - Logs if possible
   ```
 
 ### 2. **Suggest a Feature**  
@@ -37,10 +38,9 @@ If you’re new to open source, check out these **`good first issues`**:
    ```
 3. **Commit** changes:  
    ```bash
-   git commit -m "feat: parallel file processing (#2)"
+   git commit -m "feat: #2 parallel file processing"
    ```
 4. **Push** and open a **Pull Request** with:  
-   - Description linking to the Issue (e.g., `Closes #2`).  
    - Screenshots/logs if applicable.  
 
 ---
@@ -48,10 +48,13 @@ If you’re new to open source, check out these **`good first issues`**:
 
 ## 🔧 Development Setup  
 
-Prerequisites  
+**Prerequisites**  
 - Go 1.20+  
-- `make` (optional)  
 
+**Steps**  
+1. Clone the repository  
+2. Install dependencies  
+3. Run tests or build
 ### Steps  
 
  Clone the repo  
@@ -69,7 +72,7 @@ git clone https://github.com/pashkov256/deletor.git
 ---
 
 ## ❓ Need Help?  
-Ask me in  [telegram](https://t.me/pashkov256)  
+ Feel free to reach out on  [Telegram](https://t.me/pashkov256)  
 
 
 
