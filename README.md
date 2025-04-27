@@ -1,6 +1,6 @@
 
 
-# [Deletor](https://pashkov256.github.io/deletor-doc) - interactive and CLI file deletion tool
+# [Deletor](https://pashkov256.github.io/deletor-doc) - Manage and delete files efficiently with an interactive TUI and scriptable CLI.
 [![Go Reference](https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg)](https://pkg.go.dev/github.com/pashkov256/deletor)
 ![Open Issues](https://img.shields.io/github/issues/pashkov256/deletor)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -41,7 +41,7 @@ deletor -d ~/Downloads/
 ### CLI Mode (with filters):
 ```bash
 
-deletor -e mp4,zip -d ~/Downloads/ -s 10mb
+deletor -cli -e mp4,zip -d ~/Downloads/ -s 10mb
 ```
 ### Arguments:
 `-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
@@ -50,15 +50,38 @@ deletor -e mp4,zip -d ~/Downloads/ -s 10mb
 
 `-s, --size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
+
+## ✨ The Power of Dual Modes: TUI and CLI
+
+- TUI mode provides a user-friendly way to navigate and manage files visually, ideal for manual cleanups and exploration.
+
+- CLI mode is perfect for automation, scripting, and quick one-liners. It's essential for server environments, cron jobs, and integrating into larger toolchains.
+
+Unlike many traditional disk usage tools that focus only on visualizing disk space (like *ncdu*, *gdu*, *dua-cli*), Deletor is optimized specifically for fast and targeted file removal.
+It offers advanced filtering options by file extension, size, and custom exclusions, making it a powerful tool for real-world file management — not just analysis.
+
+
+
+
+## 🛠 Contributing
+We welcome and appreciate any contributions to Deletor!
+There are many ways you can help us grow and improve:
+
+- **🐛 Report Bugs** — Found an issue? Let us know by opening an issue.
+- **💡 Suggest Features** — Got an idea for a new feature? We'd love to hear it!
+- **📚 Improve Documentation** — Help us make the docs even clearer and easier to use.
+- **💻 Submit Code** — Fix a bug, refactor code, or add new functionality by submitting a pull request.
+
+Before contributing, please take a moment to read our [CONTRIBUTING.md](https://github.com/pashkov256/deletor/blob/main/CONTRIBUTING.md) guide.
+It explains how to set up the project, coding standards, and the process for submitting contributions. 
+
+Together, we can make Deletor even better! 🚀
+
+
 ## Web docs
 [https://pashkov256.github.io/deletor-doc](https://pashkov256.github.io/deletor-doc)
 
-
-
-## 🛠 Contribute
-[CONTRIBUTING.md](https://github.com/pashkov256/deletor/blob/main/CONTRIBUTING.md)
-
 ## 📜 License
-This project is distributed under the MIT license.
+This project is distributed under the **MIT** license.
 
 
