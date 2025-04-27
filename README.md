@@ -25,6 +25,7 @@
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
 - ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
 - 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
+- 🧠 **Rules System**: Create and manage deletion presets for repeated use
 - 📊 **Formatted Output**: Clean, aligned display of file information
 
 
@@ -50,6 +51,8 @@ deletor -d ~/Downloads/
 ### CLI Mode (with filters):
 ```bash
 
+
+
 deletor -cli -e mp4,zip -d ~/Downloads/ -s 10mb
 ```
 ### Arguments:
@@ -70,7 +73,26 @@ Unlike many traditional disk usage tools that focus only on visualizing disk spa
 It offers advanced filtering options by file extension, size, and custom exclusions, making it a powerful tool for real-world file management — not just analysis.
 
 
+## 📋 Rules System
+Deletor supports rule-based file operations through JSON configuration:
 
+1. **Rule Location**:
+Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA%\deletor\rule.json` (Windows)
+
+2. **Rule Format** (clean_logs.json example):
+```json
+{
+  "path": "C:\Users\pashkov\Downloads\gws",
+  "extensions": [".log", ".tmp"],
+  "min_size": "10mb"
+}
+```
+3.  **Key Features**:
+- Create/edit rules via TUI or manual JSON editing
+
+- Combine multiple filters (extension + size + exclusions)
+
+- Share rules between machines
 
 ## 🛠 Contributing
 We welcome and appreciate any contributions to Deletor!

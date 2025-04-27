@@ -5,8 +5,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+)
 
-	configs "github.com/pashkov256/deletor/internal/configs"
+var (
+	AppDirName   = "deletor"
+	RuleFileName = "rule.json"
 )
 
 type Rules struct {
@@ -53,7 +56,7 @@ func SetupRulesConfig() {
 
 func GetRulesPath() string {
 	userConfigDir, _ := os.UserConfigDir()
-	filePathRuleConfig := filepath.Join(userConfigDir, configs.AppDirName, configs.RuleFileName)
+	filePathRuleConfig := filepath.Join(userConfigDir, AppDirName, RuleFileName)
 
 	return filePathRuleConfig
 }
