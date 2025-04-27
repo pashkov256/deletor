@@ -42,6 +42,7 @@ func NewMainMenu() *MainMenu {
 		item{title: "🧹 Clean Files"},
 		item{title: "⚙️ Manage Rules"},
 		item{title: "📊 Statistics"},
+		item{title: "🚪 Exit"},
 	}
 
 	delegate := list.NewDefaultDelegate()

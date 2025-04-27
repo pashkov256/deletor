@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -133,6 +135,17 @@ func (i cleanItem) Title() string {
 func (i cleanItem) Description() string { return i.path }
 func (i cleanItem) FilterValue() string { return i.path }
 
+// Message for directory size updates
+type dirSizeMsg struct {
+	size int64
+}
+
+// Message for filtered files size updates
+type filteredSizeMsg struct {
+	size  int64
+	count int
+}
+
 type model struct {
 	list                list.Model
 	extInput            textinput.Model
@@ -149,6 +162,10 @@ type model struct {
 	fileToDelete        *cleanItem
 	showDirs            bool
 	dirList             list.Model
+	dirSize             int64 // Cached directory size
+	calculatingSize     bool  // Flag to indicate size calculation in progress
+	filteredSize        int64 // Total size of filtered files
+	filteredCount       int   // Count of filtered files
 }
 
 func initialModel(startDir string, extensions []string, minSize int64) *model {
@@ -231,21 +248,62 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 		fileToDelete:        nil,
 		showDirs:            false,
 		dirList:             dirList,
+		dirSize:             0,
+		calculatingSize:     false,
+		filteredSize:        0,
+		filteredCount:       0,
 	}
 }
 
 func (m *model) Init() tea.Cmd {
 	// При инициализации установим фокус на список
 	m.focusedElement = "list"
-	return tea.Batch(textinput.Blink, m.loadFiles())
+	return tea.Batch(textinput.Blink, m.loadFiles(), m.calculateDirSizeAsync())
 }
 
 func (m *model) loadFiles() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
+		var totalFilteredSize int64 = 0
+		var filteredCount int = 0
 
 		// Убедимся, что текущий путь корректный
 		currentDir := m.currentPath
+
+		// Get user-specified extensions
+		extStr := m.extInput.Value()
+		if extStr != "" {
+			// Parse extensions from input
+			m.extensions = []string{}
+			for _, ext := range strings.Split(extStr, ",") {
+				ext = strings.TrimSpace(ext)
+				if ext != "" {
+					// Add dot prefix if needed
+					if !strings.HasPrefix(ext, ".") {
+						ext = "." + ext
+					}
+					m.extensions = append(m.extensions, strings.ToLower(ext))
+				}
+			}
+		} else {
+			// If no extensions specified, show all files
+			m.extensions = []string{}
+		}
+
+		// Get user-specified min size
+		sizeStr := m.sizeInput.Value()
+		if sizeStr != "" {
+			minSize, err := toBytes(sizeStr)
+			if err == nil {
+				m.minSize = minSize
+			} else {
+				// If invalid size, reset to 0
+				m.minSize = 0
+			}
+		} else {
+			// If no size specified, show all files regardless of size
+			m.minSize = 0
+		}
 
 		// Загрузим все файлы и директории, включая родительскую директорию
 		fileInfos, err := os.ReadDir(currentDir)
@@ -262,18 +320,66 @@ func (m *model) loadFiles() tea.Cmd {
 			})
 		}
 
-		// Добавим все директории и файлы
+		// First collect directories
 		for _, fileInfo := range fileInfos {
-			path := filepath.Join(currentDir, fileInfo.Name())
-
-			// Определим размер (0 для директорий)
-			var size int64 = 0
 			if !fileInfo.IsDir() {
-				info, err := fileInfo.Info()
-				if err == nil {
-					size = info.Size()
+				continue
+			}
+
+			// Skip hidden directories unless enabled
+			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
+				continue
+			}
+
+			path := filepath.Join(currentDir, fileInfo.Name())
+			items = append(items, cleanItem{
+				path: path,
+				size: 0, // Directory
+			})
+		}
+
+		// Then collect files
+		for _, fileInfo := range fileInfos {
+			if fileInfo.IsDir() {
+				continue
+			}
+
+			// Skip hidden files unless enabled
+			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
+				continue
+			}
+
+			path := filepath.Join(currentDir, fileInfo.Name())
+			info, err := fileInfo.Info()
+			if err != nil {
+				continue
+			}
+
+			size := info.Size()
+
+			// Apply extension filter if specified
+			if len(m.extensions) > 0 {
+				ext := strings.ToLower(filepath.Ext(path))
+				matched := false
+				for _, allowedExt := range m.extensions {
+					if ext == allowedExt {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
 				}
 			}
+
+			// Apply size filter if specified
+			if m.minSize > 0 && size < m.minSize {
+				continue
+			}
+
+			// Add to filtered size and count
+			totalFilteredSize += size
+			filteredCount++
 
 			items = append(items, cleanItem{
 				path: path,
@@ -281,6 +387,9 @@ func (m *model) loadFiles() tea.Cmd {
 			})
 		}
 
+		// Return both the items and the size info
+		m.filteredSize = totalFilteredSize
+		m.filteredCount = filteredCount
 		return items
 	}
 }
@@ -348,11 +457,97 @@ func (m *model) loadDirs() tea.Cmd {
 	}
 }
 
+// Asynchronous directory size calculation
+func (m *model) calculateDirSizeAsync() tea.Cmd {
+	return func() tea.Msg {
+		m.calculatingSize = true
+		size := calculateDirSize(m.currentPath)
+		m.calculatingSize = false
+		return dirSizeMsg{size: size}
+	}
+}
+
+// Function to calculate directory size recursively with option to cancel
+func calculateDirSize(path string) int64 {
+	// For very large directories, return a placeholder value immediately
+	// to avoid blocking the UI
+	_, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+
+	// If it's a very large directory (like C: or Program Files)
+	// just return 0 immediately to prevent lag
+	if strings.HasSuffix(path, ":\\") || strings.Contains(path, "Program Files") {
+		return 0
+	}
+
+	var totalSize int64 = 0
+
+	// Use a channel to limit concurrency
+	semaphore := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+
+	// Create a function to process a directory
+	var processDir func(string) int64
+	processDir = func(dirPath string) int64 {
+		var size int64 = 0
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			return 0
+		}
+
+		for _, entry := range entries {
+			// Skip hidden files and directories unless enabled
+			if strings.HasPrefix(entry.Name(), ".") {
+				continue
+			}
+
+			fullPath := filepath.Join(dirPath, entry.Name())
+			if entry.IsDir() {
+				// Process directories with concurrency limits
+				wg.Add(1)
+				go func(p string) {
+					semaphore <- struct{}{}
+					defer func() {
+						<-semaphore
+						wg.Done()
+					}()
+					dirSize := processDir(p)
+					atomic.AddInt64(&totalSize, dirSize)
+				}(fullPath)
+			} else {
+				// Process files directly
+				info, err := entry.Info()
+				if err == nil {
+					fileSize := info.Size()
+					atomic.AddInt64(&totalSize, fileSize)
+					size += fileSize
+				}
+			}
+		}
+		return size
+	}
+
+	// Start processing
+	processDir(path)
+
+	// Wait for all goroutines to finish
+	wg.Wait()
+
+	return totalSize
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case dirSizeMsg:
+		// Update the directory size
+		m.dirSize = msg.size
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		// Properly set both width and height
 		h, v := appStyle.GetFrameSize()
@@ -366,6 +561,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// После изменения размера окна сразу обновляем список
 		cmds = append(cmds, m.loadFiles())
+		// Trigger directory size calculation when changing directory
+		cmds = append(cmds, m.calculateDirSizeAsync())
 		return m, tea.Batch(cmds...)
 
 	// Handle message for setting items in the list
@@ -435,7 +632,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newPath := m.pathInput.Value()
 					if _, err := os.Stat(newPath); err == nil {
 						m.currentPath = newPath
-						cmds = append(cmds, m.loadFiles())
+						cmds = append(cmds, m.loadFiles(), m.calculateDirSizeAsync())
 					} else {
 						m.err = fmt.Errorf("invalid path: %s", newPath)
 					}
@@ -454,7 +651,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.extInput.Blur()
 				m.focusedElement = "list"
-				return m, m.loadFiles()
+				// Parse extensions and reload files
+				cmds = append(cmds, m.loadFiles())
+				return m, tea.Batch(cmds...)
 			case "esc":
 				m.extInput.Blur()
 				m.focusedElement = "list"
@@ -475,7 +674,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.sizeInput.Blur()
 				m.focusedElement = "list"
-				return m, m.loadFiles()
+				// Parse size and reload files
+				cmds = append(cmds, m.loadFiles())
+				return m, tea.Batch(cmds...)
 			case "esc":
 				m.sizeInput.Blur()
 				m.focusedElement = "list"
@@ -526,21 +727,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Handle parent directory selection
 						m.currentPath = selectedItem.path
 						m.pathInput.SetValue(selectedItem.path)
-						return m, m.loadFiles()
+						// Recalculate directory size when changing directory
+						cmds = append(cmds, m.loadFiles(), m.calculateDirSizeAsync())
+						return m, tea.Batch(cmds...)
 					}
 					// If it's a directory, navigate into it
 					info, err := os.Stat(selectedItem.path)
 					if err == nil && info.IsDir() {
 						m.currentPath = selectedItem.path
 						m.pathInput.SetValue(selectedItem.path)
-						return m, m.loadFiles()
+						// Recalculate directory size when changing directory
+						cmds = append(cmds, m.loadFiles(), m.calculateDirSizeAsync())
+						return m, tea.Batch(cmds...)
 					}
 				} else if m.showDirs && m.dirList.SelectedItem() != nil {
 					selectedDir := m.dirList.SelectedItem().(cleanItem)
 					m.currentPath = selectedDir.path
 					m.pathInput.SetValue(selectedDir.path)
 					m.showDirs = false
-					return m, m.loadFiles()
+					// Recalculate directory size when changing directory
+					cmds = append(cmds, m.loadFiles(), m.calculateDirSizeAsync())
+					return m, tea.Batch(cmds...)
 				}
 			case "dirButton":
 				m.showDirs = true
@@ -643,28 +850,6 @@ func openFileExplorer(path string) tea.Cmd {
 	}
 }
 
-// Function to calculate directory size recursively
-func calculateDirSize(path string) int64 {
-	var totalSize int64 = 0
-
-	err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// Only count files, not directories
-		if !info.IsDir() {
-			totalSize += info.Size()
-		}
-		return nil
-	})
-
-	if err != nil {
-		return 0
-	}
-
-	return totalSize
-}
-
 func (m *model) View() string {
 	// Определим, какой список сейчас активен
 	var activeList list.Model
@@ -677,8 +862,7 @@ func (m *model) View() string {
 	var s strings.Builder
 
 	// Calculate total directory size (including subdirectories)
-	dirTotalSize := calculateDirSize(m.currentPath)
-	dirSizeFormatted := formatSize(dirTotalSize)
+	// This is now handled asynchronously, so we don't need to calculate it here
 
 	// Отображение пути и ввода
 	pathStyle := borderStyle.Copy()
@@ -719,14 +903,16 @@ func (m *model) View() string {
 	}
 	s.WriteString("\n")
 
-	// Stats about loaded files with total directory size
+	// Stats about loaded files with total filtered size
 	fileCount := len(activeList.Items())
+	filteredSizeText := formatSize(m.filteredSize)
+
 	if !m.showDirs {
-		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf(" Files in %s (%d files) • Dir Size: %s ",
-			filepath.Base(m.currentPath), fileCount, dirSizeFormatted)))
+		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s ",
+			m.filteredCount, filteredSizeText)))
 	} else {
-		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf(" Directories in %s (%d dirs) • Dir Size: %s ",
-			filepath.Base(m.currentPath), fileCount, dirSizeFormatted)))
+		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Directories in %s (%d) ",
+			filepath.Base(m.currentPath), fileCount)))
 	}
 	s.WriteString("\n")
 
@@ -855,8 +1041,11 @@ func (m *model) View() string {
 
 		// Добавим информацию о прокрутке при необходимости
 		if totalItems > visibleItems {
-			// Remove status line completely - we'll rely only on the header for size information
-			// No replacement content needed
+			// Show only directory size in status
+			scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
+				startIdx+1, endIdx, totalItems,
+				float64(selectedIndex+1)/float64(totalItems)*100)
+			listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
 		}
 	}
 

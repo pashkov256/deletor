@@ -66,6 +66,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a.page = rulesPage
 				case "📊 Statistics":
 					a.page = statsPage
+				case "🚪 Exit":
+					return a, tea.Quit
 				}
 				return a, tea.Batch(cmds...)
 			}
