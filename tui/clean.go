@@ -3,11 +3,12 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,7 +18,7 @@ import (
 var (
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
-	dirTitleStyle = lipgloss.NewStyle().
+	cleanTitleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1)
@@ -28,7 +29,7 @@ var (
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#666666")).
-			Padding(0, 1).
+			Padding(0, 0).
 			Width(100)
 
 	buttonStyle = lipgloss.NewStyle().
@@ -74,35 +75,65 @@ var (
 	infoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
 			Italic(true)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Bold(true)
 )
 
-type fileItem struct {
+type cleanItem struct {
 	path string
 	size int64
 }
 
-func (i fileItem) Title() string {
+func (i cleanItem) Title() string {
 	if i.size == -1 {
-		return "📂 .."
-	}
-	if i.size == 0 {
-		return "📂 " + filepath.Base(i.path)
+		return "📂 .." // Parent directory
 	}
 
+	if i.size == 0 {
+		return "📁 " + filepath.Base(i.path) // Directory
+	}
+
+	// Regular file
 	filename := filepath.Base(i.path)
+	ext := filepath.Ext(filename)
+
+	// Choose icon based on file extension
+	icon := "📄 " // Default file icon
+	switch strings.ToLower(ext) {
+	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp":
+		icon = "🖼️ " // Image
+	case ".mp3", ".wav", ".flac", ".ogg":
+		icon = "🎵 " // Audio
+	case ".mp4", ".avi", ".mkv", ".mov", ".wmv":
+		icon = "🎬 " // Video
+	case ".pdf":
+		icon = "📕 " // PDF
+	case ".doc", ".docx", ".txt", ".rtf":
+		icon = "📝 " // Document
+	case ".zip", ".rar", ".tar", ".gz", ".7z":
+		icon = "🗜️ " // Archive
+	case ".exe", ".msi", ".bat":
+		icon = "⚙️ " // Executable
+	}
+
+	// Format the size with unit
 	sizeStr := formatSize(i.size)
+
+	// Calculate padding for alignment
 	padding := 50 - len(filename)
 	if padding < 0 {
 		padding = 0
 	}
 
-	return fmt.Sprintf("%s%s%s", filename, strings.Repeat(" ", padding), sizeStr)
+	return fmt.Sprintf("%s%s%s%s", icon, filename, strings.Repeat(" ", padding), sizeStr)
 }
 
-func (i fileItem) Description() string { return i.path }
-func (i fileItem) FilterValue() string { return i.path }
+func (i cleanItem) Description() string { return i.path }
+func (i cleanItem) FilterValue() string { return i.path }
 
-type CleanFilesModel struct {
+type model struct {
 	list                list.Model
 	extInput            textinput.Model
 	sizeInput           textinput.Model
@@ -113,41 +144,68 @@ type CleanFilesModel struct {
 	options             []string
 	optionState         map[string]bool
 	err                 error
-	focusedElement      string
+	focusedElement      string // "path", "ext", "size", "button", "option1", "option2", "option3"
 	waitingConfirmation bool
-	fileToDelete        *fileItem
+	fileToDelete        *cleanItem
 	showDirs            bool
 	dirList             list.Model
 }
 
-func initialModel(startDir string, extensions []string, minSize int64) CleanFilesModel {
+func initialModel(startDir string, extensions []string, minSize int64) *model {
 	extInput := textinput.New()
 	extInput.Placeholder = "File extensions (e.g. js,png,zip)..."
+	extInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	extInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	extInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "File sizes (e.g. 10kb,10mb,10b)..."
+	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
 	pathInput := textinput.New()
 	pathInput.SetValue(startDir)
-	pathInput.Focus()
+	pathInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	pathInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	pathInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
+	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
-	delegate.SetHeight(1)
-	delegate.SetSpacing(0)
 
-	items := []list.Item{}
-	l := list.New(items, delegate, 0, 0)
-	l.SetShowHelp(false)
-	l.SetShowStatusBar(false)
+	// Настройка делегата для лучшего отображения
+	delegate.SetHeight(1)            // Высота элемента
+	delegate.SetSpacing(1)           // Пространство между элементами
+	delegate.ShowDescription = false // Не показывать описание для компактности
+
+	// Стили элементов
+	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Background(lipgloss.Color("#0066ff")).
+		Bold(true)
+
+	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.
+		Foreground(lipgloss.Color("#dddddd"))
+
+	// Initialize list with proper size - size будет установлен позже при WindowSizeMsg
+	l := list.New([]list.Item{}, delegate, 30, 10)
+	l.SetShowTitle(true)
+	l.Title = "Files"
+	l.SetShowStatusBar(true)
 	l.SetFilteringEnabled(false)
-	l.SetShowFilter(false)
+	l.SetShowHelp(false)
+	l.Styles.Title = cleanTitleStyle
 
-	dirList := list.New([]list.Item{}, delegate, 0, 0)
-	dirList.SetShowHelp(false)
-	dirList.SetShowStatusBar(false)
+	// Create directory list with same delegate
+	dirList := list.New([]list.Item{}, delegate, 30, 10)
+	dirList.SetShowTitle(true)
+	dirList.Title = "Directories"
+	dirList.SetShowStatusBar(true)
 	dirList.SetFilteringEnabled(false)
-	dirList.SetShowFilter(false)
+	dirList.SetShowHelp(false)
+	dirList.Styles.Title = cleanTitleStyle
 
+	// Define options in fixed order
 	options := []string{
 		"Show hidden files",
 		"Confirm deletion",
@@ -158,7 +216,7 @@ func initialModel(startDir string, extensions []string, minSize int64) CleanFile
 		"Confirm deletion":  false,
 	}
 
-	return CleanFilesModel{
+	return &model{
 		list:                l,
 		extInput:            extInput,
 		sizeInput:           sizeInput,
@@ -168,7 +226,7 @@ func initialModel(startDir string, extensions []string, minSize int64) CleanFile
 		minSize:             minSize,
 		options:             options,
 		optionState:         optionState,
-		focusedElement:      "path",
+		focusedElement:      "list",
 		waitingConfirmation: false,
 		fileToDelete:        nil,
 		showDirs:            false,
@@ -176,126 +234,81 @@ func initialModel(startDir string, extensions []string, minSize int64) CleanFile
 	}
 }
 
-func (m CleanFilesModel) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
+	// При инициализации установим фокус на список
+	m.focusedElement = "list"
 	return tea.Batch(textinput.Blink, m.loadFiles())
 }
 
-func (m CleanFilesModel) loadFiles() tea.Cmd {
+func (m *model) loadFiles() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
+
+		// Убедимся, что текущий путь корректный
 		currentDir := m.currentPath
 
+		// Загрузим все файлы и директории, включая родительскую директорию
+		fileInfos, err := os.ReadDir(currentDir)
+		if err != nil {
+			return fmt.Errorf("error reading directory: %v", err)
+		}
+
+		// Добавим родительскую директорию
 		parentDir := filepath.Dir(currentDir)
 		if parentDir != currentDir {
-			items = append(items, fileItem{
+			items = append(items, cleanItem{
 				path: parentDir,
-				size: -1,
+				size: -1, // Special value for parent directory
 			})
 		}
 
-		extensions := strings.Split(m.extInput.Value(), ",")
-		for i := range extensions {
-			extensions[i] = strings.TrimSpace(extensions[i])
-		}
+		// Добавим все директории и файлы
+		for _, fileInfo := range fileInfos {
+			path := filepath.Join(currentDir, fileInfo.Name())
 
-		var minSize int64
-		if m.sizeInput.Value() != "" {
-			sizeStr := strings.TrimSpace(m.sizeInput.Value())
-			sizeBytes, err := toBytes(sizeStr)
-			if err == nil {
-				minSize = sizeBytes
+			// Определим размер (0 для директорий)
+			var size int64 = 0
+			if !fileInfo.IsDir() {
+				info, err := fileInfo.Info()
+				if err == nil {
+					size = info.Size()
+				}
 			}
-		}
 
-		results := make(chan fileItem, 1000)
-		done := make(chan bool)
-
-		go func() {
-			for item := range results {
-				items = append(items, item)
-			}
-			done <- true
-		}()
-
-		go func() {
-			err := filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return nil
-				}
-
-				if info.IsDir() {
-					return nil
-				}
-
-				if !m.optionState["Show hidden files"] && strings.HasPrefix(filepath.Base(path), ".") {
-					return nil
-				}
-
-				if minSize > 0 && info.Size() < minSize {
-					return nil
-				}
-
-				if len(extensions) > 0 && extensions[0] != "" {
-					ext := strings.TrimPrefix(filepath.Ext(path), ".")
-					found := false
-					for _, allowedExt := range extensions {
-						if strings.EqualFold(ext, strings.TrimSpace(allowedExt)) {
-							found = true
-							break
-						}
-					}
-					if !found {
-						return nil
-					}
-				}
-
-				results <- fileItem{
-					path: path,
-					size: info.Size(),
-				}
-				return nil
+			items = append(items, cleanItem{
+				path: path,
+				size: size,
 			})
-
-			if err != nil {
-				close(results)
-				return
-			}
-
-			close(results)
-		}()
-
-		<-done
-
-		sort.Slice(items, func(i, j int) bool {
-			return items[i].(fileItem).path < items[j].(fileItem).path
-		})
-
-		m.pathInput.SetValue(m.currentPath)
+		}
 
 		return items
 	}
 }
 
-func (m CleanFilesModel) loadDirs() tea.Cmd {
+func (m *model) loadDirs() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
 
+		// Add parent directory with special display
 		parentDir := filepath.Dir(m.currentPath)
 		if parentDir != m.currentPath {
-			items = append(items, fileItem{
+			items = append(items, cleanItem{
 				path: parentDir,
-				size: -1,
+				size: -1, // Special value for parent directory
 			})
 		}
 
+		// Read current directory
 		entries, err := os.ReadDir(m.currentPath)
 		if err != nil {
 			return err
 		}
 
-		results := make(chan fileItem, 100)
+		// Create a channel for results
+		results := make(chan cleanItem, 100)
 		done := make(chan bool)
 
+		// Start a goroutine to collect results
 		go func() {
 			for item := range results {
 				items = append(items, item)
@@ -303,13 +316,15 @@ func (m CleanFilesModel) loadDirs() tea.Cmd {
 			done <- true
 		}()
 
+		// Process entries in a separate goroutine
 		go func() {
 			for _, entry := range entries {
 				if entry.IsDir() {
+					// Skip hidden directories unless enabled
 					if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
 						continue
 					}
-					results <- fileItem{
+					results <- cleanItem{
 						path: filepath.Join(m.currentPath, entry.Name()),
 						size: 0,
 					}
@@ -318,96 +333,135 @@ func (m CleanFilesModel) loadDirs() tea.Cmd {
 			close(results)
 		}()
 
+		// Wait for collection to complete
 		<-done
 
+		// Sort directories by name
 		sort.Slice(items, func(i, j int) bool {
-			return items[i].(fileItem).path < items[j].(fileItem).path
+			return items[i].(cleanItem).path < items[j].(cleanItem).path
 		})
 
+		// Update path input with current path
 		m.pathInput.SetValue(m.currentPath)
 
 		return items
 	}
 }
 
-func (m CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		listHeight := 8
-		m.list.SetSize(msg.Width-2, listHeight)
-		m.dirList.SetSize(msg.Width-2, listHeight)
+		// Properly set both width and height
+		h, v := appStyle.GetFrameSize()
+		// Further reduce listHeight by another 10% (now at 65% of original)
+		listHeight := (msg.Height - v - 15) * 65 / 100 // Reserve space for other UI elements and reduce by 35%
+		if listHeight < 5 {
+			listHeight = 5 // Minimum height to show something
+		}
+		m.list.SetSize(msg.Width-h, listHeight)
+		m.dirList.SetSize(msg.Width-h, listHeight)
+
+		// После изменения размера окна сразу обновляем список
+		cmds = append(cmds, m.loadFiles())
+		return m, tea.Batch(cmds...)
+
+	// Handle message for setting items in the list
+	case []list.Item:
+		if m.showDirs {
+			m.dirList.SetItems(msg)
+		} else {
+			// Preserve selection when updating items
+			selectedIdx := m.list.Index()
+			m.list.SetItems(msg)
+			if selectedIdx < len(msg) {
+				m.list.Select(selectedIdx)
+			}
+		}
+		return m, nil
+
+	case error:
+		m.err = msg
 		return m, nil
 
 	case tea.KeyMsg:
-		if msg.String() == "up" || msg.String() == "down" {
-			if !m.showDirs && len(m.list.Items()) > 0 {
+		// Global hotkeys that work regardless of focus
+		switch msg.String() {
+		case "ctrl+c":
+			return m, tea.Quit
+		case "ctrl+r": // Refresh files
+			return m, m.loadFiles()
+		case "ctrl+d": // Toggle directory view
+			m.showDirs = !m.showDirs
+			if m.showDirs {
+				return m, m.loadDirs()
+			}
+			return m, m.loadFiles()
+		case "ctrl+o": // Open current directory in file explorer
+			cmd := openFileExplorer(m.currentPath)
+			return m, cmd
+		case "up", "down": // Always handle arrow keys for list navigation regardless of focus
+			// Make list navigation global - arrow keys always navigate the list
+			if !m.showDirs {
 				m.list, cmd = m.list.Update(msg)
 				cmds = append(cmds, cmd)
-				return m, tea.Batch(cmds...)
-			}
-			return m, nil
-		}
-
-		if msg.Type == tea.KeyCtrlC {
-			return m, tea.Quit
-		}
-
-		if m.showDirs {
-			m.dirList, cmd = m.dirList.Update(msg)
-			cmds = append(cmds, cmd)
-
-			if msg.String() == "enter" && m.dirList.SelectedItem() != nil {
-				selectedDir := m.dirList.SelectedItem().(fileItem)
-				m.currentPath = selectedDir.path
-				m.pathInput.SetValue(selectedDir.path)
-				m.showDirs = false
-				return m, m.loadFiles()
-			}
-			if msg.String() == "esc" {
-				m.showDirs = false
-				return m, nil
+			} else {
+				m.dirList, cmd = m.dirList.Update(msg)
+				cmds = append(cmds, cmd)
 			}
 			return m, tea.Batch(cmds...)
 		}
 
+		// Handle inputs based on current focus
 		if m.pathInput.Focused() {
 			switch msg.String() {
-			case "tab", "esc":
+			case "tab", "enter":
 				m.pathInput.Blur()
 				m.extInput.Focus()
 				m.focusedElement = "ext"
 				return m, nil
-			case "enter":
-				newPath := m.pathInput.Value()
-				if _, err := os.Stat(newPath); err == nil {
-					m.currentPath = newPath
-					return m, m.loadFiles()
-				}
-				m.err = fmt.Errorf("invalid path: %s", newPath)
+			case "esc":
+				m.pathInput.Blur()
+				m.focusedElement = "list"
 				return m, nil
 			default:
 				m.pathInput, cmd = m.pathInput.Update(msg)
 				cmds = append(cmds, cmd)
+				// Reload files if enter is pressed
+				if msg.String() == "enter" {
+					// Update path if valid
+					newPath := m.pathInput.Value()
+					if _, err := os.Stat(newPath); err == nil {
+						m.currentPath = newPath
+						cmds = append(cmds, m.loadFiles())
+					} else {
+						m.err = fmt.Errorf("invalid path: %s", newPath)
+					}
+				}
 				return m, tea.Batch(cmds...)
 			}
 		}
 
 		if m.extInput.Focused() {
 			switch msg.String() {
-			case "tab", "esc":
+			case "tab":
 				m.extInput.Blur()
 				m.sizeInput.Focus()
 				m.focusedElement = "size"
 				return m, nil
+			case "enter":
+				m.extInput.Blur()
+				m.focusedElement = "list"
+				return m, m.loadFiles()
+			case "esc":
+				m.extInput.Blur()
+				m.focusedElement = "list"
+				return m, nil
 			default:
 				m.extInput, cmd = m.extInput.Update(msg)
 				cmds = append(cmds, cmd)
-				if msg.String() != "tab" && msg.String() != "esc" {
-					cmds = append(cmds, m.loadFiles())
-				}
 				return m, tea.Batch(cmds...)
 			}
 		}
@@ -418,24 +472,27 @@ func (m CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sizeInput.Blur()
 				m.focusedElement = "option1"
 				return m, nil
+			case "enter":
+				m.sizeInput.Blur()
+				m.focusedElement = "list"
+				return m, m.loadFiles()
 			case "esc":
 				m.sizeInput.Blur()
-				m.focusedElement = "path"
-				m.pathInput.Focus()
+				m.focusedElement = "list"
 				return m, nil
 			default:
 				m.sizeInput, cmd = m.sizeInput.Update(msg)
 				cmds = append(cmds, cmd)
-				if msg.String() != "tab" && msg.String() != "esc" {
-					cmds = append(cmds, m.loadFiles())
-				}
 				return m, tea.Batch(cmds...)
 			}
 		}
 
-		switch msg.String() {
-		case "tab":
+		// Handle tab key to cycle through elements
+		if msg.String() == "tab" {
 			switch m.focusedElement {
+			case "list":
+				m.pathInput.Focus()
+				m.focusedElement = "path"
 			case "path":
 				m.pathInput.Blur()
 				m.extInput.Focus()
@@ -454,39 +511,63 @@ func (m CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "dirButton":
 				m.focusedElement = "button"
 			case "button":
-				m.pathInput.Focus()
-				m.focusedElement = "path"
+				m.focusedElement = "list"
 			}
 			return m, nil
-		case "enter":
+		}
+
+		// Handle enter key for selections
+		if msg.String() == "enter" {
 			switch m.focusedElement {
+			case "list":
+				if !m.showDirs && m.list.SelectedItem() != nil {
+					selectedItem := m.list.SelectedItem().(cleanItem)
+					if selectedItem.size == -1 {
+						// Handle parent directory selection
+						m.currentPath = selectedItem.path
+						m.pathInput.SetValue(selectedItem.path)
+						return m, m.loadFiles()
+					}
+					// If it's a directory, navigate into it
+					info, err := os.Stat(selectedItem.path)
+					if err == nil && info.IsDir() {
+						m.currentPath = selectedItem.path
+						m.pathInput.SetValue(selectedItem.path)
+						return m, m.loadFiles()
+					}
+				} else if m.showDirs && m.dirList.SelectedItem() != nil {
+					selectedDir := m.dirList.SelectedItem().(cleanItem)
+					m.currentPath = selectedDir.path
+					m.pathInput.SetValue(selectedDir.path)
+					m.showDirs = false
+					return m, m.loadFiles()
+				}
 			case "dirButton":
 				m.showDirs = true
 				return m, m.loadDirs()
 			case "button":
 				if m.list.SelectedItem() != nil {
-					selectedItem := m.list.SelectedItem().(fileItem)
-					if selectedItem.size == -1 {
-						m.currentPath = selectedItem.path
-						m.pathInput.SetValue(selectedItem.path)
-						return m, m.loadFiles()
-					}
-					if !m.optionState["Confirm deletion"] {
-						for _, listItem := range m.list.Items() {
-							if fileItem, ok := listItem.(fileItem); ok && fileItem.size != -1 {
-								err := os.Remove(fileItem.path)
-								if err != nil {
-									m.err = err
+					selectedItem := m.list.SelectedItem().(cleanItem)
+					if selectedItem.size > 0 { // Only delete files, not directories
+						if !m.optionState["Confirm deletion"] {
+							// If confirm deletion is disabled, delete all files
+							for _, listItem := range m.list.Items() {
+								if fileItem, ok := listItem.(cleanItem); ok && fileItem.size > 0 {
+									err := os.Remove(fileItem.path)
+									if err != nil {
+										m.err = err
+									}
 								}
+							}
+						} else {
+							// Delete just the selected file
+							err := os.Remove(selectedItem.path)
+							if err != nil {
+								m.err = err
 							}
 						}
 						return m, m.loadFiles()
 					}
-					err := os.Remove(selectedItem.path)
-					if err != nil {
-						m.err = err
-					}
-					return m, m.loadFiles()
 				}
 			case "option1", "option2":
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
@@ -496,110 +577,133 @@ func (m CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.loadFiles()
 				}
 			}
-		case "esc":
+		}
+
+		// Handle escape key
+		if msg.String() == "esc" {
+			// When in directories view, go back to files
+			if m.showDirs {
+				m.showDirs = false
+				return m, nil
+			}
+
+			// Remove focus from inputs, set focus to list
 			m.pathInput.Blur()
 			m.extInput.Blur()
 			m.sizeInput.Blur()
-			m.focusedElement = "path"
-			m.pathInput.Focus()
+			m.focusedElement = "list"
 			return m, nil
 		}
 
-		switch {
-		case key.Matches(msg, key.NewBinding(key.WithKeys("c"))):
-			if m.focusedElement == "dirButton" {
-				m.showDirs = true
-				return m, m.loadDirs()
-			}
-		case key.Matches(msg, key.NewBinding(key.WithKeys("d"))):
-			if m.focusedElement == "button" {
-				if m.list.SelectedItem() != nil {
-					selectedItem := m.list.SelectedItem().(fileItem)
-					if selectedItem.size == -1 {
-						m.currentPath = selectedItem.path
-						m.pathInput.SetValue(selectedItem.path)
-						return m, m.loadFiles()
-					}
-					if !m.optionState["Confirm deletion"] {
-						for _, listItem := range m.list.Items() {
-							if fileItem, ok := listItem.(fileItem); ok && fileItem.size != -1 {
-								err := os.Remove(fileItem.path)
-								if err != nil {
-									m.err = err
-								}
-							}
-						}
-						return m, m.loadFiles()
-					}
-					err := os.Remove(selectedItem.path)
-					if err != nil {
-						m.err = err
-					}
+		// Number keys for options
+		if msg.String() == "1" || msg.String() == "2" {
+			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() {
+				idx := int(msg.String()[0] - '1')
+				if idx >= 0 && idx < len(m.options) {
+					optName := m.options[idx]
+					m.optionState[optName] = !m.optionState[optName]
 					return m, m.loadFiles()
 				}
 			}
-		case key.Matches(msg, key.NewBinding(key.WithKeys("1", "2"))):
-			idx := int(msg.String()[0] - '1')
-			if idx >= 0 && idx < len(m.options) {
-				optName := m.options[idx]
-				m.optionState[optName] = !m.optionState[optName]
-				return m, m.loadFiles()
-			}
 		}
 
-	case []list.Item:
-		if m.showDirs {
-			m.dirList.SetItems(msg)
-		} else {
-			selectedIdx := m.list.Index()
-			m.list.SetItems(msg)
-			if selectedIdx < len(msg) {
-				m.list.Select(selectedIdx)
+		// Default handling for list when it's in focus (and not already handled by arrow keys)
+		if m.focusedElement == "list" && msg.String() != "up" && msg.String() != "down" {
+			if !m.showDirs {
+				m.list, cmd = m.list.Update(msg)
+			} else {
+				m.dirList, cmd = m.dirList.Update(msg)
 			}
+			cmds = append(cmds, cmd)
 		}
-		return m, nil
-
-	case error:
-		m.err = msg
-		return m, nil
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m CleanFilesModel) View() string {
+// Helper function to open directory in file explorer
+func openFileExplorer(path string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("explorer", path)
+		} else if runtime.GOOS == "darwin" {
+			cmd = exec.Command("open", path)
+		} else {
+			cmd = exec.Command("xdg-open", path)
+		}
+
+		err := cmd.Start()
+		if err != nil {
+			return fmt.Errorf("could not open file explorer: %v", err)
+		}
+
+		return nil
+	}
+}
+
+// Function to calculate directory size recursively
+func calculateDirSize(path string) int64 {
+	var totalSize int64 = 0
+
+	err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// Only count files, not directories
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0
+	}
+
+	return totalSize
+}
+
+func (m *model) View() string {
+	// Определим, какой список сейчас активен
+	var activeList list.Model
+	if m.showDirs {
+		activeList = m.dirList
+	} else {
+		activeList = m.list
+	}
+
 	var s strings.Builder
 
+	// Calculate total directory size (including subdirectories)
+	dirTotalSize := calculateDirSize(m.currentPath)
+	dirSizeFormatted := formatSize(dirTotalSize)
+
+	// Отображение пути и ввода
 	pathStyle := borderStyle.Copy()
 	if m.focusedElement == "path" {
 		pathStyle = pathStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
-	s.WriteString(pathStyle.Render(m.pathInput.View()))
-	s.WriteString("\n\n")
+	s.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
+	s.WriteString("\n")
 
-	if m.showDirs {
-		s.WriteString(dirTitleStyle.Render(" Available Directories "))
-		s.WriteString("\n")
-		s.WriteString(borderStyle.Render(m.dirList.View()))
-	} else {
-		s.WriteString(borderStyle.Render(m.list.View()))
-	}
-	s.WriteString("\n\n")
-
+	// Input fields with borders and labels - moved up
 	extStyle := borderStyle.Copy()
 	if m.focusedElement == "ext" {
 		extStyle = extStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
-	s.WriteString(extStyle.Render(m.extInput.View()))
+	s.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
 	s.WriteString("\n")
 
 	sizeStyle := borderStyle.Copy()
 	if m.focusedElement == "size" {
 		sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
-	s.WriteString(sizeStyle.Render(m.sizeInput.View()))
-	s.WriteString("\n\n")
+	s.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
+	s.WriteString("\n")
 
+	// Options - moved up
 	s.WriteString("Options:\n")
 	for i, name := range m.options {
 		style := optionStyle
@@ -615,34 +719,188 @@ func (m CleanFilesModel) View() string {
 	}
 	s.WriteString("\n")
 
-	dirButtonText := "➡️ Change Directory"
-	if m.focusedElement == "dirButton" {
-		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render(dirButtonText))
+	// Stats about loaded files with total directory size
+	fileCount := len(activeList.Items())
+	if !m.showDirs {
+		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf(" Files in %s (%d files) • Dir Size: %s ",
+			filepath.Base(m.currentPath), fileCount, dirSizeFormatted)))
 	} else {
-		s.WriteString(dirButtonStyle.Copy().Width(100).Render(dirButtonText))
+		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf(" Directories in %s (%d dirs) • Dir Size: %s ",
+			filepath.Base(m.currentPath), fileCount, dirSizeFormatted)))
 	}
 	s.WriteString("\n")
 
-	buttonText := "🗑️ Delete Selected File"
-	if m.focusedElement == "button" {
-		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render(buttonText))
+	// Ручное отображение списка вместо делегирования его отображения методу list.View()
+	listStyle := borderStyle.Copy().Width(80).Height(15)
+	if m.focusedElement == "list" {
+		listStyle = listStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+	}
+
+	var listContent strings.Builder
+	if len(activeList.Items()) == 0 {
+		if !m.showDirs {
+			listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
+		} else {
+			listContent.WriteString("No directories found in this location.")
+		}
 	} else {
-		s.WriteString(buttonStyle.Copy().Width(100).Render(buttonText))
+		// Определим начало и конец отображаемых файлов с учетом прокрутки
+		items := activeList.Items()
+		selectedIndex := activeList.Index()
+		totalItems := len(items)
+
+		// Рассчитаем видимую область (10 элементов)
+		visibleItems := 10
+		if visibleItems > totalItems {
+			visibleItems = totalItems
+		}
+
+		// Вычислим начальный индекс, чтобы выделенный элемент был виден
+		startIdx := 0
+		if selectedIndex > visibleItems-3 && totalItems > visibleItems {
+			startIdx = selectedIndex - (visibleItems / 2)
+			if startIdx+visibleItems > totalItems {
+				startIdx = totalItems - visibleItems
+			}
+		}
+		if startIdx < 0 {
+			startIdx = 0
+		}
+
+		// Удалены заголовки колонок и разделительные линии
+
+		// Выведем строки с файлами
+		endIdx := startIdx + visibleItems
+		if endIdx > totalItems {
+			endIdx = totalItems
+		}
+
+		for i := startIdx; i < endIdx; i++ {
+			item := items[i].(cleanItem)
+
+			// Выберем иконку
+			icon := "📄 " // Обычный файл
+			if item.size == -1 {
+				icon = "⬆️ " // Родительская директория
+			} else if item.size == 0 {
+				icon = "📁 " // Директория
+			} else {
+				// Выбор иконки по расширению файла
+				ext := strings.ToLower(filepath.Ext(item.path))
+				switch ext {
+				case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
+					icon = "🖼️ " // Изображение
+				case ".mp3", ".wav", ".flac", ".ogg":
+					icon = "🎵 " // Аудио
+				case ".mp4", ".avi", ".mkv", ".mov":
+					icon = "🎬 " // Видео
+				case ".zip", ".rar", ".7z", ".tar", ".gz":
+					icon = "🗜️ " // Архив
+				case ".exe", ".msi":
+					icon = "⚙️ " // Исполняемый файл
+				case ".pdf":
+					icon = "📕 " // PDF
+				case ".doc", ".docx", ".txt":
+					icon = "📝 " // Документ
+				}
+			}
+
+			// Получим имя файла и его размер
+			filename := filepath.Base(item.path)
+			sizeStr := ""
+			if item.size > 0 {
+				sizeStr = formatSize(item.size)
+			} else if item.size == 0 {
+				sizeStr = "DIR"
+			} else {
+				sizeStr = "UP DIR"
+			}
+
+			// Определим стиль для строки (выделение или обычный)
+			prefix := "  "
+			style := lipgloss.NewStyle()
+
+			if i == selectedIndex {
+				prefix = "> "
+				style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
+			} else if item.size == -1 || item.size == 0 {
+				// Стиль для директорий
+				style = style.Foreground(lipgloss.Color("#4DC4FF"))
+			}
+
+			// Форматируем имя файла, чтобы уместилось в колонку
+			displayName := filename
+			if len(displayName) > 40 {
+				displayName = displayName[:37] + "..."
+			}
+
+			// Рассчитаем отступ для размера файла
+			padding := 44 - len(displayName)
+			if padding < 1 {
+				padding = 1
+			}
+
+			// Соберем строку с отформатированным файлом
+			fileLine := fmt.Sprintf("%s%s%s%s%s",
+				prefix,
+				icon,
+				displayName,
+				strings.Repeat(" ", padding),
+				sizeStr)
+
+			// Добавим строку с нужным стилем
+			listContent.WriteString(style.Render(fileLine))
+			listContent.WriteString("\n")
+		}
+
+		// Добавим информацию о прокрутке при необходимости
+		if totalItems > visibleItems {
+			// Remove status line completely - we'll rely only on the header for size information
+			// No replacement content needed
+		}
+	}
+
+	s.WriteString(listStyle.Render(listContent.String()))
+	s.WriteString("\n")
+
+	// Directory button
+	if m.focusedElement == "dirButton" {
+		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render("➡️ Change Directory"))
+	} else {
+		s.WriteString(dirButtonStyle.Copy().Width(100).Render("➡️ Change Directory"))
+	}
+	s.WriteString("\n")
+
+	// Delete button
+	if m.focusedElement == "button" {
+		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render("🗑️ Delete Selected File"))
+	} else {
+		s.WriteString(buttonStyle.Copy().Width(100).Render("🗑️ Delete Selected File"))
 	}
 	s.WriteString("\n\n")
 
-	s.WriteString("Press 'tab' to navigate • 'enter' to select • '↑↓' move through files • 'esc' to reset focus • 'ctrl+c' to quit")
+	// Help
+	s.WriteString("Arrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list\n")
+	s.WriteString("Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit")
 
+	// Error
 	if m.err != nil {
-		s.WriteString(fmt.Sprintf("\nError: %v", m.err))
+		s.WriteString("\n" + errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
 	return appStyle.Render(s.String())
 }
 
-func NewCleanFiles(startDir string, extensions []string, minSize int64) *CleanFilesModel {
-	m := initialModel(startDir, extensions, minSize)
-	return &m
+func Run(startDir string, extensions []string, minSize int64) error {
+	p := tea.NewProgram(initialModel(startDir, extensions, minSize),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithFPS(30),
+		tea.WithInputTTY(),
+		tea.WithOutput(os.Stderr),
+	)
+	_, err := p.Run()
+	return err
 }
 
 func toBytes(sizeStr string) (int64, error) {

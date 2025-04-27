@@ -19,25 +19,32 @@ const (
 
 type App struct {
 	menu       *MainMenu
-	cleanFiles *CleanFilesModel
+	cleanFiles *model
 	page       page
 	err        error
+	startDir   string
+	extensions []string
+	minSize    int64
 }
 
 func NewApp(startDir string, extensions []string, minSize int64) *App {
 	return &App{
 		menu:       NewMainMenu(),
-		cleanFiles: NewCleanFiles(startDir, extensions, minSize),
 		page:       menuPage,
+		startDir:   startDir,
+		extensions: extensions,
+		minSize:    minSize,
 	}
 }
 
 func (a *App) Init() tea.Cmd {
+	a.cleanFiles = initialModel(a.startDir, a.extensions, a.minSize)
 	return tea.Batch(a.menu.Init(), a.cleanFiles.Init())
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -54,12 +61,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch a.menu.list.SelectedItem().(item).Title() {
 				case "🧹 Clean Files":
 					a.page = cleanPage
+					cmds = append(cmds, a.cleanFiles.loadFiles())
 				case "⚙️ Manage Rules":
 					a.page = rulesPage
 				case "📊 Statistics":
 					a.page = statsPage
 				}
-				return a, nil
+				return a, tea.Batch(cmds...)
 			}
 		}
 	}
@@ -72,8 +80,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = menuCmd
 	case cleanPage:
 		cleanModel, cleanCmd := a.cleanFiles.Update(msg)
-		clean := cleanModel.(*CleanFilesModel)
-		a.cleanFiles = clean
+		if m, ok := cleanModel.(*model); ok {
+			a.cleanFiles = m
+		}
 		cmd = cleanCmd
 	}
 
@@ -81,6 +90,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) View() string {
+	if a.cleanFiles == nil {
+		return "Loading..."
+	}
+
 	switch a.page {
 	case menuPage:
 		return a.menu.View()

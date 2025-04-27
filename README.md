@@ -1,9 +1,18 @@
 
 
-# [Deletor](https://pashkov256.github.io/deletor-doc) - Manage and delete files efficiently with an interactive TUI and scriptable CLI.
-[![Go Reference](https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg)](https://pkg.go.dev/github.com/pashkov256/deletor)
-![Open Issues](https://img.shields.io/github/issues/pashkov256/deletor)
-![License](https://img.shields.io/badge/license-MIT-blue)
+<p align="center">
+  <a href="https://github.com/pashkov256/deletor"><img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/logo.png" alt="deletor"></a>
+</p>
+<p align="center">
+    <em>Manage and delete files efficiently with an interactive TUI and scriptable CLI.</em>
+</p>
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/pashkov256/deletor"><img src="https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg" alt="deletor"></a>
+  <a><img src="https://img.shields.io/github/issues/pashkov256/deletor" alt="deletor"></a>
+  <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+<hr>
+</p>
+
 
 
 **Deletor** is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
