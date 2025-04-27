@@ -901,7 +901,7 @@ func (m *model) View() string {
 		s.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
 		s.WriteString("\n")
 	}
-	s.WriteString("\n")
+	s.WriteString("\n\n")
 
 	// Stats about loaded files with total filtered size
 	fileCount := len(activeList.Items())
@@ -917,7 +917,7 @@ func (m *model) View() string {
 	s.WriteString("\n")
 
 	// Ручное отображение списка вместо делегирования его отображения методу list.View()
-	listStyle := borderStyle.Copy().Width(80).Height(15)
+	listStyle := borderStyle.Copy().Width(100).Height(10)
 	if m.focusedElement == "list" {
 		listStyle = listStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
@@ -1050,7 +1050,7 @@ func (m *model) View() string {
 	}
 
 	s.WriteString(listStyle.Render(listContent.String()))
-	s.WriteString("\n")
+	s.WriteString("\n\n")
 
 	// Directory button
 	if m.focusedElement == "dirButton" {

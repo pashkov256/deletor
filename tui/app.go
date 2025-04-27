@@ -20,6 +20,7 @@ const (
 type App struct {
 	menu       *MainMenu
 	cleanFiles *model
+	rules      *RulesModel
 	page       page
 	err        error
 	startDir   string
@@ -30,6 +31,7 @@ type App struct {
 func NewApp(startDir string, extensions []string, minSize int64) *App {
 	return &App{
 		menu:       NewMainMenu(),
+		rules:      NewRulesModel(),
 		page:       menuPage,
 		startDir:   startDir,
 		extensions: extensions,
@@ -39,7 +41,7 @@ func NewApp(startDir string, extensions []string, minSize int64) *App {
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFiles = initialModel(a.startDir, a.extensions, a.minSize)
-	return tea.Batch(a.menu.Init(), a.cleanFiles.Init())
+	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rules.Init())
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -86,6 +88,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.cleanFiles = m
 		}
 		cmd = cleanCmd
+	case rulesPage:
+		rulesModel, rulesCmd := a.rules.Update(msg)
+		if r, ok := rulesModel.(*RulesModel); ok {
+			a.rules = r
+		}
+		cmd = rulesCmd
 	}
 
 	return a, cmd
@@ -102,7 +110,7 @@ func (a *App) View() string {
 	case cleanPage:
 		return a.cleanFiles.View()
 	case rulesPage:
-		return "Rules page coming soon..."
+		return a.rules.View()
 	case statsPage:
 		return "Statistics page coming soon..."
 	default:
