@@ -52,12 +52,18 @@ func init() {
 func main() {
 	// Parse command line arguments
 	extensions := flag.String("e", "", "File extensions to delete (comma-separated)")
-	exclude := strings.Split(*flag.String("exclude", "", "Exclude specific files/paths (e.g. data,backup)"), ",")
+	excludeFlag := flag.String("exclude", "", "Exclude specific files/paths (e.g. data,backup)")
 	size := flag.String("s", "", "Minimum file size to delete (e.g. 10kb, 10mb, 10b)")
 	dir := flag.String("d", ".", "Directory to scan")
 	isCLIMode := flag.Bool("cli", false, "CLI mode")
 	progress := *flag.Bool("progress", false, "Display a progress bar during file scanning")
 	flag.Parse()
+
+	// Parse exclude patterns after flag.Parse()
+	var exclude []string
+	if *excludeFlag != "" {
+		exclude = strings.Split(*excludeFlag, ",")
+	}
 
 	// Convert extensions to slice
 	var extSlice []string
@@ -130,7 +136,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		println(progress)
 		if progress {
 			filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
 
@@ -183,7 +188,7 @@ func main() {
 		filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				fmt.Printf("Warning: Nil FileInfo for path: %s (err: %v)\n", path, err)
-				fmt.Println(*dir)
+
 				return nil
 			}
 
@@ -198,16 +203,16 @@ func main() {
 				taskCh <- Task{info: info}
 				defer func() { <-taskCh }() // Release token when done
 				defer wg.Done()
-				// fmt.Printf("EXEMIN %#v\n", exclude)
-				// if len(exclude) != 0 {
-				// 	for _, excludePattern := range exclude {
-				// 		if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
-				// 			strings.HasPrefix(info.Name(), excludePattern) {
-				// 			fmt.Printf("Skipping excluded path: %s\n", path)
-				// 			return
-				// 		}
-				// 	}
-				// }
+
+				if len(exclude) != 0 {
+					for _, excludePattern := range exclude {
+						if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
+							strings.HasPrefix(info.Name(), excludePattern) {
+							fmt.Printf("Skipping excluded path: %s\n", path)
+							return
+						}
+					}
+				}
 
 				if info.Size() > minSize && extMap[filepath.Ext(info.Name())] {
 					mutex.Lock()
@@ -345,7 +350,7 @@ func logDeletionToFile(files map[string]string) {
 	for path, size := range files {
 		deletionLogs += fmt.Sprintf("[%s] %s | %s\n", deletionTimestamp, path, size)
 	}
-	fmt.Println(deletionLogs)
+
 	file, err := os.OpenFile(DELETION_FILE_NAME, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(yellow("Error:"), "Failed to open deleted files")
