@@ -79,7 +79,7 @@ Deletor supports rule-based file operations through JSON configuration:
 1. **Rule Location**:
 Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA%\deletor\rule.json` (Windows)
 
-2. **Rule Format** (clean_logs.json example):
+2. **Rule Format** (rule.json example):
 ```json
 {
   "path": "C:\Users\pashkov\Downloads\gws",
