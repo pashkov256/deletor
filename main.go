@@ -14,8 +14,10 @@ import (
 
 	"flag"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
+	"github.com/pashkov256/deletor/tui"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -165,8 +167,6 @@ func main() {
 				progressbar.OptionSetDescription("Scanning files..."),
 				progressbar.OptionSetWriter(os.Stderr),
 				progressbar.OptionShowBytes(true),
-				progressbar.OptionShowTotalBytes(true),
-				progressbar.OptionUseIECUnits(true),
 				progressbar.OptionSetWidth(10),
 				progressbar.OptionThrottle(65*time.Millisecond),
 				progressbar.OptionShowCount(),
@@ -362,4 +362,11 @@ func logDeletionToFile(files map[string]string) {
 		return
 	}
 	defer file.Close()
+}
+
+func startTUI(dir string, extensions []string, minSize int64) error {
+	app := tui.NewApp(dir, extensions, minSize)
+	p := tea.NewProgram(app, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
 }
