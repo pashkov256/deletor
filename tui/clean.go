@@ -170,13 +170,13 @@ type model struct {
 
 func initialModel(startDir string, extensions []string, minSize int64) *model {
 	extInput := textinput.New()
-	extInput.Placeholder = "File extensions (e.g. js,png,zip)..."
+	extInput.Placeholder = "(e.g. js,png,zip)..."
 	extInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	extInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	extInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
 	sizeInput := textinput.New()
-	sizeInput.Placeholder = "File sizes (e.g. 10kb,10mb,10b)..."
+	sizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
 	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
