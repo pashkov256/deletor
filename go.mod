@@ -1,5 +1,7 @@
 module github.com/pashkov256/deletor
 
+
+
 go 1.21
 
 require (

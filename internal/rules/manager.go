@@ -60,3 +60,21 @@ func GetRulesPath() string {
 
 	return filePathRuleConfig
 }
+
+func (r *Rules) Equals(other *Rules) bool {
+    if r.Path != other.Path || r.MinSize != other.MinSize {
+        return false
+    }
+
+    if len(r.Extensions) != len(other.Extensions) {
+        return false
+    }
+
+    for i := range r.Extensions {
+        if r.Extensions[i] != other.Extensions[i] {
+            return false
+        }
+    }
+
+    return true
+}
