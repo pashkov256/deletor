@@ -110,7 +110,7 @@ Together, we can make Deletor even better! 🚀
 
 
 ## Web docs
-[https://deepwiki.com/pashkov256/deletor](deepwiki.com/pashkov256/deletor) great for beginners
+<a href="https://deepwiki.com/pashkov256/deletor">deepwiki.com/pashkov256/deletor</a>
 
 ## 📜 License
 This project is distributed under the **MIT** license.
