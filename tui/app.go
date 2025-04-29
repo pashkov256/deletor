@@ -2,11 +2,11 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
-var mainAppStyle = lipgloss.NewStyle().
-	Padding(1, 2, 1, 2)
+//var mainAppStyle = lipgloss.NewStyle().
+//	Padding(1, 2, 1, 2)
 
 type page int
 
@@ -91,12 +91,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case rulesPage:
 		rulesModel, rulesCmd := a.rules.Update(msg)
 		if r, ok := rulesModel.(*RulesModel); ok {
-			a.rules = r
+			// If rules are updated, reload the clean page
+			if !a.rules.rules.Equals(&r.rules) {
+				a.rules = r
+				// Re-initialize the cleanFiles model with updated rules
+				a.cleanFiles = initialModel(a.startDir, r.rules.Extensions, utils.ToBytesOrDefault(r.rules.MinSize))
+				cmds = append(cmds, a.cleanFiles.Init())
+			}
 		}
 		cmd = rulesCmd
 	}
 
-	return a, cmd
+	return a, tea.Batch(cmd, tea.Batch(cmds...))
 }
 
 func (a *App) View() string {

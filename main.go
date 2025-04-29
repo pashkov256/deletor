@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/utils"
 	"github.com/pashkov256/deletor/tui"
 	"github.com/schollz/progressbar/v3"
 )
@@ -76,7 +77,7 @@ func main() {
 	// Convert size to bytes
 	var minSize int64
 	if *size != "" {
-		sizeBytes, err := toBytes(*size)
+		sizeBytes, err := utils.ToBytes(*size)
 		if err != nil {
 			fmt.Printf("Error parsing size: %v\n", err)
 			os.Exit(1)
@@ -217,7 +218,7 @@ func main() {
 						Name string
 						Size int64
 					}{path, info.Size()})
-					toDeleteMap[path] = formatSize(info.Size())
+					toDeleteMap[path] = utils.FormatSize(info.Size())
 					totalClearSize += info.Size()
 					mutex.Unlock()
 					if progress {
@@ -232,19 +233,19 @@ func main() {
 		wg.Wait()
 
 		if totalClearSize != 0 {
-			printFilesTable(toDeleteMap)
+			utils.PrintFilesTable(toDeleteMap)
 
 			fmt.Println()
-			fmt.Println(formatSize(totalClearSize), "will be cleared.")
+			fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 
-			actionIsDelete := askForConfirmation("Delete these files?")
+			actionIsDelete := utils.AskForConfirmation("Delete these files?")
 
 			if actionIsDelete {
-				fmt.Println(color.New(color.FgGreen).SprintFunc()("✓"), "Deleted:", formatSize(totalClearSize))
+				fmt.Println(color.New(color.FgGreen).SprintFunc()("✓"), "Deleted:", utils.FormatSize(totalClearSize))
 				for _, file := range files {
 					os.Remove(file.Name)
 				}
-				logDeletionToFile(toDeleteMap)
+				utils.LogDeletionToFile(toDeleteMap)
 			}
 
 		} else {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 func TestPrintFilesTable(t *testing.T) {
@@ -33,7 +35,7 @@ func TestPrintFilesTable(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			printFilesTable(tt.args.files)
+			utils.PrintFilesTable(tt.args.files)
 
 			w.Close()
 			os.Stdout = old
@@ -83,7 +85,7 @@ func TestAskForConfirmation(t *testing.T) {
 				w.Write([]byte(tt.args.userInput))
 				w.Close()
 			}()
-			got := askForConfirmation("Delete these files?")
+			got := utils.AskForConfirmation("Delete these files?")
 			if got != tt.want {
 				t.Errorf("gotAskForConfirmation = %v\n wantAskForConfirmation = %v", got, tt.want)
 			}
@@ -111,7 +113,7 @@ func TestToBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := toBytes(tt.args.sizeStr); got != tt.wantToByte {
+			if got, _ := utils.ToBytes(tt.args.sizeStr); got != tt.wantToByte {
 				t.Errorf("gotToBytes = %v\n wantToBytes = %v", got, tt.wantToByte)
 			}
 		})
@@ -138,7 +140,7 @@ func TestFormatSize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotFormatSize := formatSize(tt.args.bytes); gotFormatSize != tt.wantFormatSize {
+			if gotFormatSize := utils.FormatSize(tt.args.bytes); gotFormatSize != tt.wantFormatSize {
 				t.Errorf("gotFormatSize = %v\n wantFormatSize = %v", gotFormatSize, tt.wantFormatSize)
 			}
 		})

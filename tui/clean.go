@@ -15,6 +15,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 var (
@@ -169,14 +171,31 @@ type model struct {
 }
 
 func initialModel(startDir string, extensions []string, minSize int64) *model {
+	// Fetch the latest rules
+	latestDir, latestExtensions, latestMinSize := getLatestRules()
+
+	// Update the parameters with the latest rules
+	if latestDir != "" {
+		startDir = latestDir
+	}
+	if len(latestExtensions) > 0 {
+		extensions = latestExtensions
+	}
+	if latestMinSize > 0 {
+		minSize = latestMinSize
+	}
+
+	// Initialize inputs
 	extInput := textinput.New()
 	extInput.Placeholder = "(e.g. js,png,zip)..."
+	extInput.SetValue(strings.Join(extensions, ","))
 	extInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	extInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	extInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
+	sizeInput.SetValue(utils.FormatSize(minSize))
 	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
@@ -1133,4 +1152,35 @@ func formatSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+func getLatestRules() (string, []string, int64) {
+	// Load saved rules
+	savedRules := rules.GetRules()
+
+	// Initialize default values
+	startDir := ""
+	extensions := []string{}
+	minSize := int64(0)
+
+	// Use saved directory if provided and valid
+	if savedRules.Path != "" {
+		if _, err := os.Stat(savedRules.Path); err == nil {
+			startDir = savedRules.Path
+		}
+	}
+
+	// Use saved extensions if provided
+	if len(savedRules.Extensions) > 0 {
+		extensions = savedRules.Extensions
+	}
+
+	// Use saved minimum size if provided
+	if savedRules.MinSize != "" {
+		if size, err := utils.ToBytes(savedRules.MinSize); err == nil {
+			minSize = size
+		}
+	}
+
+	return startDir, extensions, minSize
 }

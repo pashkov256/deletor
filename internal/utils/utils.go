@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func formatSize(bytes int64) string {
+func FormatSize(bytes int64) string {
 	const (
 		KB = 1 << 10 // 1024
 		MB = 1 << 20 // 1024 * 1024
@@ -34,7 +34,7 @@ func formatSize(bytes int64) string {
 	}
 }
 
-func printFilesTable(files map[string]string) {
+func PrintFilesTable(files map[string]string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
 
@@ -50,7 +50,7 @@ func printFilesTable(files map[string]string) {
 	}
 }
 
-func askForConfirmation(s string) bool {
+func AskForConfirmation(s string) bool {
 	bold := color.New(color.Bold).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 
@@ -76,7 +76,7 @@ func askForConfirmation(s string) bool {
 	}
 }
 
-func toBytes(sizeStr string) (int64, error) {
+func ToBytes(sizeStr string) (int64, error) {
 	sizeStr = strings.TrimSpace(strings.ToLower(sizeStr))
 
 	var unitIndex int
@@ -116,7 +116,15 @@ func toBytes(sizeStr string) (int64, error) {
 	return int64(bytes), nil
 }
 
-func logDeletionToFile(files map[string]string) {
+func ToBytesOrDefault(sizeStr string) int64 {
+    size, err := ToBytes(sizeStr)
+    if err != nil {
+        return 0 // Default to 0 if conversion fails
+    }
+    return size
+}
+
+func LogDeletionToFile(files map[string]string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	const (
 		DELETION_FILE_NAME = "deletor.log"
