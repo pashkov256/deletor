@@ -40,6 +40,7 @@ type RulesModel struct {
 	extensionsInput   textinput.Model
 	sizeInput         textinput.Model
 	locationInput     textinput.Model
+	excludeInput      textinput.Model
 	rules             rules.Rules
 	focusIndex        int
 	rulesPath         string
@@ -71,6 +72,13 @@ func NewRulesModel() *RulesModel {
 	locationInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 	locationInput.SetValue(currentRules.Path)
 
+	excludeInput := textinput.New()
+	excludeInput.Placeholder = "Exclude specific files/paths (e.g. data,backup)"
+	excludeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	excludeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	excludeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	excludeInput.SetValue(strings.Join(currentRules.Exclude, ","))
+
 	// Get AppData path
 	rulesPath := filepath.Join(os.Getenv("APPDATA"), "deletor")
 
@@ -78,6 +86,7 @@ func NewRulesModel() *RulesModel {
 		extensionsInput:   extensionsInput,
 		sizeInput:         sizeInput,
 		locationInput:     locationInput,
+		excludeInput:      excludeInput,
 		focusIndex:        0,
 		rulesPath:         rulesPath,
 		saveButtonFocused: false,
@@ -109,6 +118,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				&m.extensionsInput,
 				&m.sizeInput,
 				&m.locationInput,
+				&m.excludeInput,
 			} {
 				if i == m.focusIndex {
 					input.Focus()
@@ -118,7 +128,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Handle save button focus
-			m.saveButtonFocused = (m.focusIndex == 3)
+			m.saveButtonFocused = (m.focusIndex == 4)
 
 			return m, nil
 		case "enter":
@@ -127,11 +137,12 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
 				m.rules.Path = m.locationInput.Value()
 				m.rules.MinSize = m.sizeInput.Value()
-
+				m.rules.Exclude = strings.Split(m.excludeInput.Value(), ",")
 				rules.UpdateRules(
 					m.locationInput.Value(),
 					m.sizeInput.Value(),
 					strings.Split(m.extensionsInput.Value(), ","),
+					strings.Split(m.excludeInput.Value(), ","),
 				)
 
 				rules.GetRulesPath()
@@ -139,7 +150,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Otherwise, move to next field
-			if m.focusIndex < 3 {
+			if m.focusIndex < 4 {
 				m.focusIndex++
 				// Update input focus
 				for i, input := range []*textinput.Model{
@@ -155,7 +166,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				// Handle save button focus
-				m.saveButtonFocused = (m.focusIndex == 3)
+				m.saveButtonFocused = (m.focusIndex == 4)
 			}
 
 			return m, nil
@@ -176,6 +187,9 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case 2:
 		m.locationInput, cmd = m.locationInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case 3:
+		m.excludeInput, cmd = m.excludeInput.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -214,6 +228,13 @@ func (m *RulesModel) View() string {
 		locStyle = rulesInputFocusedStyle
 	}
 	s.WriteString(locStyle.Render("Default path: " + m.locationInput.View()))
+	s.WriteString("\n")
+
+	excludeStyle := rulesInputStyle
+	if m.focusIndex == 3 {
+		excludeStyle = rulesInputFocusedStyle
+	}
+	s.WriteString(excludeStyle.Render("Explain path: " + m.excludeInput.View()))
 	s.WriteString("\n\n")
 
 	// Save button

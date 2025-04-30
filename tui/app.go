@@ -24,17 +24,19 @@ type App struct {
 	page       page
 	err        error
 	startDir   string
+	exclude    []string
 	extensions []string
 	minSize    int64
 }
 
-func NewApp(startDir string, extensions []string, minSize int64) *App {
+func NewApp(startDir string, extensions []string, exclude []string, minSize int64) *App {
 	return &App{
 		menu:       NewMainMenu(),
 		rules:      NewRulesModel(),
 		page:       menuPage,
 		startDir:   startDir,
 		extensions: extensions,
+		exclude:    exclude,
 		minSize:    minSize,
 	}
 }
