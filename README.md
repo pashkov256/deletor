@@ -112,7 +112,14 @@ Together, we can make Deletor even better! 🚀
 ## Web docs
 <a href="https://deepwiki.com/pashkov256/deletor">deepwiki.com/pashkov256/deletor</a>
 
+
+
 ## 📜 License
 This project is distributed under the **MIT** license.
-
+## Star History
+<div style="text-align: center;">
+    <a href="https://www.star-history.com/#pashkov256/deletor&Date">
+        <img src="https://api.star-history.com/svg?repos=pashkov256/deletor&type=Date" alt="Star History Chart">
+    </a>
+</div>
 
