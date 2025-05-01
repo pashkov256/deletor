@@ -153,9 +153,11 @@ type model struct {
 	extInput            textinput.Model
 	sizeInput           textinput.Model
 	pathInput           textinput.Model
+	excludeInput        textinput.Model
 	currentPath         string
 	extensions          []string
 	minSize             int64
+	exclude             []string
 	options             []string
 	optionState         map[string]bool
 	err                 error
@@ -170,7 +172,7 @@ type model struct {
 	filteredCount       int   // Count of filtered files
 }
 
-func initialModel(startDir string, extensions []string, minSize int64) *model {
+func initialModel(startDir string, extensions []string, minSize int64, exclude []string) *model {
 	// Fetch the latest rules
 	latestDir, latestExtensions, latestMinSize := getLatestRules()
 
@@ -206,6 +208,12 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 	pathInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	pathInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
+	excludeInput := textinput.New()
+	excludeInput.SetValue(strings.Join(exclude, ","))
+	excludeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	excludeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	excludeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
 
@@ -219,7 +227,6 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(lipgloss.Color("#0066ff")).
 		Bold(true)
-
 	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.
 		Foreground(lipgloss.Color("#dddddd"))
 
@@ -257,9 +264,11 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 		extInput:            extInput,
 		sizeInput:           sizeInput,
 		pathInput:           pathInput,
+		excludeInput:        excludeInput,
 		currentPath:         startDir,
 		extensions:          extensions,
 		minSize:             minSize,
+		exclude:             exclude,
 		options:             options,
 		optionState:         optionState,
 		focusedElement:      "list",
@@ -688,7 +697,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.sizeInput.Blur()
-				m.focusedElement = "option1"
+				m.focusedElement = "exclude"
 				return m, nil
 			case "enter":
 				m.sizeInput.Blur()
@@ -702,6 +711,29 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			default:
 				m.sizeInput, cmd = m.sizeInput.Update(msg)
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		if m.excludeInput.Focused() {
+			switch msg.String() {
+			case "tab":
+				m.excludeInput.Blur()
+				m.focusedElement = "option1"
+				return m, nil
+			case "enter":
+				m.excludeInput.Blur()
+				m.focusedElement = "list"
+				// Parse size and reload files
+				cmds = append(cmds, m.loadFiles())
+				return m, tea.Batch(cmds...)
+			case "esc":
+				m.excludeInput.Blur()
+				m.focusedElement = "list"
+				return m, nil
+			default:
+				m.excludeInput, cmd = m.excludeInput.Update(msg)
 				cmds = append(cmds, cmd)
 				return m, tea.Batch(cmds...)
 			}
@@ -722,6 +754,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sizeInput.Focus()
 				m.focusedElement = "size"
 			case "size":
+				m.sizeInput.Blur()
+				m.focusedElement = "exclude"
+			case "exclude":
 				m.sizeInput.Blur()
 				m.focusedElement = "option1"
 			case "option1":
@@ -904,6 +939,13 @@ func (m *model) View() string {
 		sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
 	s.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
+	s.WriteString("\n")
+
+	excludeStyle := borderStyle.Copy()
+	if m.focusedElement == "exclude" {
+		excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+	}
+	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 	s.WriteString("\n")
 
 	// Options - moved up
@@ -1099,8 +1141,8 @@ func (m *model) View() string {
 	return appStyle.Render(s.String())
 }
 
-func Run(startDir string, extensions []string, minSize int64) error {
-	p := tea.NewProgram(initialModel(startDir, extensions, minSize),
+func Run(startDir string, extensions []string, minSize int64, exclude []string) error {
+	p := tea.NewProgram(initialModel(startDir, extensions, minSize, exclude),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithFPS(30),
