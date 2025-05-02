@@ -84,6 +84,7 @@ Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA
 {
   "path": "C:\Users\pashkov\Downloads\gws",
   "extensions": [".log", ".tmp"],
+  "exclude": ["backup", "important"],
   "min_size": "10mb"
 }
 ```

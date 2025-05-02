@@ -24,23 +24,25 @@ type App struct {
 	page       page
 	err        error
 	startDir   string
+	exclude    []string
 	extensions []string
 	minSize    int64
 }
 
-func NewApp(startDir string, extensions []string, minSize int64) *App {
+func NewApp(startDir string, extensions []string, exclude []string, minSize int64) *App {
 	return &App{
 		menu:       NewMainMenu(),
 		rules:      NewRulesModel(),
 		page:       menuPage,
 		startDir:   startDir,
 		extensions: extensions,
+		exclude:    exclude,
 		minSize:    minSize,
 	}
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFiles = initialModel(a.startDir, a.extensions, a.minSize)
+	a.cleanFiles = initialModel(a.startDir, a.extensions, a.minSize, a.exclude)
 	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rules.Init())
 }
 
@@ -95,7 +97,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !a.rules.rules.Equals(&r.rules) {
 				a.rules = r
 				// Re-initialize the cleanFiles model with updated rules
-				a.cleanFiles = initialModel(a.startDir, r.rules.Extensions, utils.ToBytesOrDefault(r.rules.MinSize))
+				a.cleanFiles = initialModel(a.startDir, r.rules.Extensions, utils.ToBytesOrDefault(r.rules.MinSize), r.rules.Exclude)
 				cmds = append(cmds, a.cleanFiles.Init())
 			}
 		}

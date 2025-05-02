@@ -153,9 +153,11 @@ type model struct {
 	extInput            textinput.Model
 	sizeInput           textinput.Model
 	pathInput           textinput.Model
+	excludeInput        textinput.Model
 	currentPath         string
 	extensions          []string
 	minSize             int64
+	exclude             []string
 	options             []string
 	optionState         map[string]bool
 	err                 error
@@ -170,12 +172,13 @@ type model struct {
 	filteredCount       int   // Count of filtered files
 }
 
-func initialModel(startDir string, extensions []string, minSize int64) *model {
+func initialModel(startDir string, extensions []string, minSize int64, exclude []string) *model {
 	// Fetch the latest rules
-	latestDir, latestExtensions, latestMinSize := getLatestRules()
+	latestDir, latestExtensions, latestMinSize, latestExclude := getLatestRules()
 
 	// Update the parameters with the latest rules
 	if latestDir != "" {
+
 		startDir = latestDir
 	}
 	if len(latestExtensions) > 0 {
@@ -184,7 +187,9 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 	if latestMinSize > 0 {
 		minSize = latestMinSize
 	}
-
+	if len(latestExclude) > 0 {
+		exclude = latestExclude
+	}
 	// Initialize inputs
 	extInput := textinput.New()
 	extInput.Placeholder = "(e.g. js,png,zip)..."
@@ -206,6 +211,13 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 	pathInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	pathInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 
+	excludeInput := textinput.New()
+	excludeInput.Placeholder = "Exclude specific files/paths (e.g. data,backup)"
+	excludeInput.SetValue(strings.Join(exclude, ","))
+	excludeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	excludeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	excludeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
 
@@ -219,7 +231,6 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(lipgloss.Color("#0066ff")).
 		Bold(true)
-
 	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.
 		Foreground(lipgloss.Color("#dddddd"))
 
@@ -257,9 +268,11 @@ func initialModel(startDir string, extensions []string, minSize int64) *model {
 		extInput:            extInput,
 		sizeInput:           sizeInput,
 		pathInput:           pathInput,
+		excludeInput:        excludeInput,
 		currentPath:         startDir,
 		extensions:          extensions,
 		minSize:             minSize,
+		exclude:             exclude,
 		options:             options,
 		optionState:         optionState,
 		focusedElement:      "list",
@@ -309,6 +322,21 @@ func (m *model) loadFiles() tea.Cmd {
 			m.extensions = []string{}
 		}
 
+		excludeStr := m.excludeInput.Value()
+		if excludeStr != "" {
+			// Parse extensions from input
+			m.exclude = []string{}
+			for _, exc := range strings.Split(excludeStr, ",") {
+				exc = strings.TrimSpace(exc)
+				if exc != "" {
+					m.exclude = append(m.exclude, exc)
+				}
+			}
+		} else {
+			// If no extensions specified, show all files
+			m.exclude = []string{}
+		}
+
 		// Get user-specified min size
 		sizeStr := m.sizeInput.Value()
 		if sizeStr != "" {
@@ -340,6 +368,7 @@ func (m *model) loadFiles() tea.Cmd {
 		}
 
 		// First collect directories
+	dirLoop:
 		for _, fileInfo := range fileInfos {
 			if !fileInfo.IsDir() {
 				continue
@@ -351,6 +380,15 @@ func (m *model) loadFiles() tea.Cmd {
 			}
 
 			path := filepath.Join(currentDir, fileInfo.Name())
+
+			if len(m.exclude) > 0 && fileInfo.IsDir() {
+				for _, excludePattern := range m.exclude {
+					if strings.Contains(filepath.ToSlash(path+"/"), excludePattern+"/") {
+						continue dirLoop
+					}
+				}
+			}
+
 			items = append(items, cleanItem{
 				path: path,
 				size: 0, // Directory
@@ -358,6 +396,7 @@ func (m *model) loadFiles() tea.Cmd {
 		}
 
 		// Then collect files
+	fileLoop:
 		for _, fileInfo := range fileInfos {
 			if fileInfo.IsDir() {
 				continue
@@ -394,6 +433,14 @@ func (m *model) loadFiles() tea.Cmd {
 			// Apply size filter if specified
 			if m.minSize > 0 && size < m.minSize {
 				continue
+			}
+
+			if len(m.exclude) > 0 && !fileInfo.IsDir() {
+				for _, excludePattern := range m.exclude {
+					if strings.HasPrefix(fileInfo.Name(), excludePattern) {
+						continue fileLoop
+					}
+				}
 			}
 
 			// Add to filtered size and count
@@ -688,7 +735,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.sizeInput.Blur()
-				m.focusedElement = "option1"
+				m.excludeInput.Focus()
+				m.focusedElement = "exclude"
 				return m, nil
 			case "enter":
 				m.sizeInput.Blur()
@@ -702,6 +750,29 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			default:
 				m.sizeInput, cmd = m.sizeInput.Update(msg)
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		if m.excludeInput.Focused() {
+			switch msg.String() {
+			case "tab":
+				m.excludeInput.Blur()
+				m.focusedElement = "option1"
+				return m, nil
+			case "enter":
+				m.excludeInput.Blur()
+				m.focusedElement = "list"
+				// Parse size and reload files
+				cmds = append(cmds, m.loadFiles())
+				return m, tea.Batch(cmds...)
+			case "esc":
+				m.excludeInput.Blur()
+				m.focusedElement = "list"
+				return m, nil
+			default:
+				m.excludeInput, cmd = m.excludeInput.Update(msg)
 				cmds = append(cmds, cmd)
 				return m, tea.Batch(cmds...)
 			}
@@ -723,6 +794,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusedElement = "size"
 			case "size":
 				m.sizeInput.Blur()
+				m.excludeInput.Focus()
+				m.focusedElement = "exclude"
+			case "exclude":
+				m.excludeInput.Blur()
 				m.focusedElement = "option1"
 			case "option1":
 				m.focusedElement = "option2"
@@ -817,13 +892,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pathInput.Blur()
 			m.extInput.Blur()
 			m.sizeInput.Blur()
+			m.excludeInput.Blur()
 			m.focusedElement = "list"
 			return m, nil
 		}
 
 		// Number keys for options
 		if msg.String() == "1" || msg.String() == "2" {
-			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() {
+			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() && !m.excludeInput.Focused() {
 				idx := int(msg.String()[0] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
@@ -904,6 +980,13 @@ func (m *model) View() string {
 		sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 	}
 	s.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
+	s.WriteString("\n")
+
+	excludeStyle := borderStyle.Copy()
+	if m.focusedElement == "exclude" {
+		excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+	}
+	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 	s.WriteString("\n")
 
 	// Options - moved up
@@ -1099,8 +1182,8 @@ func (m *model) View() string {
 	return appStyle.Render(s.String())
 }
 
-func Run(startDir string, extensions []string, minSize int64) error {
-	p := tea.NewProgram(initialModel(startDir, extensions, minSize),
+func Run(startDir string, extensions []string, minSize int64, exclude []string) error {
+	p := tea.NewProgram(initialModel(startDir, extensions, minSize, exclude),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithFPS(30),
@@ -1154,7 +1237,7 @@ func formatSize(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
-func getLatestRules() (string, []string, int64) {
+func getLatestRules() (string, []string, int64, []string) {
 	// Load saved rules
 	savedRules := rules.GetRules()
 
@@ -1162,6 +1245,7 @@ func getLatestRules() (string, []string, int64) {
 	startDir := ""
 	extensions := []string{}
 	minSize := int64(0)
+	exclude := []string{}
 
 	// Use saved directory if provided and valid
 	if savedRules.Path != "" {
@@ -1182,5 +1266,10 @@ func getLatestRules() (string, []string, int64) {
 		}
 	}
 
-	return startDir, extensions, minSize
+	// Use saved extensions if provided
+	if len(savedRules.Exclude) > 0 {
+		exclude = savedRules.Exclude
+	}
+
+	return startDir, extensions, minSize, exclude
 }

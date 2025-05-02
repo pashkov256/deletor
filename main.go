@@ -93,7 +93,7 @@ func main() {
 	}
 	if !*isCLIMode {
 		// Start TUI
-		if err := startTUI(absPath, extSlice, minSize); err != nil {
+		if err := startTUI(absPath, extSlice, exclude, minSize); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -256,8 +256,8 @@ func main() {
 
 }
 
-func startTUI(dir string, extensions []string, minSize int64) error {
-	app := tui.NewApp(dir, extensions, minSize)
+func startTUI(dir string, extensions []string, exclude []string, minSize int64) error {
+	app := tui.NewApp(dir, extensions, exclude, minSize)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 	rules.SetupRulesConfig()
 	_, err := p.Run()
