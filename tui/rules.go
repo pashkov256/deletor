@@ -235,7 +235,7 @@ func (m *RulesModel) View() string {
 	if m.focusIndex == 3 {
 		excludeStyle = rulesInputFocusedStyle
 	}
-	s.WriteString(excludeStyle.Render("Explain path: " + m.excludeInput.View()))
+	s.WriteString(excludeStyle.Render("Explain: " + m.excludeInput.View()))
 	s.WriteString("\n\n")
 
 	// Save button
