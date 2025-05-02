@@ -157,6 +157,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					&m.extensionsInput,
 					&m.sizeInput,
 					&m.locationInput,
+					&m.excludeInput,
 				} {
 					if i == m.focusIndex {
 						input.Focus()

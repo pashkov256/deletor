@@ -697,6 +697,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.sizeInput.Blur()
+				m.excludeInput.Focus()
 				m.focusedElement = "exclude"
 				return m, nil
 			case "enter":
@@ -755,9 +756,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusedElement = "size"
 			case "size":
 				m.sizeInput.Blur()
+				m.excludeInput.Focus()
 				m.focusedElement = "exclude"
 			case "exclude":
-				m.sizeInput.Blur()
+				m.excludeInput.Blur()
 				m.focusedElement = "option1"
 			case "option1":
 				m.focusedElement = "option2"
@@ -852,13 +854,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pathInput.Blur()
 			m.extInput.Blur()
 			m.sizeInput.Blur()
+			m.excludeInput.Blur()
 			m.focusedElement = "list"
 			return m, nil
 		}
 
 		// Number keys for options
 		if msg.String() == "1" || msg.String() == "2" {
-			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() {
+			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() && !m.excludeInput.Focused() {
 				idx := int(msg.String()[0] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
