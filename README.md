@@ -110,7 +110,7 @@ Together, we can make Deletor even better! 🚀
 
 
 ## Web docs
-<a href="https://deepwiki.com/pashkov256/deletor">deepwiki.com/pashkov256/deletor</a>
+<a href="https://pashkov256.github.io/deletor-doc">https://pashkov256.github.io/deletor-doc</a>
 
 
 
