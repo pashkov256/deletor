@@ -15,7 +15,7 @@
 
 
 
-**Deletor** is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
+<a href="https://pashkov256.github.io/deletor-doc"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
@@ -111,9 +111,16 @@ Together, we can make Deletor even better! 🚀
 
 
 ## Web docs
-<a href="https://deepwiki.com/pashkov256/deletor">deepwiki.com/pashkov256/deletor</a>
+<a href="https://pashkov256.github.io/deletor-doc">https://pashkov256.github.io/deletor-doc</a>
+
+
 
 ## 📜 License
 This project is distributed under the **MIT** license.
-
+## Star History
+<div style="text-align: center;">
+    <a href="https://www.star-history.com/#pashkov256/deletor&Date">
+        <img src="https://api.star-history.com/svg?repos=pashkov256/deletor&type=Date" alt="Star History Chart">
+    </a>
+</div>
 
