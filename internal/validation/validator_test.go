@@ -97,12 +97,12 @@ func TestValidator_ValidateExtension(t *testing.T) {
 	}{
 		// Valid cases
 		{"valid extension", "png", false},
-		{"valid extension with dot", ".png", false},
 		{"valid extension uppercase", "PNG", false},
 		{"valid extension mixed case", "Png", false},
 		{"valid extension with numbers", "mp4", false},
 
 		// Invalid cases
+		{"invalid extension with dot", ".png", true},
 		{"invalid extension with space", "p n g", true},
 		{"empty extension", "", true},
 		{"invalid characters", "png!", true},
