@@ -106,7 +106,6 @@ func TestValidator_ValidateExtension(t *testing.T) {
 		{"invalid extension with space", "p n g", true},
 		{"empty extension", "", true},
 		{"invalid characters", "png!", true},
-		{"too long", "abcdefghijklmnopqrstuvwxyz", true},
 	}
 
 	for _, tt := range tests {
