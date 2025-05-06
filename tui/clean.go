@@ -36,20 +36,6 @@ var (
 			Padding(0, 0).
 			Width(100)
 
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#fff")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF6666")).
-			Width(100)
-
-	buttonFocusedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#fff")).
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#FF6666")).
-				Background(lipgloss.Color("#FF6666")).
-				Padding(0, 1).
-				Width(100)
-
 	dirButtonStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#fff")).
 			Border(lipgloss.RoundedBorder()).
@@ -64,6 +50,20 @@ var (
 				BorderForeground(lipgloss.Color("#1E90FF")).
 				Width(100).
 				Bold(true)
+
+	buttonStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#fff")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#FF6666")).
+			Width(100)
+
+	buttonFocusedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#FF6666")).
+				Background(lipgloss.Color("#FF6666")).
+				Padding(0, 1).
+				Width(100)
 
 	optionStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
@@ -170,6 +170,7 @@ type model struct {
 	calculatingSize     bool  // Flag to indicate size calculation in progress
 	filteredSize        int64 // Total size of filtered files
 	filteredCount       int   // Count of filtered files
+	activeTab           int   // 0 for files, 1 for exclude
 }
 
 func initialModel(startDir string, extensions []string, minSize int64, exclude []string) *model {
@@ -221,10 +222,9 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
 
-	// Настройка делегата для лучшего отображения
-	delegate.SetHeight(1)            // Высота элемента
-	delegate.SetSpacing(1)           // Пространство между элементами
-	delegate.ShowDescription = false // Не показывать описание для компактности
+	delegate.SetHeight(1)
+	delegate.SetSpacing(1)
+	delegate.ShowDescription = false
 
 	// Стили элементов
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
@@ -234,7 +234,6 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.
 		Foreground(lipgloss.Color("#dddddd"))
 
-	// Initialize list with proper size - size будет установлен позже при WindowSizeMsg
 	l := list.New([]list.Item{}, delegate, 30, 10)
 	l.SetShowTitle(true)
 	l.Title = "Files"
@@ -284,12 +283,13 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 		calculatingSize:     false,
 		filteredSize:        0,
 		filteredCount:       0,
+		activeTab:           0,
 	}
 }
 
 func (m *model) Init() tea.Cmd {
-	// При инициализации установим фокус на список
-	m.focusedElement = "list"
+	m.focusedElement = "path"
+	m.pathInput.Focus()
 	return tea.Batch(textinput.Blink, m.loadFiles(), m.calculateDirSizeAsync())
 }
 
@@ -299,7 +299,6 @@ func (m *model) loadFiles() tea.Cmd {
 		var totalFilteredSize int64 = 0
 		var filteredCount int = 0
 
-		// Убедимся, что текущий путь корректный
 		currentDir := m.currentPath
 
 		// Get user-specified extensions
@@ -352,7 +351,6 @@ func (m *model) loadFiles() tea.Cmd {
 			m.minSize = 0
 		}
 
-		// Загрузим все файлы и директории, включая родительскую директорию
 		fileInfos, err := os.ReadDir(currentDir)
 		if err != nil {
 			return fmt.Errorf("error reading directory: %v", err)
@@ -625,7 +623,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetSize(msg.Width-h, listHeight)
 		m.dirList.SetSize(msg.Width-h, listHeight)
 
-		// После изменения размера окна сразу обновляем список
 		cmds = append(cmds, m.loadFiles())
 		// Trigger directory size calculation when changing directory
 		cmds = append(cmds, m.calculateDirSizeAsync())
@@ -665,6 +662,36 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+o": // Open current directory in file explorer
 			cmd := openFileExplorer(m.currentPath)
 			return m, cmd
+		case "left", "right": // Tab switching
+			if msg.String() == "left" && m.activeTab > 0 {
+				m.activeTab--
+				if m.activeTab == 1 {
+					m.excludeInput.Focus()
+					m.focusedElement = "exclude"
+				}
+			}
+			if msg.String() == "right" && m.activeTab < 1 {
+				m.activeTab++
+				if m.activeTab == 1 {
+					m.excludeInput.Focus()
+					m.focusedElement = "exclude"
+				}
+			}
+			return m, nil
+		case "f1":
+			m.activeTab = 0
+			m.focusedElement = "path"
+			m.pathInput.Focus()
+			return m, nil
+		case "f2":
+			m.activeTab = 1
+			m.focusedElement = "exclude"
+			m.excludeInput.Focus()
+			return m, nil
+		case "f3":
+			m.activeTab = 2
+			m.focusedElement = "option1"
+			return m, nil
 		case "up", "down": // Always handle arrow keys for list navigation regardless of focus
 			// Make list navigation global - arrow keys always navigate the list
 			if !m.showDirs {
@@ -675,6 +702,105 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 			return m, tea.Batch(cmds...)
+		}
+
+		// Handle tab key to cycle through elements
+		if msg.String() == "tab" {
+			switch m.activeTab {
+			case 0: // Main tab
+				switch m.focusedElement {
+				case "path":
+					m.pathInput.Blur()
+					m.focusedElement = "ext"
+					m.extInput.Focus()
+				case "ext":
+					m.extInput.Blur()
+					m.focusedElement = "size"
+					m.sizeInput.Focus()
+				case "size":
+					m.sizeInput.Blur()
+					m.focusedElement = "list"
+				case "list":
+					m.focusedElement = "dirButton"
+				case "dirButton":
+					m.focusedElement = "button"
+				case "button":
+					m.focusedElement = "path"
+					m.pathInput.Focus()
+				}
+			case 1: // Filters tab
+				switch m.focusedElement {
+				case "exclude":
+					m.excludeInput.Blur()
+					m.focusedElement = "size"
+					m.sizeInput.Focus()
+				case "size":
+					m.sizeInput.Blur()
+					m.focusedElement = "exclude"
+					m.excludeInput.Focus()
+				default:
+					m.focusedElement = "exclude"
+					m.excludeInput.Focus()
+				}
+			case 2: // Options tab
+				if m.focusedElement == "" {
+					m.focusedElement = "option1"
+				} else if m.focusedElement == "option1" {
+					m.focusedElement = "option2"
+				} else {
+					m.focusedElement = "option1"
+				}
+			}
+			return m, nil
+		}
+
+		if msg.String() == "shift+tab" {
+			switch m.activeTab {
+			case 0: // Main tab
+				switch m.focusedElement {
+				case "path":
+					m.pathInput.Blur()
+					m.focusedElement = "button"
+				case "button":
+					m.focusedElement = "dirButton"
+				case "dirButton":
+					m.focusedElement = "list"
+				case "list":
+					m.focusedElement = "size"
+					m.sizeInput.Focus()
+				case "size":
+					m.sizeInput.Blur()
+					m.focusedElement = "ext"
+					m.extInput.Focus()
+				case "ext":
+					m.extInput.Blur()
+					m.focusedElement = "path"
+					m.pathInput.Focus()
+				}
+			case 1: // Filters tab
+				switch m.focusedElement {
+				case "exclude":
+					m.excludeInput.Blur()
+					m.focusedElement = "size"
+					m.sizeInput.Focus()
+				case "size":
+					m.sizeInput.Blur()
+					m.focusedElement = "exclude"
+					m.excludeInput.Focus()
+				default:
+					m.focusedElement = "exclude"
+					m.excludeInput.Focus()
+				}
+			case 2: // Options tab
+				if m.focusedElement == "" {
+					m.focusedElement = "option2"
+				} else if m.focusedElement == "option2" {
+					m.focusedElement = "option1"
+				} else {
+					m.focusedElement = "option2"
+				}
+			}
+			return m, nil
 		}
 
 		// Handle inputs based on current focus
@@ -735,18 +861,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.sizeInput.Blur()
-				m.excludeInput.Focus()
 				m.focusedElement = "exclude"
+				m.excludeInput.Focus()
 				return m, nil
 			case "enter":
 				m.sizeInput.Blur()
-				m.focusedElement = "list"
+				m.focusedElement = "exclude"
+				m.excludeInput.Focus()
 				// Parse size and reload files
 				cmds = append(cmds, m.loadFiles())
 				return m, tea.Batch(cmds...)
 			case "esc":
 				m.sizeInput.Blur()
-				m.focusedElement = "list"
+				m.focusedElement = "exclude"
+				m.excludeInput.Focus()
 				return m, nil
 			default:
 				m.sizeInput, cmd = m.sizeInput.Update(msg)
@@ -759,17 +887,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "tab":
 				m.excludeInput.Blur()
-				m.focusedElement = "option1"
+				m.focusedElement = "size"
+				m.sizeInput.Focus()
 				return m, nil
 			case "enter":
 				m.excludeInput.Blur()
-				m.focusedElement = "list"
-				// Parse size and reload files
+				m.focusedElement = "size"
+				m.sizeInput.Focus()
+				// Parse exclude and reload files
 				cmds = append(cmds, m.loadFiles())
 				return m, tea.Batch(cmds...)
 			case "esc":
 				m.excludeInput.Blur()
-				m.focusedElement = "list"
+				m.focusedElement = "size"
+				m.sizeInput.Focus()
 				return m, nil
 			default:
 				m.excludeInput, cmd = m.excludeInput.Update(msg)
@@ -778,40 +909,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Handle tab key to cycle through elements
-		if msg.String() == "tab" {
-			switch m.focusedElement {
-			case "list":
-				m.pathInput.Focus()
-				m.focusedElement = "path"
-			case "path":
-				m.pathInput.Blur()
-				m.extInput.Focus()
-				m.focusedElement = "ext"
-			case "ext":
-				m.extInput.Blur()
-				m.sizeInput.Focus()
-				m.focusedElement = "size"
-			case "size":
-				m.sizeInput.Blur()
-				m.excludeInput.Focus()
-				m.focusedElement = "exclude"
-			case "exclude":
-				m.excludeInput.Blur()
-				m.focusedElement = "option1"
-			case "option1":
-				m.focusedElement = "option2"
-			case "option2":
-				m.focusedElement = "dirButton"
-			case "dirButton":
-				m.focusedElement = "button"
-			case "button":
-				m.focusedElement = "list"
-			}
-			return m, nil
-		}
-
-		// Handle enter key for selections
+		// Handle enter key for actions
 		if msg.String() == "enter" {
 			switch m.focusedElement {
 			case "list":
@@ -871,11 +969,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "option1", "option2":
+				idx := 0
+				if m.focusedElement == "option2" {
+					idx = 1
+				}
+				if idx < len(m.options) {
+					optName := m.options[idx]
+					m.optionState[optName] = !m.optionState[optName]
+					m.focusedElement = "option" + fmt.Sprintf("%d", idx+1)
+					return m, nil
+				}
+			}
+		}
+
+		// Handle space key for options
+		if msg.String() == " " && m.activeTab == 2 {
+			if m.focusedElement == "option1" || m.focusedElement == "option2" {
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
 					m.optionState[optName] = !m.optionState[optName]
-					return m, m.loadFiles()
+					return m, nil
 				}
 			}
 		}
@@ -892,14 +1006,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pathInput.Blur()
 			m.extInput.Blur()
 			m.sizeInput.Blur()
-			m.excludeInput.Blur()
 			m.focusedElement = "list"
 			return m, nil
 		}
 
 		// Number keys for options
 		if msg.String() == "1" || msg.String() == "2" {
-			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() && !m.excludeInput.Focused() {
+			if !m.pathInput.Focused() && !m.extInput.Focused() && !m.sizeInput.Focused() {
 				idx := int(msg.String()[0] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
@@ -909,15 +1022,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Default handling for list when it's in focus (and not already handled by arrow keys)
-		if m.focusedElement == "list" && msg.String() != "up" && msg.String() != "down" {
-			if !m.showDirs {
-				m.list, cmd = m.list.Update(msg)
-			} else {
-				m.dirList, cmd = m.dirList.Update(msg)
+		if m.activeTab == 2 && msg.String() == "Enter" {
+			idx := int(msg.String()[0] - '1')
+			if idx >= 0 && idx < len(m.options) {
+				optName := m.options[idx]
+				m.optionState[optName] = !m.optionState[optName]
+				return m, nil
 			}
-			cmds = append(cmds, cmd)
 		}
+
 	}
 
 	return m, tea.Batch(cmds...)
@@ -946,240 +1059,235 @@ func openFileExplorer(path string) tea.Cmd {
 }
 
 func (m *model) View() string {
-	// Определим, какой список сейчас активен
-	var activeList list.Model
-	if m.showDirs {
-		activeList = m.dirList
-	} else {
-		activeList = m.list
-	}
+	// --- Tabs styles ---
+	tabStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#666666")).
+		Padding(0, 1)
 
-	var s strings.Builder
+	activeTabStyle := tabStyle.Copy().
+		BorderForeground(lipgloss.Color("#1E90FF")).
+		Foreground(lipgloss.Color("#1E90FF")).
+		Bold(true)
 
-	// Calculate total directory size (including subdirectories)
-	// This is now handled asynchronously, so we don't need to calculate it here
-
-	// Отображение пути и ввода
-	pathStyle := borderStyle.Copy()
-	if m.focusedElement == "path" {
-		pathStyle = pathStyle.BorderForeground(lipgloss.Color("#1E90FF"))
-	}
-	s.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
-	s.WriteString("\n")
-
-	// Input fields with borders and labels - moved up
-	extStyle := borderStyle.Copy()
-	if m.focusedElement == "ext" {
-		extStyle = extStyle.BorderForeground(lipgloss.Color("#1E90FF"))
-	}
-	s.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
-	s.WriteString("\n")
-
-	sizeStyle := borderStyle.Copy()
-	if m.focusedElement == "size" {
-		sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
-	}
-	s.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
-	s.WriteString("\n")
-
-	excludeStyle := borderStyle.Copy()
-	if m.focusedElement == "exclude" {
-		excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
-	}
-	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
-	s.WriteString("\n")
-
-	// Options - moved up
-	s.WriteString("Options:\n")
-	for i, name := range m.options {
-		style := optionStyle
-		if m.optionState[name] {
-			style = selectedOptionStyle
+	// --- Tabs rendering ---
+	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options"}
+	tabs := make([]string, 3)
+	for i, name := range tabNames {
+		style := tabStyle
+		if m.activeTab == i {
+			style = activeTabStyle
 		}
-		if m.focusedElement == fmt.Sprintf("option%d", i+1) {
-			style = optionFocusedStyle
+		tabs[i] = style.Render(name)
+	}
+	tabsRow := lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
+
+	// --- Content rendering ---
+	var content strings.Builder
+	if m.activeTab == 0 {
+		pathStyle := borderStyle.Copy()
+		if m.focusedElement == "path" {
+			pathStyle = pathStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 		}
-		s.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
-		s.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
-		s.WriteString("\n")
-	}
-	s.WriteString("\n\n")
+		content.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
+		content.WriteString("\n")
 
-	// Stats about loaded files with total filtered size
-	fileCount := len(activeList.Items())
-	filteredSizeText := formatSize(m.filteredSize)
+		extStyle := borderStyle.Copy()
+		if m.focusedElement == "ext" {
+			extStyle = extStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+		}
+		content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
+		content.WriteString("\n")
 
-	if !m.showDirs {
-		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s ",
-			m.filteredCount, filteredSizeText)))
-	} else {
-		s.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Directories in %s (%d) ",
-			filepath.Base(m.currentPath), fileCount)))
-	}
-	s.WriteString("\n")
-
-	// Ручное отображение списка вместо делегирования его отображения методу list.View()
-	listStyle := borderStyle.Copy().Width(100).Height(10)
-	if m.focusedElement == "list" {
-		listStyle = listStyle.BorderForeground(lipgloss.Color("#1E90FF"))
-	}
-
-	var listContent strings.Builder
-	if len(activeList.Items()) == 0 {
-		if !m.showDirs {
-			listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
+		var activeList list.Model
+		if m.showDirs {
+			activeList = m.dirList
 		} else {
-			listContent.WriteString("No directories found in this location.")
+			activeList = m.list
 		}
-	} else {
-		// Определим начало и конец отображаемых файлов с учетом прокрутки
-		items := activeList.Items()
-		selectedIndex := activeList.Index()
-		totalItems := len(items)
-
-		// Рассчитаем видимую область (10 элементов)
-		visibleItems := 10
-		if visibleItems > totalItems {
-			visibleItems = totalItems
+		fileCount := len(activeList.Items())
+		filteredSizeText := formatSize(m.filteredSize)
+		content.WriteString("\n")
+		if !m.showDirs {
+			content.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+				m.filteredCount, filteredSizeText)))
+		} else {
+			content.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+				filepath.Base(m.currentPath), fileCount)))
 		}
-
-		// Вычислим начальный индекс, чтобы выделенный элемент был виден
-		startIdx := 0
-		if selectedIndex > visibleItems-3 && totalItems > visibleItems {
-			startIdx = selectedIndex - (visibleItems / 2)
-			if startIdx+visibleItems > totalItems {
-				startIdx = totalItems - visibleItems
-			}
-		}
-		if startIdx < 0 {
-			startIdx = 0
+		content.WriteString("\n")
+		listStyle := borderStyle.Copy()
+		if m.focusedElement == "list" {
+			listStyle = listStyle.BorderForeground(lipgloss.Color("#1E90FF"))
 		}
 
-		// Удалены заголовки колонок и разделительные линии
-
-		// Выведем строки с файлами
-		endIdx := startIdx + visibleItems
-		if endIdx > totalItems {
-			endIdx = totalItems
-		}
-
-		for i := startIdx; i < endIdx; i++ {
-			item := items[i].(cleanItem)
-
-			// Выберем иконку
-			icon := "📄 " // Обычный файл
-			if item.size == -1 {
-				icon = "⬆️ " // Родительская директория
-			} else if item.size == 0 {
-				icon = "📁 " // Директория
+		var listContent strings.Builder
+		if len(activeList.Items()) == 0 {
+			if !m.showDirs {
+				listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
 			} else {
-				// Выбор иконки по расширению файла
-				ext := strings.ToLower(filepath.Ext(item.path))
-				switch ext {
-				case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
-					icon = "🖼️ " // Изображение
-				case ".mp3", ".wav", ".flac", ".ogg":
-					icon = "🎵 " // Аудио
-				case ".mp4", ".avi", ".mkv", ".mov":
-					icon = "🎬 " // Видео
-				case ".zip", ".rar", ".7z", ".tar", ".gz":
-					icon = "🗜️ " // Архив
-				case ".exe", ".msi":
-					icon = "⚙️ " // Исполняемый файл
-				case ".pdf":
-					icon = "📕 " // PDF
-				case ".doc", ".docx", ".txt":
-					icon = "📝 " // Документ
+				listContent.WriteString("No directories found in this location.")
+			}
+		} else {
+			items := activeList.Items()
+			selectedIndex := activeList.Index()
+			totalItems := len(items)
+
+			visibleItems := 10
+			if visibleItems > totalItems {
+				visibleItems = totalItems
+			}
+
+			startIdx := 0
+			if selectedIndex > visibleItems-3 && totalItems > visibleItems {
+				startIdx = selectedIndex - (visibleItems / 2)
+				if startIdx+visibleItems > totalItems {
+					startIdx = totalItems - visibleItems
 				}
 			}
-
-			// Получим имя файла и его размер
-			filename := filepath.Base(item.path)
-			sizeStr := ""
-			if item.size > 0 {
-				sizeStr = formatSize(item.size)
-			} else if item.size == 0 {
-				sizeStr = "DIR"
-			} else {
-				sizeStr = "UP DIR"
+			if startIdx < 0 {
+				startIdx = 0
 			}
 
-			// Определим стиль для строки (выделение или обычный)
-			prefix := "  "
-			style := lipgloss.NewStyle()
-
-			if i == selectedIndex {
-				prefix = "> "
-				style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
-			} else if item.size == -1 || item.size == 0 {
-				// Стиль для директорий
-				style = style.Foreground(lipgloss.Color("#4DC4FF"))
+			endIdx := startIdx + visibleItems
+			if endIdx > totalItems {
+				endIdx = totalItems
 			}
 
-			// Форматируем имя файла, чтобы уместилось в колонку
-			displayName := filename
-			if len(displayName) > 40 {
-				displayName = displayName[:37] + "..."
+			for i := startIdx; i < endIdx; i++ {
+				item := items[i].(cleanItem)
+
+				icon := "📄 "
+				if item.size == -1 {
+					icon = "⬆️ "
+				} else if item.size == 0 {
+					icon = "📁 "
+				} else {
+					ext := strings.ToLower(filepath.Ext(item.path))
+					switch ext {
+					case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
+						icon = "🖼️ "
+					case ".mp3", ".wav", ".flac", ".ogg":
+						icon = "🎵 "
+					case ".mp4", ".avi", ".mkv", ".mov":
+						icon = "🎬 "
+					case ".zip", ".rar", ".7z", ".tar", ".gz":
+						icon = "🗜️ "
+					case ".exe", ".msi":
+						icon = "⚙️ "
+					case ".pdf":
+						icon = "📕 "
+					case ".doc", ".docx", ".txt":
+						icon = "📝 "
+					}
+				}
+
+				filename := filepath.Base(item.path)
+				sizeStr := ""
+				if item.size > 0 {
+					sizeStr = formatSize(item.size)
+				} else if item.size == 0 {
+					sizeStr = "DIR"
+				} else {
+					sizeStr = "UP DIR"
+				}
+
+				prefix := "  "
+				style := lipgloss.NewStyle()
+
+				if i == selectedIndex {
+					prefix = "> "
+					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
+				} else if item.size == -1 || item.size == 0 {
+					style = style.Foreground(lipgloss.Color("#4DC4FF"))
+				}
+
+				displayName := filename
+				if len(displayName) > 40 {
+					displayName = displayName[:37] + "..."
+				}
+
+				padding := 44 - len(displayName)
+				if padding < 1 {
+					padding = 1
+				}
+
+				fileLine := fmt.Sprintf("%s%s%s%s%s",
+					prefix,
+					icon,
+					displayName,
+					strings.Repeat(" ", padding),
+					sizeStr)
+
+				listContent.WriteString(style.Render(fileLine))
+				listContent.WriteString("\n")
 			}
 
-			// Рассчитаем отступ для размера файла
-			padding := 44 - len(displayName)
-			if padding < 1 {
-				padding = 1
+			if totalItems > visibleItems {
+				scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
+					startIdx+1, endIdx, totalItems,
+					float64(selectedIndex+1)/float64(totalItems)*100)
+				listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
 			}
-
-			// Соберем строку с отформатированным файлом
-			fileLine := fmt.Sprintf("%s%s%s%s%s",
-				prefix,
-				icon,
-				displayName,
-				strings.Repeat(" ", padding),
-				sizeStr)
-
-			// Добавим строку с нужным стилем
-			listContent.WriteString(style.Render(fileLine))
-			listContent.WriteString("\n")
 		}
+		content.WriteString(listStyle.Render(listContent.String()))
+		content.WriteString("\n")
 
-		// Добавим информацию о прокрутке при необходимости
-		if totalItems > visibleItems {
-			// Show only directory size in status
-			scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
-				startIdx+1, endIdx, totalItems,
-				float64(selectedIndex+1)/float64(totalItems)*100)
-			listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
+		if m.focusedElement == "dirButton" {
+			content.WriteString(dirButtonFocusedStyle.Render("➡️ Change Directory"))
+		} else {
+			content.WriteString(dirButtonStyle.Render("➡️ Change Directory"))
+		}
+		content.WriteString("\n")
+		if m.focusedElement == "button" {
+			content.WriteString(buttonFocusedStyle.Render("🗑️ Delete Selected File"))
+		} else {
+			content.WriteString(buttonStyle.Render("🗑️ Delete Selected File"))
+		}
+		content.WriteString("\n")
+	} else if m.activeTab == 1 {
+		// Filters tab: excludeInput и min size, оба с подписью слева
+		excludeStyle := borderStyle.Copy()
+		if m.focusedElement == "exclude" {
+			excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+		}
+		m.excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
+		content.WriteString(excludeStyle.Render("exclude: " + m.excludeInput.View()))
+		content.WriteString("\n")
+		sizeStyle := borderStyle.Copy()
+		if m.focusedElement == "size" {
+			sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+		}
+		content.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
+		content.WriteString("\n")
+	} else if m.activeTab == 2 {
+		// Options tab: только options, без надписи Options
+		for i, name := range m.options {
+			style := optionStyle
+			if m.optionState[name] {
+				style = selectedOptionStyle
+			}
+			if m.focusedElement == fmt.Sprintf("option%d", i+1) {
+				style = optionFocusedStyle
+			}
+			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
+			content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
+			content.WriteString("\n")
 		}
 	}
 
-	s.WriteString(listStyle.Render(listContent.String()))
-	s.WriteString("\n\n")
-
-	// Directory button
-	if m.focusedElement == "dirButton" {
-		s.WriteString(dirButtonFocusedStyle.Copy().Width(100).Render("➡️ Change Directory"))
-	} else {
-		s.WriteString(dirButtonStyle.Copy().Width(100).Render("➡️ Change Directory"))
-	}
-	s.WriteString("\n")
-
-	// Delete button
-	if m.focusedElement == "button" {
-		s.WriteString(buttonFocusedStyle.Copy().Width(100).Render("🗑️ Delete Selected File"))
-	} else {
-		s.WriteString(buttonStyle.Copy().Width(100).Render("🗑️ Delete Selected File"))
-	}
-	s.WriteString("\n\n")
+	ui := tabsRow + "\n" + content.String()
 
 	// Help
-	s.WriteString("Arrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list\n")
-	s.WriteString("Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit")
+	ui += "\nArrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list\n"
+	ui += "Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit\n"
+	ui += "Left/Right: switch tabs"
 
-	// Error
 	if m.err != nil {
-		s.WriteString("\n" + errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		ui += "\n" + errorStyle.Render(fmt.Sprintf("Error: %v", m.err))
 	}
 
-	return appStyle.Render(s.String())
+	return appStyle.Render(ui)
 }
 
 func Run(startDir string, extensions []string, minSize int64, exclude []string) error {
