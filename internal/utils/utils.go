@@ -154,6 +154,56 @@ func LogDeletionToFile(files map[string]string) {
 	defer file.Close()
 }
 
+func DeleteEmptySubfolders(dir string) {
+	emptyDirs := make([]string, 0)
+
+	filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
+		if info == nil && !info.IsDir() {
+			return nil
+		}
+
+		if isEmptyDir(path) {
+			emptyDirs = append(emptyDirs, path)
+		}
+
+		return nil
+	})
+
+	for i := len(emptyDirs) - 1; i >= 0; i-- {
+		os.Remove(emptyDirs[i])
+	}
+}
+
+// Check if a directory is empty,true if directory have subfolders
+func isEmptyDir(dirPath string) bool {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return false
+	}
+	defer dir.Close()
+
+	entries, err := dir.Readdir(0)
+
+	if err != nil {
+		return false
+	}
+	if len(entries) == 0 {
+		return true
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// If this is a directory, we check recursively
+			if !isEmptyDir(filepath.Join(dirPath, entry.Name())) {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
 func DeleteFiles(dir string, extensions []string, exclude []string, minSize int64) {
 	taskCh := make(chan FileTask, runtime.NumCPU())
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -197,8 +247,6 @@ func DeleteFiles(dir string, extensions []string, exclude []string, minSize int6
 				os.Remove(path)
 			}
 		}(path, info)
-
 		return nil
 	})
-
 }

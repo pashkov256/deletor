@@ -247,12 +247,14 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 		"Show hidden files",
 		"Confirm deletion",
 		"Include subfolders",
+		"Delete empty subfolders",
 	}
 
 	optionState := map[string]bool{
-		"Show hidden files":  false,
-		"Confirm deletion":   false,
-		"Include subfolders": false,
+		"Show hidden files":       false,
+		"Confirm deletion":        false,
+		"Include subfolders":      false,
+		"Delete empty subfolders": false,
 	}
 
 	return &model{
@@ -741,6 +743,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusedElement = "option2"
 				} else if m.focusedElement == "option2" {
 					m.focusedElement = "option3"
+				} else if m.focusedElement == "option3" {
+					m.focusedElement = "option4"
 				} else {
 					m.focusedElement = "option1"
 				}
@@ -787,11 +791,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case 2: // Options tab
 				if m.focusedElement == "" {
+					m.focusedElement = "option1"
+				} else if m.focusedElement == "option1" {
 					m.focusedElement = "option2"
 				} else if m.focusedElement == "option2" {
-					m.focusedElement = "option1"
+					m.focusedElement = "option3"
+				} else if m.focusedElement == "option3" {
+					m.focusedElement = "option4"
 				} else {
-					m.focusedElement = "option2"
+					m.focusedElement = "option1"
 				}
 			}
 			return m, nil
@@ -964,15 +972,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if m.optionState["Include subfolders"] {
 					// Delete all files in the current directory and all subfolders
 					utils.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
+
+					if m.optionState["Delete empty subfolders"] {
+						utils.DeleteEmptySubfolders(m.currentPath)
+					}
+
 					return m, m.loadFiles()
 				}
-			case "option1", "option2", "option3":
+			case "option1", "option2", "option3", "option4":
 				idx := 0
 				if m.focusedElement == "option2" {
 					idx = 1
 				}
 				if m.focusedElement == "option3" {
 					idx = 2
+				}
+				if m.focusedElement == "option4" {
+					idx = 3
 				}
 				if idx < len(m.options) {
 					optName := m.options[idx]
@@ -986,7 +1002,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle space key for options
 		if msg.String() == " " && m.activeTab == 2 {
-			if m.focusedElement == "option1" || m.focusedElement == "option2" || m.focusedElement == "option3" {
+			if m.focusedElement == "option1" || m.focusedElement == "option2" || m.focusedElement == "option3" || m.focusedElement == "option4" {
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
@@ -1281,7 +1297,7 @@ func (m *model) View() string {
 	// Help
 	ui += "\nArrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list\n"
 	ui += "Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit\n"
-	ui += "Left/Right: switch tabs"
+	ui += "Left/Right arrow keys: switch tabs"
 
 	if m.err != nil {
 		ui += "\n" + errorStyle.Render(fmt.Sprintf("Error: %v", m.err))
