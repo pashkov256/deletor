@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
 )
+
+type FileTask struct {
+	info os.FileInfo
+}
 
 func FormatSize(bytes int64) string {
 	const (
@@ -117,11 +123,11 @@ func ToBytes(sizeStr string) (int64, error) {
 }
 
 func ToBytesOrDefault(sizeStr string) int64 {
-    size, err := ToBytes(sizeStr)
-    if err != nil {
-        return 0 // Default to 0 if conversion fails
-    }
-    return size
+	size, err := ToBytes(sizeStr)
+	if err != nil {
+		return 0 // Default to 0 if conversion fails
+	}
+	return size
 }
 
 func LogDeletionToFile(files map[string]string) {
@@ -146,4 +152,53 @@ func LogDeletionToFile(files map[string]string) {
 		return
 	}
 	defer file.Close()
+}
+
+func DeleteFiles(dir string, extensions []string, exclude []string, minSize int64) {
+	taskCh := make(chan FileTask, runtime.NumCPU())
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return nil
+		}
+
+		if err != nil {
+			return nil
+		}
+
+		go func(path string, info os.FileInfo) {
+			// Acquire token from channel first
+			taskCh <- FileTask{info: info}
+			defer func() { <-taskCh }() // Release token when done
+
+			if len(exclude) != 0 {
+				for _, excludePattern := range exclude {
+					if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
+						strings.HasPrefix(info.Name(), excludePattern) {
+						return
+					}
+				}
+			}
+
+			if len(extensions) > 0 {
+				ext := strings.ToLower(filepath.Ext(path))
+				matched := false
+				for _, allowedExt := range extensions {
+					if ext == allowedExt {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					return
+				}
+			}
+
+			if info.Size() > minSize {
+				os.Remove(path)
+			}
+		}(path, info)
+
+		return nil
+	})
+
 }
