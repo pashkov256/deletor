@@ -809,10 +809,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pathInput.Focused() {
 			switch msg.String() {
 			case "tab", "enter":
-				m.pathInput.Blur()
-				m.extInput.Focus()
-				m.focusedElement = "ext"
-				return m, nil
+				if m.activeTab == 0 {
+					m.pathInput.Blur()
+					m.extInput.Focus()
+					m.focusedElement = "ext"
+					return m, nil
+				}
 			case "esc":
 				m.pathInput.Blur()
 				m.focusedElement = "list"

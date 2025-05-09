@@ -99,7 +99,7 @@ func ToBytes(sizeStr string) (int64, error) {
 
 	num, err := strconv.ParseFloat(numStr, 64)
 	if err != nil {
-		return 0, fmt.Errorf("неверный формат числа: %v", err)
+		return 0, fmt.Errorf("invalid number format: %v", err)
 	}
 
 	var multiplier float64
