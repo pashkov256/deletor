@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
@@ -26,9 +26,6 @@ var (
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1)
-
-	sizeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1E90FF"))
 
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -76,10 +73,6 @@ var (
 				Foreground(lipgloss.Color("#5f5fd7")).
 				Background(lipgloss.Color("#333333"))
 
-	infoStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")).
-			Italic(true)
-
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF0000")).
 			Bold(true)
@@ -123,7 +116,7 @@ func (i cleanItem) Title() string {
 	}
 
 	// Format the size with unit
-	sizeStr := formatSize(i.size)
+	sizeStr := utils.FormatSize(i.size)
 
 	// Calculate padding for alignment
 	padding := 50 - len(filename)
@@ -149,28 +142,27 @@ type filteredSizeMsg struct {
 }
 
 type model struct {
-	list                list.Model
-	extInput            textinput.Model
-	sizeInput           textinput.Model
-	pathInput           textinput.Model
-	excludeInput        textinput.Model
-	currentPath         string
-	extensions          []string
-	minSize             int64
-	exclude             []string
-	options             []string
-	optionState         map[string]bool
-	err                 error
-	focusedElement      string // "path", "ext", "size", "button", "option1", "option2", "option3"
-	waitingConfirmation bool
-	fileToDelete        *cleanItem
-	showDirs            bool
-	dirList             list.Model
-	dirSize             int64 // Cached directory size
-	calculatingSize     bool  // Flag to indicate size calculation in progress
-	filteredSize        int64 // Total size of filtered files
-	filteredCount       int   // Count of filtered files
-	activeTab           int   // 0 for files, 1 for exclude
+	list            list.Model
+	extInput        textinput.Model
+	sizeInput       textinput.Model
+	pathInput       textinput.Model
+	excludeInput    textinput.Model
+	currentPath     string
+	extensions      []string
+	minSize         int64
+	exclude         []string
+	options         []string
+	optionState     map[string]bool
+	err             error
+	focusedElement  string // "path", "ext", "size", "button", "option1", "option2", "option3"
+	fileToDelete    *cleanItem
+	showDirs        bool
+	dirList         list.Model
+	dirSize         int64 // Cached directory size
+	calculatingSize bool  // Flag to indicate size calculation in progress
+	filteredSize    int64 // Total size of filtered files
+	filteredCount   int   // Count of filtered files
+	activeTab       int   // 0 for files, 1 for exclude
 }
 
 func initialModel(startDir string, extensions []string, minSize int64, exclude []string) *model {
@@ -226,7 +218,6 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 	delegate.SetSpacing(1)
 	delegate.ShowDescription = false
 
-	// Стили элементов
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(lipgloss.Color("#0066ff")).
@@ -255,35 +246,36 @@ func initialModel(startDir string, extensions []string, minSize int64, exclude [
 	options := []string{
 		"Show hidden files",
 		"Confirm deletion",
+		"Include subfolders",
 	}
 
 	optionState := map[string]bool{
-		"Show hidden files": false,
-		"Confirm deletion":  false,
+		"Show hidden files":  false,
+		"Confirm deletion":   false,
+		"Include subfolders": false,
 	}
 
 	return &model{
-		list:                l,
-		extInput:            extInput,
-		sizeInput:           sizeInput,
-		pathInput:           pathInput,
-		excludeInput:        excludeInput,
-		currentPath:         startDir,
-		extensions:          extensions,
-		minSize:             minSize,
-		exclude:             exclude,
-		options:             options,
-		optionState:         optionState,
-		focusedElement:      "list",
-		waitingConfirmation: false,
-		fileToDelete:        nil,
-		showDirs:            false,
-		dirList:             dirList,
-		dirSize:             0,
-		calculatingSize:     false,
-		filteredSize:        0,
-		filteredCount:       0,
-		activeTab:           0,
+		list:            l,
+		extInput:        extInput,
+		sizeInput:       sizeInput,
+		pathInput:       pathInput,
+		excludeInput:    excludeInput,
+		currentPath:     startDir,
+		extensions:      extensions,
+		minSize:         minSize,
+		exclude:         exclude,
+		options:         options,
+		optionState:     optionState,
+		focusedElement:  "list",
+		fileToDelete:    nil,
+		showDirs:        false,
+		dirList:         dirList,
+		dirSize:         0,
+		calculatingSize: false,
+		filteredSize:    0,
+		filteredCount:   0,
+		activeTab:       0,
 	}
 }
 
@@ -339,7 +331,7 @@ func (m *model) loadFiles() tea.Cmd {
 		// Get user-specified min size
 		sizeStr := m.sizeInput.Value()
 		if sizeStr != "" {
-			minSize, err := toBytes(sizeStr)
+			minSize, err := utils.ToBytes(sizeStr)
 			if err == nil {
 				m.minSize = minSize
 			} else {
@@ -356,7 +348,7 @@ func (m *model) loadFiles() tea.Cmd {
 			return fmt.Errorf("error reading directory: %v", err)
 		}
 
-		// Добавим родительскую директорию
+		// Add to parent directory
 		parentDir := filepath.Dir(currentDir)
 		if parentDir != currentDir {
 			items = append(items, cleanItem{
@@ -747,6 +739,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusedElement = "option1"
 				} else if m.focusedElement == "option1" {
 					m.focusedElement = "option2"
+				} else if m.focusedElement == "option2" {
+					m.focusedElement = "option3"
 				} else {
 					m.focusedElement = "option1"
 				}
@@ -945,7 +939,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showDirs = true
 				return m, m.loadDirs()
 			case "button":
-				if m.list.SelectedItem() != nil {
+				if m.list.SelectedItem() != nil && !m.optionState["Include subfolders"] {
 					selectedItem := m.list.SelectedItem().(cleanItem)
 					if selectedItem.size > 0 { // Only delete files, not directories
 						if !m.optionState["Confirm deletion"] {
@@ -967,16 +961,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 						return m, m.loadFiles()
 					}
+				} else if m.optionState["Include subfolders"] {
+					// Delete all files in the current directory and all subfolders
+					utils.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
+					return m, m.loadFiles()
 				}
-			case "option1", "option2":
+			case "option1", "option2", "option3":
 				idx := 0
 				if m.focusedElement == "option2" {
 					idx = 1
+				}
+				if m.focusedElement == "option3" {
+					idx = 2
 				}
 				if idx < len(m.options) {
 					optName := m.options[idx]
 					m.optionState[optName] = !m.optionState[optName]
 					m.focusedElement = "option" + fmt.Sprintf("%d", idx+1)
+
 					return m, nil
 				}
 			}
@@ -984,7 +986,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle space key for options
 		if msg.String() == " " && m.activeTab == 2 {
-			if m.focusedElement == "option1" || m.focusedElement == "option2" {
+			if m.focusedElement == "option1" || m.focusedElement == "option2" || m.focusedElement == "option3" {
 				idx := int(m.focusedElement[len(m.focusedElement)-1] - '1')
 				if idx >= 0 && idx < len(m.options) {
 					optName := m.options[idx]
@@ -1022,14 +1024,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if m.activeTab == 2 && msg.String() == "Enter" {
-			idx := int(msg.String()[0] - '1')
-			if idx >= 0 && idx < len(m.options) {
-				optName := m.options[idx]
-				m.optionState[optName] = !m.optionState[optName]
-				return m, nil
-			}
-		}
+		// if m.activeTab == 2 && msg.String() == "Enter" {
+		// 	idx := int(msg.String()[0] - '1')
+		// 	if idx >= 0 && idx < len(m.options) {
+		// 		optName := m.options[idx]
+		// 		m.optionState[optName] = !m.optionState[optName]
+		// 		return m, nil
+		// 	}
+		// }
 
 	}
 
@@ -1106,7 +1108,7 @@ func (m *model) View() string {
 			activeList = m.list
 		}
 		fileCount := len(activeList.Items())
-		filteredSizeText := formatSize(m.filteredSize)
+		filteredSizeText := utils.FormatSize(m.filteredSize)
 		content.WriteString("\n")
 		if !m.showDirs {
 			content.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
@@ -1185,7 +1187,7 @@ func (m *model) View() string {
 				filename := filepath.Base(item.path)
 				sizeStr := ""
 				if item.size > 0 {
-					sizeStr = formatSize(item.size)
+					sizeStr = utils.FormatSize(item.size)
 				} else if item.size == 0 {
 					sizeStr = "DIR"
 				} else {
@@ -1246,7 +1248,6 @@ func (m *model) View() string {
 		}
 		content.WriteString("\n")
 	} else if m.activeTab == 1 {
-		// Filters tab: excludeInput и min size, оба с подписью слева
 		excludeStyle := borderStyle.Copy()
 		if m.focusedElement == "exclude" {
 			excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
@@ -1261,7 +1262,6 @@ func (m *model) View() string {
 		content.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
 		content.WriteString("\n")
 	} else if m.activeTab == 2 {
-		// Options tab: только options, без надписи Options
 		for i, name := range m.options {
 			style := optionStyle
 			if m.optionState[name] {
@@ -1300,49 +1300,6 @@ func Run(startDir string, extensions []string, minSize int64, exclude []string) 
 	)
 	_, err := p.Run()
 	return err
-}
-
-func toBytes(sizeStr string) (int64, error) {
-	var value float64
-	var unit string
-
-	_, err := fmt.Sscanf(sizeStr, "%f%s", &value, &unit)
-	if err != nil {
-		return 0, fmt.Errorf("invalid format")
-	}
-
-	unit = strings.ToLower(unit)
-	multiplier := int64(1)
-
-	switch unit {
-	case "b":
-		multiplier = 1
-	case "kb":
-		multiplier = 1024
-	case "mb":
-		multiplier = 1024 * 1024
-	case "gb":
-		multiplier = 1024 * 1024 * 1024
-	case "tb":
-		multiplier = 1024 * 1024 * 1024 * 1024
-	default:
-		return 0, fmt.Errorf("unknown unit: %s", unit)
-	}
-
-	return int64(value * float64(multiplier)), nil
-}
-
-func formatSize(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 func getLatestRules() (string, []string, int64, []string) {

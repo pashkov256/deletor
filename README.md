@@ -10,6 +10,7 @@
   <a href="https://pkg.go.dev/github.com/pashkov256/deletor"><img src="https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg" alt="deletor"></a>
   <a><img src="https://img.shields.io/github/issues/pashkov256/deletor" alt="deletor"></a>
   <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+    <a href="https://deepwiki.com/pashkov256/deletor"><img src="https://deepwiki.com/badge.svg" alt="deepwiki"></a>
 <hr>
 </p>
 
