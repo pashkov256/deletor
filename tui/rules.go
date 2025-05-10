@@ -172,9 +172,6 @@ func (m *RulesModel) View() string {
 	s.WriteString(TitleStyle.Render(" Rule Management "))
 	s.WriteString("\n\n")
 
-	// Instructions
-	s.WriteString("Enter rule details below:\n\n")
-
 	// Extensions input
 	extStyle := StandardInputStyle
 	if m.focusIndex == 0 {
@@ -212,7 +209,7 @@ func (m *RulesModel) View() string {
 		saveButtonStyle = StandardButtonFocusedStyle
 	}
 
-	s.WriteString(saveButtonStyle.Render("Save rules "))
+	s.WriteString(saveButtonStyle.Render("💾 Save rules"))
 	s.WriteString("\n\n")
 
 	// Help text
