@@ -86,12 +86,15 @@ var (
 
 	// Tab styles
 	TabStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#666666")).
-			Padding(0, 1).
-			MarginRight(1)
+			Border(lipgloss.Border{
+			Bottom: "─",
+		}).
+		BorderForeground(lipgloss.Color("#666666")).
+		Padding(0, 1).
+		MarginRight(1)
 
 	ActiveTabStyle = TabStyle.Copy().
+			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#1E90FF")).
 			Foreground(lipgloss.Color("#1E90FF")).
 			Bold(true)

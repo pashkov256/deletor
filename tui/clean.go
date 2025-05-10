@@ -222,312 +222,290 @@ func (m *model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *model) loadFiles() tea.Cmd {
-	return func() tea.Msg {
-		var items []list.Item
-		var totalFilteredSize int64 = 0
-		var filteredCount int = 0
+func Run() error {
+	p := tea.NewProgram(initialModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithFPS(30),
+		tea.WithInputTTY(),
+		tea.WithOutput(os.Stderr),
+	)
+	_, err := p.Run()
+	return err
+}
 
-		currentDir := m.currentPath
-
-		// Get user-specified extensions
-		extStr := m.extInput.Value()
-		if extStr != "" {
-			// Parse extensions from input
-			m.extensions = []string{}
-			for _, ext := range strings.Split(extStr, ",") {
-				ext = strings.TrimSpace(ext)
-				if ext != "" {
-					// Add dot prefix if needed
-					if !strings.HasPrefix(ext, ".") {
-						ext = "." + ext
-					}
-					m.extensions = append(m.extensions, strings.ToLower(ext))
-				}
-			}
-		} else {
-			// If no extensions specified, show all files
-			m.extensions = []string{}
+func (m *model) View() string {
+	// --- Tabs rendering ---
+	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "❔ [F4] Help"}
+	tabs := make([]string, 4)
+	for i, name := range tabNames {
+		style := TabStyle
+		if m.activeTab == i {
+			style = ActiveTabStyle
 		}
+		tabs[i] = style.Render(name)
+	}
+	tabsRow := lipgloss.JoinHorizontal(lipgloss.Left, tabs...)
 
-		excludeStr := m.excludeInput.Value()
-		if excludeStr != "" {
-			// Parse extensions from input
-			m.exclude = []string{}
-			for _, exc := range strings.Split(excludeStr, ",") {
-				exc = strings.TrimSpace(exc)
-				if exc != "" {
-					m.exclude = append(m.exclude, exc)
-				}
-			}
-		} else {
-			// If no extensions specified, show all files
-			m.exclude = []string{}
+	// --- Content rendering ---
+	var content strings.Builder
+	content.WriteString(tabsRow)
+	content.WriteString("\n")
+
+	if m.activeTab == 3 {
+		// Help tab content
+
+		// Navigation
+		content.WriteString(OptionStyle.Render("Navigation:"))
+		content.WriteString("\n")
+		content.WriteString("  F1-F4    - Switch between tabs\n")
+		content.WriteString("  Esc      - Return to main menu\n")
+		content.WriteString("  Tab      - Next field\n")
+		content.WriteString("  Shift+Tab - Previous field\n")
+		content.WriteString("  Ctrl+C   - Exit application\n\n")
+
+		// File Operations
+		content.WriteString(OptionStyle.Render("File Operations:"))
+		content.WriteString("\n")
+		content.WriteString("  Ctrl+R   - Refresh file list\n")
+		content.WriteString("  Crtl+O   - Open in explorer\n")
+		content.WriteString("  Ctrl+D   - Delete files\n\n")
+
+		// Filter Operations
+		content.WriteString(OptionStyle.Render("Filter Operations:"))
+		content.WriteString("\n")
+		content.WriteString("  Alt+C    - Clear filters\n\n")
+
+		// Options
+		content.WriteString(OptionStyle.Render("Options:"))
+		content.WriteString("\n")
+		content.WriteString("  Alt+1    - Toggle hidden files\n")
+		content.WriteString("  Alt+2    - Toggle confirm deletion\n")
+		content.WriteString("  Alt+3    - Toggle include subfolders\n")
+		content.WriteString("  Alt+4    - Toggle delete empty subfolders\n")
+	} else if m.activeTab == 0 {
+		pathStyle := StandardInputStyle
+		if m.focusedElement == "path" {
+			pathStyle = StandardInputFocusedStyle
 		}
+		content.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
 
-		// Get user-specified min size
-		sizeStr := m.sizeInput.Value()
-		if sizeStr != "" {
-			minSize, err := utils.ToBytes(sizeStr)
-			if err == nil {
-				m.minSize = minSize
+		// If no path is set, show only the start button
+		if m.currentPath == "" {
+			startButtonStyle := LaunchButtonStyle
+			if m.focusedElement == "startButton" {
+				startButtonStyle = LaunchButtonFocusedStyle
+			}
+			content.WriteString("\n")
+			content.WriteString(startButtonStyle.Render("📂 Launch"))
+		} else {
+			// Show full interface when path is set
+			extStyle := StandardInputStyle
+			if m.focusedElement == "ext" {
+				extStyle = StandardInputFocusedStyle
+			}
+			content.WriteString("\n")
+			content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
+			content.WriteString("\n")
+			var activeList list.Model
+			if m.showDirs {
+				activeList = m.dirList
 			} else {
-				// If invalid size, reset to 0
-				m.minSize = 0
+				activeList = m.list
 			}
-		} else {
-			// If no size specified, show all files regardless of size
-			m.minSize = 0
-		}
-
-		fileInfos, err := os.ReadDir(currentDir)
-		if err != nil {
-			return nil
-		}
-
-		// Add to parent directory
-		parentDir := filepath.Dir(currentDir)
-		if parentDir != currentDir {
-			items = append(items, cleanItem{
-				path: parentDir,
-				size: -1, // Special value for parent directory
-			})
-		}
-
-		// First collect directories
-	dirLoop:
-		for _, fileInfo := range fileInfos {
-			if !fileInfo.IsDir() {
-				continue
-			}
-
-			// Skip hidden directories unless enabled
-			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
-				continue
-			}
-
-			path := filepath.Join(currentDir, fileInfo.Name())
-
-			if len(m.exclude) > 0 && fileInfo.IsDir() {
-				for _, excludePattern := range m.exclude {
-					if strings.Contains(filepath.ToSlash(path+"/"), excludePattern+"/") {
-						continue dirLoop
-					}
-				}
-			}
-
-			items = append(items, cleanItem{
-				path: path,
-				size: 0, // Directory
-			})
-		}
-
-		// Then collect files
-	fileLoop:
-		for _, fileInfo := range fileInfos {
-			if fileInfo.IsDir() {
-				continue
-			}
-
-			// Skip hidden files unless enabled
-			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
-				continue
-			}
-
-			path := filepath.Join(currentDir, fileInfo.Name())
-			info, err := fileInfo.Info()
-			if err != nil {
-				continue
-			}
-
-			size := info.Size()
-
-			// Apply extension filter if specified
-			if len(m.extensions) > 0 {
-				ext := strings.ToLower(filepath.Ext(path))
-				matched := false
-				for _, allowedExt := range m.extensions {
-					if ext == allowedExt {
-						matched = true
-						break
-					}
-				}
-				if !matched {
-					continue
-				}
-			}
-
-			// Apply size filter if specified
-			if m.minSize > 0 && size < m.minSize {
-				continue
-			}
-
-			if len(m.exclude) > 0 && !fileInfo.IsDir() {
-				for _, excludePattern := range m.exclude {
-					if strings.HasPrefix(fileInfo.Name(), excludePattern) {
-						continue fileLoop
-					}
-				}
-			}
-
-			// Add to filtered size and count
-			totalFilteredSize += size
-			filteredCount++
-
-			items = append(items, cleanItem{
-				path: path,
-				size: size,
-			})
-		}
-
-		// Return both the items and the size info
-		m.filteredSize = totalFilteredSize
-		m.filteredCount = filteredCount
-		return items
-	}
-}
-
-func (m *model) loadDirs() tea.Cmd {
-	return func() tea.Msg {
-		var items []list.Item
-
-		// Add parent directory with special display
-		parentDir := filepath.Dir(m.currentPath)
-		if parentDir != m.currentPath {
-			items = append(items, cleanItem{
-				path: parentDir,
-				size: -1, // Special value for parent directory
-			})
-		}
-
-		// Read current directory
-		entries, err := os.ReadDir(m.currentPath)
-		if err != nil {
-			return err
-		}
-
-		// Create a channel for results
-		results := make(chan cleanItem, 100)
-		done := make(chan bool)
-
-		// Start a goroutine to collect results
-		go func() {
-			for item := range results {
-				items = append(items, item)
-			}
-			done <- true
-		}()
-
-		// Process entries in a separate goroutine
-		go func() {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					// Skip hidden directories unless enabled
-					if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
-						continue
-					}
-					results <- cleanItem{
-						path: filepath.Join(m.currentPath, entry.Name()),
-						size: 0,
-					}
-				}
-			}
-			close(results)
-		}()
-
-		// Wait for collection to complete
-		<-done
-
-		// Sort directories by name
-		sort.Slice(items, func(i, j int) bool {
-			return items[i].(cleanItem).path < items[j].(cleanItem).path
-		})
-
-		// Update path input with current path
-		m.pathInput.SetValue(m.currentPath)
-
-		return items
-	}
-}
-
-// Asynchronous directory size calculation
-func (m *model) calculateDirSizeAsync() tea.Cmd {
-	return func() tea.Msg {
-		m.calculatingSize = true
-		size := calculateDirSize(m.currentPath)
-		m.calculatingSize = false
-		return dirSizeMsg{size: size}
-	}
-}
-
-// Function to calculate directory size recursively with option to cancel
-func calculateDirSize(path string) int64 {
-	// For very large directories, return a placeholder value immediately
-	// to avoid blocking the UI
-	_, err := os.Stat(path)
-	if err != nil {
-		return 0
-	}
-
-	// If it's a very large directory (like C: or Program Files)
-	// just return 0 immediately to prevent lag
-	if strings.HasSuffix(path, ":\\") || strings.Contains(path, "Program Files") {
-		return 0
-	}
-
-	var totalSize int64 = 0
-
-	// Use a channel to limit concurrency
-	semaphore := make(chan struct{}, 10)
-	var wg sync.WaitGroup
-
-	// Create a function to process a directory
-	var processDir func(string) int64
-	processDir = func(dirPath string) int64 {
-		var size int64 = 0
-		entries, err := os.ReadDir(dirPath)
-		if err != nil {
-			return 0
-		}
-
-		for _, entry := range entries {
-			// Skip hidden files and directories unless enabled
-			if strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
-
-			fullPath := filepath.Join(dirPath, entry.Name())
-			if entry.IsDir() {
-				// Process directories with concurrency limits
-				wg.Add(1)
-				go func(p string) {
-					semaphore <- struct{}{}
-					defer func() {
-						<-semaphore
-						wg.Done()
-					}()
-					dirSize := processDir(p)
-					atomic.AddInt64(&totalSize, dirSize)
-				}(fullPath)
+			fileCount := len(activeList.Items())
+			filteredSizeText := utils.FormatSize(m.filteredSize)
+			content.WriteString("\n")
+			if !m.showDirs {
+				content.WriteString(TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+					m.filteredCount, filteredSizeText)))
 			} else {
-				// Process files directly
-				info, err := entry.Info()
-				if err == nil {
-					fileSize := info.Size()
-					atomic.AddInt64(&totalSize, fileSize)
-					size += fileSize
+				content.WriteString(TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+					filepath.Base(m.currentPath), fileCount)))
+			}
+			content.WriteString("\n")
+			listStyle := ListStyle
+			if m.focusedElement == "list" {
+				listStyle = ListFocusedStyle
+			}
+
+			var listContent strings.Builder
+			if len(activeList.Items()) == 0 {
+				if !m.showDirs {
+					listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
+				} else {
+					listContent.WriteString("No directories found in this location.")
+				}
+			} else {
+				items := activeList.Items()
+				selectedIndex := activeList.Index()
+				totalItems := len(items)
+
+				visibleItems := 10
+				if visibleItems > totalItems {
+					visibleItems = totalItems
+				}
+
+				startIdx := 0
+				if selectedIndex > visibleItems-3 && totalItems > visibleItems {
+					startIdx = selectedIndex - (visibleItems / 2)
+					if startIdx+visibleItems > totalItems {
+						startIdx = totalItems - visibleItems
+					}
+				}
+				if startIdx < 0 {
+					startIdx = 0
+				}
+
+				endIdx := startIdx + visibleItems
+				if endIdx > totalItems {
+					endIdx = totalItems
+				}
+
+				for i := startIdx; i < endIdx; i++ {
+					item := items[i].(cleanItem)
+
+					icon := "📄 "
+					if item.size == -1 {
+						icon = "⬆️ "
+					} else if item.size == 0 {
+						icon = "📁 "
+					} else {
+						ext := strings.ToLower(filepath.Ext(item.path))
+						switch ext {
+						case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
+							icon = "🖼️ "
+						case ".mp3", ".wav", ".flac", ".ogg":
+							icon = "🎵 "
+						case ".mp4", ".avi", ".mkv", ".mov":
+							icon = "🎬 "
+						case ".zip", ".rar", ".7z", ".tar", ".gz":
+							icon = "🗜️ "
+						case ".exe", ".msi":
+							icon = "⚙️ "
+						case ".pdf":
+							icon = "📕 "
+						case ".doc", ".docx", ".txt":
+							icon = "📝 "
+						}
+					}
+
+					filename := filepath.Base(item.path)
+					sizeStr := ""
+					if item.size > 0 {
+						sizeStr = utils.FormatSize(item.size)
+					} else if item.size == 0 {
+						sizeStr = "DIR"
+					} else {
+						sizeStr = "UP DIR"
+					}
+
+					prefix := "  "
+					style := lipgloss.NewStyle()
+
+					if i == selectedIndex {
+						prefix = "> "
+						style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
+					} else if item.size == -1 || item.size == 0 {
+						style = style.Foreground(lipgloss.Color("#4DC4FF"))
+					}
+
+					displayName := filename
+					if len(displayName) > 40 {
+						displayName = displayName[:37] + "..."
+					}
+
+					padding := 44 - len(displayName)
+					if padding < 1 {
+						padding = 1
+					}
+
+					fileLine := fmt.Sprintf("%s%s%s%s%s",
+						prefix,
+						icon,
+						displayName,
+						strings.Repeat(" ", padding),
+						sizeStr)
+
+					listContent.WriteString(style.Render(fileLine))
+					listContent.WriteString("\n")
+				}
+
+				if totalItems > visibleItems {
+					scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
+						startIdx+1, endIdx, totalItems,
+						float64(selectedIndex+1)/float64(totalItems)*100)
+					listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
 				}
 			}
+			content.WriteString(listStyle.Render(listContent.String()))
+
+			// Buttons section
+			content.WriteString("\n\n")
+			if m.focusedElement == "dirButton" {
+				content.WriteString(StandardButtonFocusedStyle.Render("➡️ Show directories"))
+			} else {
+				content.WriteString(StandardButtonStyle.Render("➡️ Show directories"))
+			}
+			content.WriteString("\n\n")
+
+			if m.focusedElement == "button" {
+				content.WriteString(DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
+			} else {
+				content.WriteString(DeleteButtonStyle.Render("🗑️ Start cleaning"))
+			}
+			content.WriteString("\n")
 		}
-		return size
+	} else if m.activeTab == 1 {
+		// Filters tab
+		excludeStyle := StandardInputStyle
+		if m.focusedElement == "exclude" {
+			excludeStyle = StandardInputFocusedStyle
+		}
+		m.excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
+		content.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
+		content.WriteString("\n")
+		sizeStyle := StandardInputStyle
+		if m.focusedElement == "size" {
+			sizeStyle = StandardInputFocusedStyle
+		}
+		content.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
+	} else if m.activeTab == 2 {
+		// Options tab
+		for i, name := range m.options {
+			style := OptionStyle
+			if m.optionState[name] {
+				style = SelectedOptionStyle
+			}
+			if m.focusedElement == fmt.Sprintf("option%d", i+1) {
+				style = OptionFocusedStyle
+			}
+			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
+			content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
+			content.WriteString("\n")
+		}
 	}
 
-	// Start processing
-	processDir(path)
+	// Combine everything
+	var ui string
+	if m.activeTab != 0 {
+		// For Main tab, show only the content
+		ui = content.String()
+	} else {
+		// For other tabs, show content with hot keys
+		ui = lipgloss.JoinVertical(lipgloss.Left,
+			content.String(),
+			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list",
+			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+O: open in explorer • Ctrl+C: quit",
+			"Left/Right arrow keys: switch tabs",
+		)
+	}
 
-	wg.Wait()
+	if m.err != nil {
+		ui += "\n" + ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
+	}
 
-	return totalSize
+	return AppStyle.Render(ui)
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -965,6 +943,314 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *model) loadFiles() tea.Cmd {
+	return func() tea.Msg {
+		var items []list.Item
+		var totalFilteredSize int64 = 0
+		var filteredCount int = 0
+
+		currentDir := m.currentPath
+
+		// Get user-specified extensions
+		extStr := m.extInput.Value()
+		if extStr != "" {
+			// Parse extensions from input
+			m.extensions = []string{}
+			for _, ext := range strings.Split(extStr, ",") {
+				ext = strings.TrimSpace(ext)
+				if ext != "" {
+					// Add dot prefix if needed
+					if !strings.HasPrefix(ext, ".") {
+						ext = "." + ext
+					}
+					m.extensions = append(m.extensions, strings.ToLower(ext))
+				}
+			}
+		} else {
+			// If no extensions specified, show all files
+			m.extensions = []string{}
+		}
+
+		excludeStr := m.excludeInput.Value()
+		if excludeStr != "" {
+			// Parse extensions from input
+			m.exclude = []string{}
+			for _, exc := range strings.Split(excludeStr, ",") {
+				exc = strings.TrimSpace(exc)
+				if exc != "" {
+					m.exclude = append(m.exclude, exc)
+				}
+			}
+		} else {
+			// If no extensions specified, show all files
+			m.exclude = []string{}
+		}
+
+		// Get user-specified min size
+		sizeStr := m.sizeInput.Value()
+		if sizeStr != "" {
+			minSize, err := utils.ToBytes(sizeStr)
+			if err == nil {
+				m.minSize = minSize
+			} else {
+				// If invalid size, reset to 0
+				m.minSize = 0
+			}
+		} else {
+			// If no size specified, show all files regardless of size
+			m.minSize = 0
+		}
+
+		fileInfos, err := os.ReadDir(currentDir)
+		if err != nil {
+			return nil
+		}
+
+		// Add to parent directory
+		parentDir := filepath.Dir(currentDir)
+		if parentDir != currentDir {
+			items = append(items, cleanItem{
+				path: parentDir,
+				size: -1, // Special value for parent directory
+			})
+		}
+
+		// First collect directories
+	dirLoop:
+		for _, fileInfo := range fileInfos {
+			if !fileInfo.IsDir() {
+				continue
+			}
+
+			// Skip hidden directories unless enabled
+			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
+				continue
+			}
+
+			path := filepath.Join(currentDir, fileInfo.Name())
+
+			if len(m.exclude) > 0 && fileInfo.IsDir() {
+				for _, excludePattern := range m.exclude {
+					if strings.Contains(filepath.ToSlash(path+"/"), excludePattern+"/") {
+						continue dirLoop
+					}
+				}
+			}
+
+			items = append(items, cleanItem{
+				path: path,
+				size: 0, // Directory
+			})
+		}
+
+		// Then collect files
+	fileLoop:
+		for _, fileInfo := range fileInfos {
+			if fileInfo.IsDir() {
+				continue
+			}
+
+			// Skip hidden files unless enabled
+			if !m.optionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
+				continue
+			}
+
+			path := filepath.Join(currentDir, fileInfo.Name())
+			info, err := fileInfo.Info()
+			if err != nil {
+				continue
+			}
+
+			size := info.Size()
+
+			// Apply extension filter if specified
+			if len(m.extensions) > 0 {
+				ext := strings.ToLower(filepath.Ext(path))
+				matched := false
+				for _, allowedExt := range m.extensions {
+					if ext == allowedExt {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+			}
+
+			// Apply size filter if specified
+			if m.minSize > 0 && size < m.minSize {
+				continue
+			}
+
+			if len(m.exclude) > 0 && !fileInfo.IsDir() {
+				for _, excludePattern := range m.exclude {
+					if strings.HasPrefix(fileInfo.Name(), excludePattern) {
+						continue fileLoop
+					}
+				}
+			}
+
+			// Add to filtered size and count
+			totalFilteredSize += size
+			filteredCount++
+
+			items = append(items, cleanItem{
+				path: path,
+				size: size,
+			})
+		}
+
+		// Return both the items and the size info
+		m.filteredSize = totalFilteredSize
+		m.filteredCount = filteredCount
+		return items
+	}
+}
+
+func (m *model) loadDirs() tea.Cmd {
+	return func() tea.Msg {
+		var items []list.Item
+
+		// Add parent directory with special display
+		parentDir := filepath.Dir(m.currentPath)
+		if parentDir != m.currentPath {
+			items = append(items, cleanItem{
+				path: parentDir,
+				size: -1, // Special value for parent directory
+			})
+		}
+
+		// Read current directory
+		entries, err := os.ReadDir(m.currentPath)
+		if err != nil {
+			return err
+		}
+
+		// Create a channel for results
+		results := make(chan cleanItem, 100)
+		done := make(chan bool)
+
+		// Start a goroutine to collect results
+		go func() {
+			for item := range results {
+				items = append(items, item)
+			}
+			done <- true
+		}()
+
+		// Process entries in a separate goroutine
+		go func() {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					// Skip hidden directories unless enabled
+					if !m.optionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
+						continue
+					}
+					results <- cleanItem{
+						path: filepath.Join(m.currentPath, entry.Name()),
+						size: 0,
+					}
+				}
+			}
+			close(results)
+		}()
+
+		// Wait for collection to complete
+		<-done
+
+		// Sort directories by name
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].(cleanItem).path < items[j].(cleanItem).path
+		})
+
+		// Update path input with current path
+		m.pathInput.SetValue(m.currentPath)
+
+		return items
+	}
+}
+
+// Asynchronous directory size calculation
+func (m *model) calculateDirSizeAsync() tea.Cmd {
+	return func() tea.Msg {
+		m.calculatingSize = true
+		size := calculateDirSize(m.currentPath)
+		m.calculatingSize = false
+		return dirSizeMsg{size: size}
+	}
+}
+
+// Function to calculate directory size recursively with option to cancel
+func calculateDirSize(path string) int64 {
+	// For very large directories, return a placeholder value immediately
+	// to avoid blocking the UI
+	_, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+
+	// If it's a very large directory (like C: or Program Files)
+	// just return 0 immediately to prevent lag
+	if strings.HasSuffix(path, ":\\") || strings.Contains(path, "Program Files") {
+		return 0
+	}
+
+	var totalSize int64 = 0
+
+	// Use a channel to limit concurrency
+	semaphore := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+
+	// Create a function to process a directory
+	var processDir func(string) int64
+	processDir = func(dirPath string) int64 {
+		var size int64 = 0
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			return 0
+		}
+
+		for _, entry := range entries {
+			// Skip hidden files and directories unless enabled
+			if strings.HasPrefix(entry.Name(), ".") {
+				continue
+			}
+
+			fullPath := filepath.Join(dirPath, entry.Name())
+			if entry.IsDir() {
+				// Process directories with concurrency limits
+				wg.Add(1)
+				go func(p string) {
+					semaphore <- struct{}{}
+					defer func() {
+						<-semaphore
+						wg.Done()
+					}()
+					dirSize := processDir(p)
+					atomic.AddInt64(&totalSize, dirSize)
+				}(fullPath)
+			} else {
+				// Process files directly
+				info, err := entry.Info()
+				if err == nil {
+					fileSize := info.Size()
+					atomic.AddInt64(&totalSize, fileSize)
+					size += fileSize
+				}
+			}
+		}
+		return size
+	}
+
+	// Start processing
+	processDir(path)
+
+	wg.Wait()
+
+	return totalSize
+}
+
 // Helper function to open directory in file explorer
 func openFileExplorer(path string) tea.Cmd {
 	return func() tea.Msg {
@@ -1021,292 +1307,6 @@ func (m *model) OnDelete() (tea.Model, tea.Cmd) {
 		return m, m.loadFiles()
 	}
 	return m, nil
-}
-
-func (m *model) View() string {
-	// --- Tabs rendering ---
-	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "❔ [F4] Help"}
-	tabs := make([]string, 4)
-	for i, name := range tabNames {
-		style := TabStyle
-		if m.activeTab == i {
-			style = ActiveTabStyle
-		}
-		tabs[i] = style.Render(name)
-	}
-	tabsRow := lipgloss.JoinHorizontal(lipgloss.Left, tabs...)
-
-	// --- Content rendering ---
-	var content strings.Builder
-	content.WriteString(tabsRow)
-	content.WriteString("\n\n")
-
-	if m.activeTab == 3 {
-		// Help tab content
-
-		// Navigation
-		content.WriteString(OptionStyle.Render("Navigation:"))
-		content.WriteString("\n")
-		content.WriteString("  F1-F4    - Switch between tabs\n")
-		content.WriteString("  Esc      - Return to main menu\n")
-		content.WriteString("  Tab      - Next field\n")
-		content.WriteString("  Shift+Tab - Previous field\n")
-		content.WriteString("  Ctrl+C   - Exit application\n\n")
-
-		// File Operations
-		content.WriteString(OptionStyle.Render("File Operations:"))
-		content.WriteString("\n")
-		content.WriteString("  Ctrl+R   - Refresh file list\n")
-		content.WriteString("  Crtl+O   - Open in explorer\n")
-		content.WriteString("  Ctrl+D   - Delete files\n\n")
-
-		// Filter Operations
-		content.WriteString(OptionStyle.Render("Filter Operations:"))
-		content.WriteString("\n")
-		content.WriteString("  Alt+C    - Clear filters\n\n")
-
-		// Options
-		content.WriteString(OptionStyle.Render("Options:"))
-		content.WriteString("\n")
-		content.WriteString("  Alt+1    - Toggle hidden files\n")
-		content.WriteString("  Alt+2    - Toggle confirm deletion\n")
-		content.WriteString("  Alt+3    - Toggle include subfolders\n")
-		content.WriteString("  Alt+4    - Toggle delete empty subfolders\n")
-	} else if m.activeTab == 0 {
-		pathStyle := StandardInputStyle
-		if m.focusedElement == "path" {
-			pathStyle = StandardInputFocusedStyle
-		}
-		content.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
-
-		// If no path is set, show only the start button
-		if m.currentPath == "" {
-			startButtonStyle := LaunchButtonStyle
-			if m.focusedElement == "startButton" {
-				startButtonStyle = LaunchButtonFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(startButtonStyle.Render("📂 Launch"))
-		} else {
-			// Show full interface when path is set
-			extStyle := StandardInputStyle
-			if m.focusedElement == "ext" {
-				extStyle = StandardInputFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
-
-			var activeList list.Model
-			if m.showDirs {
-				activeList = m.dirList
-			} else {
-				activeList = m.list
-			}
-			fileCount := len(activeList.Items())
-			filteredSizeText := utils.FormatSize(m.filteredSize)
-			content.WriteString("\n")
-			if !m.showDirs {
-				content.WriteString(TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
-					m.filteredCount, filteredSizeText)))
-			} else {
-				content.WriteString(TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
-					filepath.Base(m.currentPath), fileCount)))
-			}
-			content.WriteString("\n")
-			listStyle := ListStyle
-			if m.focusedElement == "list" {
-				listStyle = ListFocusedStyle
-			}
-
-			var listContent strings.Builder
-			if len(activeList.Items()) == 0 {
-				if !m.showDirs {
-					listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
-				} else {
-					listContent.WriteString("No directories found in this location.")
-				}
-			} else {
-				items := activeList.Items()
-				selectedIndex := activeList.Index()
-				totalItems := len(items)
-
-				visibleItems := 10
-				if visibleItems > totalItems {
-					visibleItems = totalItems
-				}
-
-				startIdx := 0
-				if selectedIndex > visibleItems-3 && totalItems > visibleItems {
-					startIdx = selectedIndex - (visibleItems / 2)
-					if startIdx+visibleItems > totalItems {
-						startIdx = totalItems - visibleItems
-					}
-				}
-				if startIdx < 0 {
-					startIdx = 0
-				}
-
-				endIdx := startIdx + visibleItems
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					item := items[i].(cleanItem)
-
-					icon := "📄 "
-					if item.size == -1 {
-						icon = "⬆️ "
-					} else if item.size == 0 {
-						icon = "📁 "
-					} else {
-						ext := strings.ToLower(filepath.Ext(item.path))
-						switch ext {
-						case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
-							icon = "🖼️ "
-						case ".mp3", ".wav", ".flac", ".ogg":
-							icon = "🎵 "
-						case ".mp4", ".avi", ".mkv", ".mov":
-							icon = "🎬 "
-						case ".zip", ".rar", ".7z", ".tar", ".gz":
-							icon = "🗜️ "
-						case ".exe", ".msi":
-							icon = "⚙️ "
-						case ".pdf":
-							icon = "📕 "
-						case ".doc", ".docx", ".txt":
-							icon = "📝 "
-						}
-					}
-
-					filename := filepath.Base(item.path)
-					sizeStr := ""
-					if item.size > 0 {
-						sizeStr = utils.FormatSize(item.size)
-					} else if item.size == 0 {
-						sizeStr = "DIR"
-					} else {
-						sizeStr = "UP DIR"
-					}
-
-					prefix := "  "
-					style := lipgloss.NewStyle()
-
-					if i == selectedIndex {
-						prefix = "> "
-						style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
-					} else if item.size == -1 || item.size == 0 {
-						style = style.Foreground(lipgloss.Color("#4DC4FF"))
-					}
-
-					displayName := filename
-					if len(displayName) > 40 {
-						displayName = displayName[:37] + "..."
-					}
-
-					padding := 44 - len(displayName)
-					if padding < 1 {
-						padding = 1
-					}
-
-					fileLine := fmt.Sprintf("%s%s%s%s%s",
-						prefix,
-						icon,
-						displayName,
-						strings.Repeat(" ", padding),
-						sizeStr)
-
-					listContent.WriteString(style.Render(fileLine))
-					listContent.WriteString("\n")
-				}
-
-				if totalItems > visibleItems {
-					scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
-						startIdx+1, endIdx, totalItems,
-						float64(selectedIndex+1)/float64(totalItems)*100)
-					listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
-				}
-			}
-			content.WriteString(listStyle.Render(listContent.String()))
-
-			// Buttons section
-			content.WriteString("\n\n")
-			if m.focusedElement == "dirButton" {
-				content.WriteString(StandardButtonFocusedStyle.Render("➡️ Show directories"))
-			} else {
-				content.WriteString(StandardButtonStyle.Render("➡️ Show directories"))
-			}
-			content.WriteString("\n\n")
-
-			if m.focusedElement == "button" {
-				content.WriteString(DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
-			} else {
-				content.WriteString(DeleteButtonStyle.Render("🗑️ Start cleaning"))
-			}
-			content.WriteString("\n")
-		}
-	} else if m.activeTab == 1 {
-		// Filters tab
-		excludeStyle := StandardInputStyle
-		if m.focusedElement == "exclude" {
-			excludeStyle = StandardInputFocusedStyle
-		}
-		m.excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
-		content.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
-		content.WriteString("\n")
-		sizeStyle := StandardInputStyle
-		if m.focusedElement == "size" {
-			sizeStyle = StandardInputFocusedStyle
-		}
-		content.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
-	} else if m.activeTab == 2 {
-		// Options tab
-		for i, name := range m.options {
-			style := OptionStyle
-			if m.optionState[name] {
-				style = SelectedOptionStyle
-			}
-			if m.focusedElement == fmt.Sprintf("option%d", i+1) {
-				style = OptionFocusedStyle
-			}
-			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
-			content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
-			content.WriteString("\n")
-		}
-	}
-
-	// Combine everything
-	var ui string
-	if m.activeTab != 0 {
-		// For Main tab, show only the content
-		ui = content.String()
-	} else {
-		// For other tabs, show content with hot keys
-		ui = lipgloss.JoinVertical(lipgloss.Left,
-			content.String(),
-			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list",
-			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+O: open in explorer • Ctrl+C: quit",
-			"Left/Right arrow keys: switch tabs",
-		)
-	}
-
-	if m.err != nil {
-		ui += "\n" + ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
-	}
-
-	return AppStyle.Render(ui)
-}
-
-func Run() error {
-	p := tea.NewProgram(initialModel(),
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-		tea.WithFPS(30),
-		tea.WithInputTTY(),
-		tea.WithOutput(os.Stderr),
-	)
-	_, err := p.Run()
-	return err
 }
 
 func getLatestRules() (string, []string, int64, []string) {
