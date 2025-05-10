@@ -19,65 +19,6 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
-var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
-
-	cleanTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#1E90FF")).
-			Padding(0, 1)
-
-	borderStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#666666")).
-			Padding(0, 0).
-			Width(100)
-
-	dirButtonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#fff")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#1E90FF")).
-			Width(100).
-			Bold(true)
-
-	dirButtonFocusedStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("#1E90FF")).
-				Foreground(lipgloss.Color("#fff")).
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#1E90FF")).
-				Width(100).
-				Bold(true)
-
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#fff")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF6666")).
-			Width(100)
-
-	buttonFocusedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#fff")).
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#FF6666")).
-				Background(lipgloss.Color("#FF6666")).
-				Padding(0, 1).
-				Width(100)
-
-	optionStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5"))
-
-	selectedOptionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#ad58b3")).
-				Bold(true)
-
-	optionFocusedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#5f5fd7")).
-				Background(lipgloss.Color("#333333"))
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")).
-			Bold(true)
-)
-
 type cleanItem struct {
 	path string
 	size int64
@@ -173,29 +114,29 @@ func initialModel() *model {
 	extInput := textinput.New()
 	extInput.Placeholder = "(e.g. js,png,zip)..."
 	extInput.SetValue(strings.Join(latestExtensions, ","))
-	extInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
-	extInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	extInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	extInput.PromptStyle = TextInputPromptStyle
+	extInput.TextStyle = TextInputTextStyle
+	extInput.Cursor.Style = TextInputCursorStyle
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
 	sizeInput.SetValue(utils.FormatSize(latestMinSize))
-	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
-	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	sizeInput.PromptStyle = TextInputPromptStyle
+	sizeInput.TextStyle = TextInputTextStyle
+	sizeInput.Cursor.Style = TextInputCursorStyle
 
 	pathInput := textinput.New()
 	pathInput.SetValue(latestDir)
-	pathInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
-	pathInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	pathInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	pathInput.PromptStyle = TextInputPromptStyle
+	pathInput.TextStyle = TextInputTextStyle
+	pathInput.Cursor.Style = TextInputCursorStyle
 
 	excludeInput := textinput.New()
 	excludeInput.Placeholder = "Exclude specific files/paths (e.g. data,backup)"
 	excludeInput.SetValue(strings.Join(latestExclude, ","))
-	excludeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
-	excludeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	excludeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	excludeInput.PromptStyle = TextInputPromptStyle
+	excludeInput.TextStyle = TextInputTextStyle
+	excludeInput.Cursor.Style = TextInputCursorStyle
 
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
@@ -217,7 +158,7 @@ func initialModel() *model {
 	l.SetShowStatusBar(true)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
-	l.Styles.Title = cleanTitleStyle
+	l.Styles.Title = TitleStyle
 
 	// Create directory list with same delegate
 	dirList := list.New([]list.Item{}, delegate, 30, 10)
@@ -226,7 +167,7 @@ func initialModel() *model {
 	dirList.SetShowStatusBar(true)
 	dirList.SetFilteringEnabled(false)
 	dirList.SetShowHelp(false)
-	dirList.Styles.Title = cleanTitleStyle
+	dirList.Styles.Title = TitleStyle
 
 	// Define options in fixed order
 	options := []string{
@@ -589,20 +530,6 @@ func calculateDirSize(path string) int64 {
 	return totalSize
 }
 
-// Helper function to expand tilde in path
-func expandTilde(path string) string {
-	if !strings.HasPrefix(path, "~") {
-		return path
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-
-	return filepath.Join(home, path[1:])
-}
-
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -615,7 +542,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		// Properly set both width and height
-		h, v := appStyle.GetFrameSize()
+		h, v := AppStyle.GetFrameSize()
 		// Further reduce listHeight by another 10% (now at 65% of original)
 		listHeight := (msg.Height - v - 15) * 65 / 100 // Reserve space for other UI elements and reduce by 35%
 		if listHeight < 5 {
@@ -778,7 +705,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					path := m.pathInput.Value()
 					if path != "" {
 						// Expand tilde in path
-						expandedPath := expandTilde(path)
+						expandedPath := utils.ExpandTilde(path)
 						if _, err := os.Stat(expandedPath); err == nil {
 							m.currentPath = expandedPath
 
@@ -1030,63 +957,43 @@ func openFileExplorer(path string) tea.Cmd {
 }
 
 func (m *model) View() string {
-	// --- Tabs styles ---
-	tabStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#666666")).
-		Padding(0, 1)
-
-	activeTabStyle := tabStyle.Copy().
-		BorderForeground(lipgloss.Color("#1E90FF")).
-		Foreground(lipgloss.Color("#1E90FF")).
-		Bold(true)
-
 	// --- Tabs rendering ---
 	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options"}
 	tabs := make([]string, 3)
 	for i, name := range tabNames {
-		style := tabStyle
+		style := TabStyle
 		if m.activeTab == i {
-			style = activeTabStyle
+			style = ActiveTabStyle
 		}
 		tabs[i] = style.Render(name)
 	}
-	tabsRow := lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
+	tabsRow := lipgloss.JoinHorizontal(lipgloss.Left, tabs...)
 
 	// --- Content rendering ---
 	var content strings.Builder
+
 	if m.activeTab == 0 {
-		pathStyle := borderStyle.Copy()
+		pathStyle := StandardInputStyle
 		if m.focusedElement == "path" {
-			pathStyle = pathStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+			pathStyle = StandardInputFocusedStyle
 		}
+		content.WriteString("\n")
 		content.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
 		content.WriteString("\n")
 
 		// If no path is set, show only the start button
 		if m.currentPath == "" {
-			startButtonStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#fff")).
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#4CAF50")).
-				Width(100).
-				Bold(true)
+			startButtonStyle := LaunchButtonStyle
 			if m.focusedElement == "startButton" {
-				startButtonStyle = lipgloss.NewStyle().
-					Background(lipgloss.Color("#1cd922")).
-					Foreground(lipgloss.Color("#fff")).
-					Border(lipgloss.RoundedBorder()).
-					BorderForeground(lipgloss.Color("#1cd922")).
-					Width(100).
-					Bold(true)
+				startButtonStyle = LaunchButtonFocusedStyle
 			}
 			content.WriteString(startButtonStyle.Render("📂 Launch"))
 			content.WriteString("\n")
 		} else {
 			// Show full interface when path is set
-			extStyle := borderStyle.Copy()
+			extStyle := StandardInputStyle
 			if m.focusedElement == "ext" {
-				extStyle = extStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+				extStyle = StandardInputFocusedStyle
 			}
 			content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
 			content.WriteString("\n")
@@ -1101,16 +1008,16 @@ func (m *model) View() string {
 			filteredSizeText := utils.FormatSize(m.filteredSize)
 			content.WriteString("\n")
 			if !m.showDirs {
-				content.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+				content.WriteString(TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
 					m.filteredCount, filteredSizeText)))
 			} else {
-				content.WriteString(cleanTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+				content.WriteString(TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
 					filepath.Base(m.currentPath), fileCount)))
 			}
 			content.WriteString("\n")
-			listStyle := borderStyle.Copy()
+			listStyle := ListStyle
 			if m.focusedElement == "list" {
-				listStyle = listStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+				listStyle = ListFocusedStyle
 			}
 
 			var listContent strings.Builder
@@ -1226,40 +1133,42 @@ func (m *model) View() string {
 			content.WriteString("\n")
 
 			if m.focusedElement == "dirButton" {
-				content.WriteString(dirButtonFocusedStyle.Render("➡️ Change Directory"))
+				content.WriteString(StandardButtonFocusedStyle.Render("➡️ Show directories"))
 			} else {
-				content.WriteString(dirButtonStyle.Render("➡️ Change Directory"))
+				content.WriteString(StandardButtonStyle.Render("➡️ Show directories"))
 			}
-			content.WriteString("\n")
+			content.WriteString("\n\n")
+
 			if m.focusedElement == "button" {
-				content.WriteString(buttonFocusedStyle.Render("🗑️ Delete Selected File"))
+				content.WriteString(DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
 			} else {
-				content.WriteString(buttonStyle.Render("🗑️ Delete Selected File"))
+				content.WriteString(DeleteButtonStyle.Render("🗑️ Start cleaning"))
 			}
 			content.WriteString("\n")
 		}
 	} else if m.activeTab == 1 {
-		excludeStyle := borderStyle.Copy()
+		// Filters tab
+		excludeStyle := StandardInputStyle
 		if m.focusedElement == "exclude" {
-			excludeStyle = excludeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+			excludeStyle = StandardInputFocusedStyle
 		}
 		m.excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
 		content.WriteString(excludeStyle.Render("exclude: " + m.excludeInput.View()))
 		content.WriteString("\n")
-		sizeStyle := borderStyle.Copy()
+		sizeStyle := StandardInputStyle
 		if m.focusedElement == "size" {
-			sizeStyle = sizeStyle.BorderForeground(lipgloss.Color("#1E90FF"))
+			sizeStyle = StandardInputFocusedStyle
 		}
 		content.WriteString(sizeStyle.Render("Min size: " + m.sizeInput.View()))
-		content.WriteString("\n")
 	} else if m.activeTab == 2 {
+		// Options tab
 		for i, name := range m.options {
-			style := optionStyle
+			style := OptionStyle
 			if m.optionState[name] {
-				style = selectedOptionStyle
+				style = SelectedOptionStyle
 			}
 			if m.focusedElement == fmt.Sprintf("option%d", i+1) {
-				style = optionFocusedStyle
+				style = OptionFocusedStyle
 			}
 			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
 			content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[m.optionState[name]], name)))
@@ -1267,18 +1176,20 @@ func (m *model) View() string {
 		}
 	}
 
-	ui := tabsRow + "\n" + content.String()
-
-	// Help
-	ui += "\nArrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list\n"
-	ui += "Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit\n"
-	ui += "Left/Right arrow keys: switch tabs"
+	// Combine everything
+	ui := lipgloss.JoinVertical(lipgloss.Left,
+		tabsRow,
+		content.String(),
+		"Arrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list",
+		"Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit",
+		"Left/Right arrow keys: switch tabs",
+	)
 
 	if m.err != nil {
-		ui += "\n" + errorStyle.Render(fmt.Sprintf("Error: %v", m.err))
+		ui += "\n" + ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
 	}
 
-	return appStyle.Render(ui)
+	return AppStyle.Render(ui)
 }
 
 func Run() error {
@@ -1304,9 +1215,10 @@ func getLatestRules() (string, []string, int64, []string) {
 	exclude := []string{}
 
 	// Use saved directory if provided and valid
+	expandedPath := utils.ExpandTilde(savedRules.Path)
 	if savedRules.Path != "" {
-		if _, err := os.Stat(savedRules.Path); err == nil {
-			startDir = savedRules.Path
+		if _, err := os.Stat(expandedPath); err == nil {
+			startDir = expandedPath
 		}
 	}
 

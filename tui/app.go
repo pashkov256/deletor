@@ -89,13 +89,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case rulesPage:
 		rulesModel, rulesCmd := a.rules.Update(msg)
 		if r, ok := rulesModel.(*RulesModel); ok {
-			// If rules are updated, reload the clean page
-			if !a.rules.rules.Equals(&r.rules) {
-				a.rules = r
-				// Re-initialize the cleanFiles model with updated rules
-				a.cleanFiles = initialModel()
-				cmds = append(cmds, a.cleanFiles.Init())
-			}
+			a.rules = r
 		}
 		cmd = rulesCmd
 	}
@@ -104,20 +98,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) View() string {
-	if a.cleanFiles == nil {
-		return "Loading..."
-	}
-
+	var content string
 	switch a.page {
 	case menuPage:
-		return a.menu.View()
+		content = a.menu.View()
 	case cleanPage:
-		return a.cleanFiles.View()
+		content = a.cleanFiles.View()
 	case rulesPage:
-		return a.rules.View()
+		content = a.rules.View()
 	case statsPage:
-		return "Statistics page coming soon..."
-	default:
-		return ""
+		content = "Statistics page coming soon..."
 	}
+	return AppStyle.Render(content)
 }
