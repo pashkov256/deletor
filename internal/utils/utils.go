@@ -18,6 +18,20 @@ type FileTask struct {
 	info os.FileInfo
 }
 
+// Helper function to expand tilde in path
+func ExpandTilde(path string) string {
+	if !strings.HasPrefix(path, "~") {
+		return path
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+
+	return filepath.Join(home, path[1:])
+}
+
 func FormatSize(bytes int64) string {
 	const (
 		KB = 1 << 10 // 1024

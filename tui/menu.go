@@ -8,7 +8,7 @@ import (
 
 var (
 	docStyle = lipgloss.NewStyle().
-			Margin(2).
+			Margin(1).
 			Padding(1, 2).
 			Align(lipgloss.Center)
 
@@ -23,6 +23,7 @@ var (
 				Foreground(lipgloss.Color("#7D56F4")).
 				Bold(true).
 				Padding(0, 1)
+	appStyle = lipgloss.NewStyle().Padding(0, 1)
 )
 
 type item struct {
@@ -72,7 +73,7 @@ func (m *MainMenu) Init() tea.Cmd {
 func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.list.SetSize(msg.Width-2, msg.Height-4)
+		m.list.SetSize(msg.Width-4, msg.Height-6)
 	}
 
 	var cmd tea.Cmd
@@ -81,5 +82,5 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MainMenu) View() string {
-	return appStyle.Render(m.list.View())
+	return docStyle.Render(m.list.View())
 }

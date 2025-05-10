@@ -12,29 +12,6 @@ import (
 	rules "github.com/pashkov256/deletor/internal/rules"
 )
 
-var (
-	rulesTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#1E90FF")).
-			Padding(0, 1)
-
-	rulesInputStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#666666")).
-			Padding(0, 0).
-			Width(100)
-
-	rulesInputFocusedStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#1E90FF")).
-				Padding(0, 0).
-				Width(100)
-
-	rulesPathStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")).
-			Italic(true)
-)
-
 // RulesModel represents the rules management page
 type RulesModel struct {
 	extensionsInput textinput.Model
@@ -192,53 +169,47 @@ func (m *RulesModel) View() string {
 	var s strings.Builder
 
 	// Title
-	s.WriteString(rulesTitleStyle.Render(" Rule Management "))
+	s.WriteString(TitleStyle.Render(" Rule Management "))
 	s.WriteString("\n\n")
 
 	// Instructions
 	s.WriteString("Enter rule details below:\n\n")
 
 	// Extensions input
-	extStyle := rulesInputStyle
+	extStyle := StandardInputStyle
 	if m.focusIndex == 0 {
-		extStyle = rulesInputFocusedStyle
+		extStyle = StandardInputFocusedStyle
 	}
 	s.WriteString(extStyle.Render("Extensions: " + m.extensionsInput.View()))
 	s.WriteString("\n")
 
 	// Size input
-	sizeStyle := rulesInputStyle
+	sizeStyle := StandardInputStyle
 	if m.focusIndex == 1 {
-		sizeStyle = rulesInputFocusedStyle
+		sizeStyle = StandardInputFocusedStyle
 	}
 	s.WriteString(sizeStyle.Render("Min Size: " + m.sizeInput.View()))
 	s.WriteString("\n")
 
 	// Location input
-	locStyle := rulesInputStyle
+	locStyle := StandardInputStyle
 	if m.focusIndex == 2 {
-		locStyle = rulesInputFocusedStyle
+		locStyle = StandardInputFocusedStyle
 	}
 	s.WriteString(locStyle.Render("Default path: " + m.locationInput.View()))
 	s.WriteString("\n")
 
-	excludeStyle := rulesInputStyle
+	excludeStyle := StandardInputStyle
 	if m.focusIndex == 3 {
-		excludeStyle = rulesInputFocusedStyle
+		excludeStyle = StandardInputFocusedStyle
 	}
 	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 	s.WriteString("\n\n")
 
 	// Save button
-	saveButtonStyle := lipgloss.NewStyle().
-		Padding(0, 3).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Background(lipgloss.Color("#1E90FF"))
-
+	saveButtonStyle := StandardButtonStyle
 	if m.focusIndex == 4 {
-		saveButtonStyle = saveButtonStyle.
-			Background(lipgloss.Color("#005fcc")).
-			Bold(true)
+		saveButtonStyle = StandardButtonFocusedStyle
 	}
 
 	s.WriteString(saveButtonStyle.Render("Save rules "))
@@ -248,7 +219,7 @@ func (m *RulesModel) View() string {
 	s.WriteString("Tab: cycle fields • Enter: save rule • Esc: return to menu\n\n")
 
 	// AppData path
-	s.WriteString(rulesPathStyle.Render(fmt.Sprintf("Rules are stored in: %s", rules.GetRulesPath())))
+	s.WriteString(PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", rules.GetRulesPath())))
 
-	return appStyle.Render(s.String())
+	return AppStyle.Render(s.String())
 }
