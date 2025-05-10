@@ -37,14 +37,13 @@ var (
 
 // RulesModel represents the rules management page
 type RulesModel struct {
-	extensionsInput   textinput.Model
-	sizeInput         textinput.Model
-	locationInput     textinput.Model
-	excludeInput      textinput.Model
-	rules             rules.Rules
-	focusIndex        int
-	rulesPath         string
-	saveButtonFocused bool
+	extensionsInput textinput.Model
+	sizeInput       textinput.Model
+	locationInput   textinput.Model
+	excludeInput    textinput.Model
+	rules           rules.Rules
+	focusIndex      int
+	rulesPath       string
 }
 
 // NewRulesModel creates a new rules management model
@@ -83,13 +82,12 @@ func NewRulesModel() *RulesModel {
 	rulesPath := filepath.Join(os.Getenv("APPDATA"), "deletor")
 
 	return &RulesModel{
-		extensionsInput:   extensionsInput,
-		sizeInput:         sizeInput,
-		locationInput:     locationInput,
-		excludeInput:      excludeInput,
-		focusIndex:        0,
-		rulesPath:         rulesPath,
-		saveButtonFocused: false,
+		extensionsInput: extensionsInput,
+		sizeInput:       sizeInput,
+		locationInput:   locationInput,
+		excludeInput:    excludeInput,
+		focusIndex:      0,
+		rulesPath:       rulesPath,
 	}
 }
 
@@ -108,9 +106,9 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab", "shift+tab", "up", "down":
 			// Handle input focus cycling
 			if msg.String() == "tab" || msg.String() == "down" {
-				m.focusIndex = (m.focusIndex + 1) % 4
+				m.focusIndex = (m.focusIndex + 1) % 5 // Now includes save button
 			} else if msg.String() == "shift+tab" || msg.String() == "up" {
-				m.focusIndex = (m.focusIndex - 1 + 4) % 4
+				m.focusIndex = (m.focusIndex - 1 + 5) % 5 // Now includes save button
 			}
 
 			// Update input focus
@@ -127,13 +125,10 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			// Handle save button focus
-			m.saveButtonFocused = (m.focusIndex == 4)
-
 			return m, nil
 		case "enter":
 			// Save button is focused
-			if m.saveButtonFocused {
+			if m.focusIndex == 4 {
 				m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
 				m.rules.Path = m.locationInput.Value()
 				m.rules.MinSize = m.sizeInput.Value()
@@ -165,9 +160,6 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						input.Blur()
 					}
 				}
-
-				// Handle save button focus
-				m.saveButtonFocused = (m.focusIndex == 4)
 			}
 
 			return m, nil
@@ -179,7 +171,6 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Update the currently focused input
 	switch m.focusIndex {
-
 	case 0:
 		m.extensionsInput, cmd = m.extensionsInput.Update(msg)
 		cmds = append(cmds, cmd)
@@ -235,7 +226,7 @@ func (m *RulesModel) View() string {
 	if m.focusIndex == 3 {
 		excludeStyle = rulesInputFocusedStyle
 	}
-	s.WriteString(excludeStyle.Render("Explain: " + m.excludeInput.View()))
+	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 	s.WriteString("\n\n")
 
 	// Save button
@@ -244,13 +235,13 @@ func (m *RulesModel) View() string {
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(lipgloss.Color("#1E90FF"))
 
-	if m.saveButtonFocused {
+	if m.focusIndex == 4 {
 		saveButtonStyle = saveButtonStyle.
 			Background(lipgloss.Color("#005fcc")).
 			Bold(true)
 	}
 
-	s.WriteString(saveButtonStyle.Render(" Save Settings "))
+	s.WriteString(saveButtonStyle.Render("Save rules "))
 	s.WriteString("\n\n")
 
 	// Help text
