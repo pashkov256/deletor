@@ -110,6 +110,12 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.rules.Path = m.locationInput.Value()
 				m.rules.MinSize = m.sizeInput.Value()
 				m.rules.Exclude = strings.Split(m.excludeInput.Value(), ",")
+
+				m.excludeInput.SetValue(strings.Join(m.rules.Exclude, ","))
+				m.locationInput.SetValue(m.rules.Path)
+				m.sizeInput.SetValue(m.rules.MinSize)
+				m.extensionsInput.SetValue(strings.Join(m.rules.Extensions, ","))
+
 				rules.UpdateRules(
 					m.locationInput.Value(),
 					m.sizeInput.Value(),
