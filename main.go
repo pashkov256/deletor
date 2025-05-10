@@ -13,7 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
-	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/utils"
 	"github.com/pashkov256/deletor/tui"
 	"github.com/schollz/progressbar/v3"

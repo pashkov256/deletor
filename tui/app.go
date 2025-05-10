@@ -2,11 +2,7 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pashkov256/deletor/internal/utils"
 )
-
-//var mainAppStyle = lipgloss.NewStyle().
-//	Padding(1, 2, 1, 2)
 
 type page int
 
@@ -42,7 +38,7 @@ func NewApp(startDir string, extensions []string, exclude []string, minSize int6
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFiles = initialModel(a.startDir, a.extensions, a.minSize, a.exclude)
+	a.cleanFiles = initialModel()
 	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rules.Init())
 }
 
@@ -97,7 +93,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !a.rules.rules.Equals(&r.rules) {
 				a.rules = r
 				// Re-initialize the cleanFiles model with updated rules
-				a.cleanFiles = initialModel(a.startDir, r.rules.Extensions, utils.ToBytesOrDefault(r.rules.MinSize), r.rules.Exclude)
+				a.cleanFiles = initialModel()
 				cmds = append(cmds, a.cleanFiles.Init())
 			}
 		}

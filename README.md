@@ -47,14 +47,12 @@ go install github.com/pashkov256/deletor
 ### TUI Mode (default):
 
 ```bash
-deletor -d ~/Downloads/
+deletor
 ```
 ### CLI Mode (with filters):
 ```bash
 
-
-
-deletor -cli -e mp4,zip -d ~/Downloads/ -s 10mb
+deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb
 ```
 ### Arguments:
 `-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
