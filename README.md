@@ -62,6 +62,8 @@ deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb
 `-s, --size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
 
+
+
 ## ✨ The Power of Dual Modes: TUI and CLI
 
 - TUI mode provides a user-friendly way to navigate and manage files visually, ideal for manual cleanups and exploration.
@@ -94,6 +96,19 @@ Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA
 
 - Share rules between machines
 
+### PATH Configuration
+After installation, make sure `~/go/bin` is in your PATH:
+
+For Linux/macOS (bash):
+```bash
+echo 'export PATH=$PATH:~/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+For Windows:
+The Go installation should automatically add the Go bin directory to your PATH. If it doesn't, you can add it manually through System Properties > Environment Variables.
+
+
 ## 🛠 Contributing
 We welcome and appreciate any contributions to Deletor!
 There are many ways you can help us grow and improve:
@@ -116,10 +131,3 @@ Together, we can make Deletor even better! 🚀
 
 ## 📜 License
 This project is distributed under the **MIT** license.
-## Star History
-<div style="text-align: center;">
-    <a href="https://www.star-history.com/#pashkov256/deletor&Date">
-        <img src="https://api.star-history.com/svg?repos=pashkov256/deletor&type=Date" alt="Star History Chart">
-    </a>
-</div>
-
