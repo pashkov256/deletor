@@ -40,12 +40,12 @@ func SetupRulesConfig() {
 
 	if err != nil {
 		baseRules := `
-{
-"path":"",
-"extensions":[],
-"exclude":[],
-"min_size":null
-}`
+		{
+			"path":"",
+			"extensions":[],
+			"exclude":[],
+			"min_size":null
+		}`
 
 		err := os.WriteFile(filePathRuleConfig, []byte(baseRules), 0644)
 
