@@ -9,7 +9,7 @@ var buttonWidth = 30
 // Common styles for the entire application
 var (
 	// Base styles
-	AppStyle = lipgloss.NewStyle().Padding(1, 2)
+	AppStyle = lipgloss.NewStyle().Padding(0, 2)
 
 	// Title styles
 	TitleStyle = lipgloss.NewStyle().

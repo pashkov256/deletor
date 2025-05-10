@@ -977,9 +977,7 @@ func (m *model) View() string {
 		if m.focusedElement == "path" {
 			pathStyle = StandardInputFocusedStyle
 		}
-		content.WriteString("\n")
 		content.WriteString(pathStyle.Render("Current Path: " + m.pathInput.View()))
-		content.WriteString("\n")
 
 		// If no path is set, show only the start button
 		if m.currentPath == "" {
@@ -987,16 +985,16 @@ func (m *model) View() string {
 			if m.focusedElement == "startButton" {
 				startButtonStyle = LaunchButtonFocusedStyle
 			}
-			content.WriteString(startButtonStyle.Render("📂 Launch"))
 			content.WriteString("\n")
+			content.WriteString(startButtonStyle.Render("📂 Launch"))
 		} else {
 			// Show full interface when path is set
 			extStyle := StandardInputStyle
 			if m.focusedElement == "ext" {
 				extStyle = StandardInputFocusedStyle
 			}
-			content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
 			content.WriteString("\n")
+			content.WriteString(extStyle.Render("Extensions: " + m.extInput.View()))
 
 			var activeList list.Model
 			if m.showDirs {
@@ -1130,8 +1128,9 @@ func (m *model) View() string {
 				}
 			}
 			content.WriteString(listStyle.Render(listContent.String()))
-			content.WriteString("\n")
 
+			// Buttons section
+			content.WriteString("\n\n")
 			if m.focusedElement == "dirButton" {
 				content.WriteString(StandardButtonFocusedStyle.Render("➡️ Show directories"))
 			} else {
