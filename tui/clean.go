@@ -103,7 +103,7 @@ type model struct {
 	calculatingSize bool  // Flag to indicate size calculation in progress
 	filteredSize    int64 // Total size of filtered files
 	filteredCount   int   // Count of filtered files
-	activeTab       int   // 0 for files, 1 for exclude
+	activeTab       int   // 0 for files, 1 for exclude, 2 for options, 3 for hot keys
 }
 
 func initialModel() *model {
@@ -578,6 +578,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "ctrl+d":
+			return m.OnDelete()
 		case "tab", "shift+tab":
 			// Handle tab navigation based on active tab
 			if m.activeTab == 0 {
@@ -696,6 +698,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.focusedElement = "option3"
 					}
 				}
+			} else if m.activeTab == 3 {
+				// Hot Keys tab navigation
+				if msg.String() == "tab" {
+					switch m.focusedElement {
+					case "hotKeys":
+						m.focusedElement = "navigation"
+					case "navigation":
+						m.focusedElement = "fileOperations"
+					case "fileOperations":
+						m.focusedElement = "filterOperations"
+					case "filterOperations":
+						m.focusedElement = "directoryNavigation"
+					case "directoryNavigation":
+						m.focusedElement = "options"
+					case "options":
+						m.focusedElement = "hotKeys"
+					}
+				} else {
+					switch m.focusedElement {
+					case "hotKeys":
+						m.focusedElement = "options"
+					case "options":
+						m.focusedElement = "directoryNavigation"
+					case "directoryNavigation":
+						m.focusedElement = "fileOperations"
+					case "fileOperations":
+						m.focusedElement = "navigation"
+					case "navigation":
+						m.focusedElement = "hotKeys"
+					}
+				}
 			}
 			return m, nil
 		case "enter":
@@ -722,6 +755,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else {
 				switch m.focusedElement {
+				case "ext", "size", "exclude":
+					// Обновляем список файлов при нажатии Enter на полях ввода
+					return m, m.loadFiles()
 				case "list":
 					if !m.showDirs && m.list.SelectedItem() != nil {
 						selectedItem := m.list.SelectedItem().(cleanItem)
@@ -755,38 +791,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.showDirs = true
 					return m, m.loadDirs()
 				case "button":
-					if m.list.SelectedItem() != nil && !m.optionState["Include subfolders"] {
-						selectedItem := m.list.SelectedItem().(cleanItem)
-						if selectedItem.size > 0 { // Only delete files, not directories
-							if !m.optionState["Confirm deletion"] {
-								// If confirm deletion is disabled, delete all files
-								for _, listItem := range m.list.Items() {
-									if fileItem, ok := listItem.(cleanItem); ok && fileItem.size > 0 {
-										err := os.Remove(fileItem.path)
-										if err != nil {
-											m.err = err
-										}
-									}
-								}
-							} else {
-								// Delete just the selected file
-								err := os.Remove(selectedItem.path)
-								if err != nil {
-									m.err = err
-								}
-							}
-							return m, m.loadFiles()
-						}
-					} else if m.optionState["Include subfolders"] {
-						// Delete all files in the current directory and all subfolders
-						utils.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
-
-						if m.optionState["Delete empty subfolders"] {
-							utils.DeleteEmptySubfolders(m.currentPath)
-						}
-
-						return m, m.loadFiles()
+					if m.activeTab == 0 {
+						return m.OnDelete()
 					}
+					return m, nil
 				case "option1", "option2", "option3", "option4":
 					idx := 0
 					if m.focusedElement == "option2" {
@@ -813,15 +821,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+r": // Refresh files
 			return m, m.loadFiles()
-		case "ctrl+d": // Toggle directory view
-			m.showDirs = !m.showDirs
-			if m.showDirs {
-				return m, m.loadDirs()
-			}
-			return m, m.loadFiles()
+		case "ctrl+d": // Delete files
+			return m.OnDelete()
 		case "ctrl+o": // Open current directory in file explorer
 			cmd := openFileExplorer(m.currentPath)
 			return m, cmd
+		case "alt+c": // Clear filters
+			m.sizeInput.SetValue("")
+			m.excludeInput.SetValue("")
+			return m, m.loadFiles()
+		case "alt+1": // Toggle hidden files
+			m.optionState["Show hidden files"] = !m.optionState["Show hidden files"]
+			return m, m.loadFiles()
+		case "alt+2": // Toggle confirm deletion
+			m.optionState["Confirm deletion"] = !m.optionState["Confirm deletion"]
+			return m, nil
+		case "alt+3": // Toggle include subfolders
+			m.optionState["Include subfolders"] = !m.optionState["Include subfolders"]
+			return m, nil
+		case "alt+4": // Toggle delete empty subfolders
+			m.optionState["Delete empty subfolders"] = !m.optionState["Delete empty subfolders"]
+			return m, nil
 		case "left", "right": // Tab switching
 			if msg.String() == "left" && m.activeTab > 0 {
 				m.activeTab--
@@ -830,7 +850,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusedElement = "exclude"
 				}
 			}
-			if msg.String() == "right" && m.activeTab < 1 {
+			if msg.String() == "right" && m.activeTab < 3 {
 				m.activeTab++
 				if m.activeTab == 1 {
 					m.excludeInput.Focus()
@@ -847,10 +867,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.activeTab = 1
 			m.focusedElement = "exclude"
 			m.excludeInput.Focus()
+			m.pathInput.Blur()
+			m.extInput.Blur()
+			m.sizeInput.Blur()
 			return m, nil
 		case "f3":
 			m.activeTab = 2
 			m.focusedElement = "option1"
+			return m, nil
+		case "f4":
+			m.activeTab = 3
 			return m, nil
 		case "up", "down": // Always handle arrow keys for list navigation regardless of focus
 			// Make list navigation global - arrow keys always navigate the list
@@ -920,6 +946,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sizeInput, cmd = m.sizeInput.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+	case "exclude":
+		if m.currentPath != "" {
+			m.excludeInput, cmd = m.excludeInput.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	case "list":
 		if m.currentPath != "" {
 			if m.showDirs {
@@ -956,10 +987,46 @@ func openFileExplorer(path string) tea.Cmd {
 	}
 }
 
+func (m *model) OnDelete() (tea.Model, tea.Cmd) {
+	if m.list.SelectedItem() != nil && !m.optionState["Include subfolders"] {
+		selectedItem := m.list.SelectedItem().(cleanItem)
+		if selectedItem.size > 0 { // Only delete files, not directories
+			if !m.optionState["Confirm deletion"] {
+				// If confirm deletion is disabled, delete all files
+				for _, listItem := range m.list.Items() {
+					if fileItem, ok := listItem.(cleanItem); ok && fileItem.size > 0 {
+						err := os.Remove(fileItem.path)
+						if err != nil {
+							m.err = err
+						}
+					}
+				}
+			} else {
+				// Delete just the selected file
+				err := os.Remove(selectedItem.path)
+				if err != nil {
+					m.err = err
+				}
+			}
+			return m, m.loadFiles()
+		}
+	} else if m.optionState["Include subfolders"] {
+		// Delete all files in the current directory and all subfolders
+		utils.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
+
+		if m.optionState["Delete empty subfolders"] {
+			utils.DeleteEmptySubfolders(m.currentPath)
+		}
+
+		return m, m.loadFiles()
+	}
+	return m, nil
+}
+
 func (m *model) View() string {
 	// --- Tabs rendering ---
-	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options"}
-	tabs := make([]string, 3)
+	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "❔ [F4] Help"}
+	tabs := make([]string, 4)
 	for i, name := range tabNames {
 		style := TabStyle
 		if m.activeTab == i {
@@ -971,8 +1038,41 @@ func (m *model) View() string {
 
 	// --- Content rendering ---
 	var content strings.Builder
+	content.WriteString(tabsRow)
+	content.WriteString("\n\n")
 
-	if m.activeTab == 0 {
+	if m.activeTab == 3 {
+		// Help tab content
+
+		// Navigation
+		content.WriteString(OptionStyle.Render("Navigation:"))
+		content.WriteString("\n")
+		content.WriteString("  F1-F4    - Switch between tabs\n")
+		content.WriteString("  Esc      - Return to main menu\n")
+		content.WriteString("  Tab      - Next field\n")
+		content.WriteString("  Shift+Tab - Previous field\n")
+		content.WriteString("  Ctrl+C   - Exit application\n\n")
+
+		// File Operations
+		content.WriteString(OptionStyle.Render("File Operations:"))
+		content.WriteString("\n")
+		content.WriteString("  Ctrl+R   - Refresh file list\n")
+		content.WriteString("  Crtl+O   - Open in explorer\n")
+		content.WriteString("  Ctrl+D   - Delete files\n\n")
+
+		// Filter Operations
+		content.WriteString(OptionStyle.Render("Filter Operations:"))
+		content.WriteString("\n")
+		content.WriteString("  Alt+C    - Clear filters\n\n")
+
+		// Options
+		content.WriteString(OptionStyle.Render("Options:"))
+		content.WriteString("\n")
+		content.WriteString("  Alt+1    - Toggle hidden files\n")
+		content.WriteString("  Alt+2    - Toggle confirm deletion\n")
+		content.WriteString("  Alt+3    - Toggle include subfolders\n")
+		content.WriteString("  Alt+4    - Toggle delete empty subfolders\n")
+	} else if m.activeTab == 0 {
 		pathStyle := StandardInputStyle
 		if m.focusedElement == "path" {
 			pathStyle = StandardInputFocusedStyle
@@ -1152,7 +1252,7 @@ func (m *model) View() string {
 			excludeStyle = StandardInputFocusedStyle
 		}
 		m.excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
-		content.WriteString(excludeStyle.Render("exclude: " + m.excludeInput.View()))
+		content.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 		content.WriteString("\n")
 		sizeStyle := StandardInputStyle
 		if m.focusedElement == "size" {
@@ -1176,13 +1276,19 @@ func (m *model) View() string {
 	}
 
 	// Combine everything
-	ui := lipgloss.JoinVertical(lipgloss.Left,
-		tabsRow,
-		content.String(),
-		"Arrow keys: navigate • Tab: cycle focus • Enter: select/confirm • Esc: back to list",
-		"Ctrl+R: refresh • Ctrl+D: toggle dirs • Ctrl+O: open in explorer • Ctrl+C: quit",
-		"Left/Right arrow keys: switch tabs",
-	)
+	var ui string
+	if m.activeTab != 0 {
+		// For Main tab, show only the content
+		ui = content.String()
+	} else {
+		// For other tabs, show content with hot keys
+		ui = lipgloss.JoinVertical(lipgloss.Left,
+			content.String(),
+			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list",
+			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+O: open in explorer • Ctrl+C: quit",
+			"Left/Right arrow keys: switch tabs",
+		)
+	}
 
 	if m.err != nil {
 		ui += "\n" + ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
