@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
+	"github.com/pashkov256/deletor/internal/fs"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/utils"
 	"github.com/pashkov256/deletor/tui"
@@ -55,9 +56,13 @@ func main() {
 	excludeFlag := flag.String("exclude", "", "Exclude specific files/paths (e.g. data,backup)")
 	size := flag.String("s", "", "Minimum file size to delete (e.g. 10kb, 10mb, 10b)")
 	dir := flag.String("d", ".", "Directory to scan")
-	isCLIMode := flag.Bool("cli", false, "CLI mode")
-	progress := *flag.Bool("progress", false, "Display a progress bar during file scanning")
+	includeSubdirsScan := flag.Bool("subdirs", false, "Include subdirectories in scan")
+	isCLIMode := flag.Bool("cli", false, "CLI mode (default is TUI)")
+	progress := flag.Bool("progress", false, "Display a progress bar during file scanning")
+
 	flag.Parse()
+
+	*dir = fs.ExpandTilde(*dir)
 
 	// Parse exclude patterns after flag.Parse()
 	var exclude []string
@@ -73,7 +78,6 @@ func main() {
 			extSlice[i] = strings.TrimSpace(extSlice[i])
 		}
 	}
-
 	// Convert size to bytes
 	var minSize int64
 	if *size != "" {
@@ -100,7 +104,7 @@ func main() {
 
 	} else {
 		var mutex sync.Mutex
-		var wg sync.WaitGroup
+
 		var totalClearSize int64
 		var totalScanSize int64
 		var progressChan chan int64
@@ -136,7 +140,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if progress {
+		if *progress {
 			filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
 
 				if info == nil {
@@ -183,56 +187,94 @@ func main() {
 			}()
 		}
 
-		filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
-			if info == nil {
-				fmt.Printf("Warning: Nil FileInfo for path: %s (err: %v)\n", path, err)
+		if *includeSubdirsScan {
+			var wg sync.WaitGroup
+			filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
+				if info == nil {
+					fmt.Printf("Warning: Nil FileInfo for path: %s (err: %v)\n", path, err)
+
+					return nil
+				}
+
+				if err != nil {
+					fmt.Printf("Warning: Error accessing path %s: %v\n", path, err)
+					return nil
+				}
+
+				wg.Add(1)
+				go func(path string, info os.FileInfo) {
+					// Acquire token from channel first
+					taskCh <- Task{info: info}
+					defer func() { <-taskCh }() // Release token when done
+					defer wg.Done()
+
+					if len(exclude) != 0 {
+						for _, excludePattern := range exclude {
+							if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
+								strings.HasPrefix(info.Name(), excludePattern) {
+								fmt.Printf("Skipping excluded path: %s\n", path)
+								return
+							}
+						}
+					}
+
+					if info.Size() >= minSize && extMap[filepath.Ext(info.Name())] {
+						mutex.Lock()
+						files = append(files, struct {
+							Name string
+							Size int64
+						}{path, info.Size()})
+						toDeleteMap[path] = utils.FormatSize(info.Size())
+						totalClearSize += info.Size()
+						mutex.Unlock()
+						if *progress {
+							progressChan <- info.Size()
+						}
+					}
+				}(path, info)
 
 				return nil
-			}
+			})
 
+			wg.Wait()
+		} else {
+			entries, err := os.ReadDir(*dir)
 			if err != nil {
-				fmt.Printf("Warning: Error accessing path %s: %v\n", path, err)
-				return nil
+				panic(err)
 			}
 
-			wg.Add(1)
-			go func(path string, info os.FileInfo) {
-				// Acquire token from channel first
-				taskCh <- Task{info: info}
-				defer func() { <-taskCh }() // Release token when done
-				defer wg.Done()
+			for _, entry := range entries {
+				info, err := entry.Info()
+				if err != nil {
+					panic(err)
+				}
 
 				if len(exclude) != 0 {
 					for _, excludePattern := range exclude {
-						if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
+						if strings.Contains(filepath.ToSlash(entry.Name()), excludePattern+"/") ||
 							strings.HasPrefix(info.Name(), excludePattern) {
-							fmt.Printf("Skipping excluded path: %s\n", path)
+							fmt.Printf("Skipping excluded path: %s\n", *dir)
 							return
 						}
 					}
 				}
 
-				if info.Size() > minSize && extMap[filepath.Ext(info.Name())] {
+				if info.Size() >= minSize && extMap[filepath.Ext(info.Name())] {
 					mutex.Lock()
 					files = append(files, struct {
 						Name string
 						Size int64
-					}{path, info.Size()})
-					toDeleteMap[path] = utils.FormatSize(info.Size())
+					}{*dir, info.Size()})
+					toDeleteMap[*dir] = utils.FormatSize(info.Size())
 					totalClearSize += info.Size()
 					mutex.Unlock()
-					if progress {
+					if *progress {
 						progressChan <- info.Size()
 					}
 				}
-			}(path, info)
-
-			return nil
-		})
-
-		wg.Wait()
-
-		if totalClearSize != 0 {
+			}
+		}
+		if len(toDeleteMap) != 0 {
 			utils.PrintFilesTable(toDeleteMap)
 
 			fmt.Println()
@@ -249,8 +291,8 @@ func main() {
 			}
 
 		} else {
-			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("Error:"), "File not found")
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Println(yellow("File not found"))
 		}
 	}
 

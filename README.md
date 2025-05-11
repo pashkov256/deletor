@@ -52,7 +52,7 @@ deletor
 ### CLI Mode (with filters):
 ```bash
 
-deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb
+deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb -subdirs --exclude data,backup
 ```
 ### Arguments:
 `-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
@@ -61,7 +61,12 @@ deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb
 
 `-s, --size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
+`--exclude` - exclude specific files/paths (e.g. data,backup)
 
+
+`-subdirs` - include subdirectories in scan, default false
+
+`-progress` - display a progress bar during file scanning
 
 
 ## ✨ The Power of Dual Modes: TUI and CLI
@@ -96,17 +101,6 @@ Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA
 
 - Share rules between machines
 
-### PATH Configuration
-After installation, make sure `~/go/bin` is in your PATH:
-
-For Linux/macOS (bash):
-```bash
-echo 'export PATH=$PATH:~/go/bin' >> ~/.bashrc
-source ~/.bashrc
-```
-
-For Windows:
-The Go installation should automatically add the Go bin directory to your PATH. If it doesn't, you can add it manually through System Properties > Environment Variables.
 
 
 ## 🛠 Contributing
