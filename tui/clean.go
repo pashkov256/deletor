@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/pashkov256/deletor/internal/fs"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/utils"
 )
@@ -716,7 +717,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					path := m.pathInput.Value()
 					if path != "" {
 						// Expand tilde in path
-						expandedPath := utils.ExpandTilde(path)
+						expandedPath := fs.ExpandTilde(path)
 						if _, err := os.Stat(expandedPath); err == nil {
 							m.currentPath = expandedPath
 
@@ -1298,10 +1299,10 @@ func (m *model) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	} else if m.optionState["Include subfolders"] {
 		// Delete all files in the current directory and all subfolders
-		utils.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
+		fs.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
 
 		if m.optionState["Delete empty subfolders"] {
-			utils.DeleteEmptySubfolders(m.currentPath)
+			fs.DeleteEmptySubfolders(m.currentPath)
 		}
 
 		return m, m.loadFiles()
@@ -1320,7 +1321,7 @@ func getLatestRules() (string, []string, int64, []string) {
 	exclude := []string{}
 
 	// Use saved directory if provided and valid
-	expandedPath := utils.ExpandTilde(savedRules.Path)
+	expandedPath := fs.ExpandTilde(savedRules.Path)
 	if savedRules.Path != "" {
 		if _, err := os.Stat(expandedPath); err == nil {
 			startDir = expandedPath
