@@ -1,10 +1,9 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
-	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -34,46 +33,17 @@ func FormatSize(bytes int64) string {
 	}
 }
 
-func PrintFilesTable(files map[string]string) {
-	yellow := color.New(color.FgYellow).SprintFunc()
-	white := color.New(color.FgWhite).SprintFunc()
-
-	maxSizeLen := 0
-	for _, size := range files {
-		if len(size) > maxSizeLen {
-			maxSizeLen = len(size)
-		}
+func ExpandTilde(path string) string {
+	if !strings.HasPrefix(path, "~") {
+		return path
 	}
 
-	for path, size := range files {
-		fmt.Printf("%s  %s\n", yellow(fmt.Sprintf("%-*s", maxSizeLen, size)), white(path))
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
 	}
-}
 
-func AskForConfirmation(s string) bool {
-	bold := color.New(color.Bold).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("%s %s ", bold(s), green("[y/n]:"))
-
-	for {
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		response = strings.ToLower(strings.TrimSpace(response))
-
-		fmt.Print("\n")
-
-		switch response {
-		case "y", "yes":
-			return true
-		case "n", "no":
-			return false
-		}
-	}
+	return filepath.Join(home, path[1:])
 }
 
 func ToBytes(sizeStr string) (int64, error) {

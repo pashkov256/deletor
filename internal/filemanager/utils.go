@@ -1,4 +1,4 @@
-package fs
+package filemanager
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 )
 
 // Check if a directory is empty,true if directory have subfolders
-func IsEmptyDir(dirPath string) bool {
+func (f *defaultFileManager) IsEmptyDir(dirPath string) bool {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		return false
@@ -26,7 +26,7 @@ func IsEmptyDir(dirPath string) bool {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			// If this is a directory, we check recursively
-			if !IsEmptyDir(filepath.Join(dirPath, entry.Name())) {
+			if !f.IsEmptyDir(filepath.Join(dirPath, entry.Name())) {
 				return false
 			}
 		} else {
@@ -37,7 +37,7 @@ func IsEmptyDir(dirPath string) bool {
 }
 
 // Helper function to expand tilde in path
-func ExpandTilde(path string) string {
+func (f *defaultFileManager) ExpandTilde(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path
 	}

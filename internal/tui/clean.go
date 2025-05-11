@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/pashkov256/deletor/internal/fs"
+	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/utils"
 )
@@ -105,12 +105,18 @@ type model struct {
 	filteredSize    int64 // Total size of filtered files
 	filteredCount   int   // Count of filtered files
 	activeTab       int   // 0 for files, 1 for exclude, 2 for options, 3 for hot keys
+	rules           rules.Rules
+	filemanager     filemanager.FileManager
 }
 
-func initialModel() *model {
-	// Fetch the latest rules
-	latestDir, latestExtensions, latestMinSize, latestExclude := getLatestRules()
+func initialModel(rules rules.Rules) *model {
+	// Create a temporary model to get rules
+	lastestRules, _ := rules.GetRules()
+	latestDir := lastestRules.Path
+	latestExtensions := lastestRules.Extensions
+	latestMinSize := lastestRules.MinSize
 
+	latestExclude := lastestRules.Exclude
 	// Initialize inputs
 	extInput := textinput.New()
 	extInput.Placeholder = "(e.g. js,png,zip)..."
@@ -121,7 +127,8 @@ func initialModel() *model {
 
 	sizeInput := textinput.New()
 	sizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
-	sizeInput.SetValue(utils.FormatSize(latestMinSize))
+	sizeInput.SetValue(latestMinSize)
+	minSize, _ := utils.ToBytes(latestMinSize)
 	sizeInput.PromptStyle = TextInputPromptStyle
 	sizeInput.TextStyle = TextInputTextStyle
 	sizeInput.Cursor.Style = TextInputCursorStyle
@@ -193,12 +200,11 @@ func initialModel() *model {
 		excludeInput:    excludeInput,
 		currentPath:     latestDir,
 		extensions:      latestExtensions,
-		minSize:         latestMinSize,
+		minSize:         minSize,
 		exclude:         latestExclude,
 		options:         options,
 		optionState:     optionState,
 		focusedElement:  "list",
-		fileToDelete:    nil,
 		showDirs:        false,
 		dirList:         dirList,
 		dirSize:         0,
@@ -206,6 +212,7 @@ func initialModel() *model {
 		filteredSize:    0,
 		filteredCount:   0,
 		activeTab:       0,
+		rules:           rules,
 	}
 }
 
@@ -223,8 +230,8 @@ func (m *model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func Run() error {
-	p := tea.NewProgram(initialModel(),
+func Run(filemanager filemanager.FileManager, rules rules.Rules) error {
+	p := tea.NewProgram(initialModel(rules),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithFPS(30),
@@ -717,7 +724,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					path := m.pathInput.Value()
 					if path != "" {
 						// Expand tilde in path
-						expandedPath := fs.ExpandTilde(path)
+						expandedPath := utils.ExpandTilde(path)
 						if _, err := os.Stat(expandedPath); err == nil {
 							m.currentPath = expandedPath
 
@@ -1299,10 +1306,10 @@ func (m *model) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	} else if m.optionState["Include subfolders"] {
 		// Delete all files in the current directory and all subfolders
-		fs.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
+		m.filemanager.DeleteFiles(m.currentPath, m.extensions, m.exclude, utils.ToBytesOrDefault(m.sizeInput.Value()))
 
 		if m.optionState["Delete empty subfolders"] {
-			fs.DeleteEmptySubfolders(m.currentPath)
+			m.filemanager.DeleteEmptySubfolders(m.currentPath)
 		}
 
 		return m, m.loadFiles()
@@ -1310,40 +1317,13 @@ func (m *model) OnDelete() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func getLatestRules() (string, []string, int64, []string) {
-	// Load saved rules
-	savedRules := rules.GetRules()
-
-	// Initialize default values
-	startDir := ""
-	extensions := []string{}
-	minSize := int64(0)
-	exclude := []string{}
-
-	// Use saved directory if provided and valid
-	expandedPath := fs.ExpandTilde(savedRules.Path)
-	if savedRules.Path != "" {
-		if _, err := os.Stat(expandedPath); err == nil {
-			startDir = expandedPath
-		}
+func (m *model) getLatestRules() (string, []string, int64, []string) {
+	rules, err := m.rules.GetRules()
+	if err != nil {
+		return "", []string{}, 0, []string{}
 	}
 
-	// Use saved extensions if provided
-	if len(savedRules.Extensions) > 0 {
-		extensions = savedRules.Extensions
-	}
+	latestMinSize, _ := utils.ToBytes(rules.MinSize)
 
-	// Use saved minimum size if provided
-	if savedRules.MinSize != "" {
-		if size, err := utils.ToBytes(savedRules.MinSize); err == nil {
-			minSize = size
-		}
-	}
-
-	// Use saved extensions if provided
-	if len(savedRules.Exclude) > 0 {
-		exclude = savedRules.Exclude
-	}
-
-	return startDir, extensions, minSize, exclude
+	return rules.Path, rules.Extensions, latestMinSize, rules.Exclude
 }

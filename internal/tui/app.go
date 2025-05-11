@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/rules"
 )
 
 type page int
@@ -14,32 +16,31 @@ const (
 )
 
 type App struct {
-	menu       *MainMenu
-	cleanFiles *model
-	rules      *RulesModel
-	page       page
-	err        error
-	startDir   string
-	exclude    []string
-	extensions []string
-	minSize    int64
+	menu        *MainMenu
+	cleanFiles  *model
+	rulesModel  *RulesModel
+	page        page
+	err         error
+	filemanager filemanager.FileManager
+	rules       rules.Rules
 }
 
-func NewApp(startDir string, extensions []string, exclude []string, minSize int64) *App {
+func NewApp(
+	filemanager filemanager.FileManager,
+	rules rules.Rules,
+) *App {
 	return &App{
-		menu:       NewMainMenu(),
-		rules:      NewRulesModel(),
-		page:       menuPage,
-		startDir:   startDir,
-		extensions: extensions,
-		exclude:    exclude,
-		minSize:    minSize,
+		menu:        NewMainMenu(),
+		rulesModel:  NewRulesModel(rules),
+		page:        menuPage,
+		filemanager: filemanager,
+		rules:       rules,
 	}
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFiles = initialModel()
-	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rules.Init())
+	a.cleanFiles = initialModel(a.rules)
+	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rulesModel.Init())
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -53,8 +54,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Quit
 		case "esc":
 			if a.page != menuPage {
+				if a.page == rulesPage {
+					a.cleanFiles = initialModel(a.rules)
+					cmds = append(cmds, a.cleanFiles.Init())
+				}
 				a.page = menuPage
-				return a, nil
+				return a, tea.Batch(cmds...)
 			}
 		case "enter":
 			if a.page == menuPage {
@@ -87,9 +92,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmd = cleanCmd
 	case rulesPage:
-		rulesModel, rulesCmd := a.rules.Update(msg)
+		rulesModel, rulesCmd := a.rulesModel.Update(msg)
 		if r, ok := rulesModel.(*RulesModel); ok {
-			a.rules = r
+			a.rulesModel = r
 		}
 		cmd = rulesCmd
 	}
@@ -105,7 +110,7 @@ func (a *App) View() string {
 	case cleanPage:
 		content = a.cleanFiles.View()
 	case rulesPage:
-		content = a.rules.View()
+		content = a.rulesModel.View()
 	case statsPage:
 		content = "Statistics page coming soon..."
 	}

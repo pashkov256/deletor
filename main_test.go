@@ -7,8 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pashkov256/deletor/internal/cli/output"
 	"github.com/pashkov256/deletor/internal/utils"
 )
+
+var printer = output.NewPrinter()
 
 func TestPrintFilesTable(t *testing.T) {
 	type args struct {
@@ -35,7 +38,7 @@ func TestPrintFilesTable(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			utils.PrintFilesTable(tt.args.files)
+			printer.PrintFilesTable(tt.args.files)
 
 			w.Close()
 			os.Stdout = old
@@ -85,7 +88,7 @@ func TestAskForConfirmation(t *testing.T) {
 				w.Write([]byte(tt.args.userInput))
 				w.Close()
 			}()
-			got := utils.AskForConfirmation("Delete these files?")
+			got := printer.AskForConfirmation("Delete these files?")
 			if got != tt.want {
 				t.Errorf("gotAskForConfirmation = %v\n wantAskForConfirmation = %v", got, tt.want)
 			}
