@@ -24,9 +24,9 @@ type RulesModel struct {
 }
 
 // NewRulesModel creates a new rules management model
-func NewRulesModel() *RulesModel {
+func NewRulesModel(rules rules.Rules) *RulesModel {
 	// Initialize inputs
-	currentRules := rules.GetRules()
+	currentRules, _ := rules.GetRules()
 	extensionsInput := textinput.New()
 	extensionsInput.Placeholder = "File extensions (e.g. tmp,log,bak)"
 	extensionsInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
@@ -42,7 +42,7 @@ func NewRulesModel() *RulesModel {
 	sizeInput.SetValue(currentRules.MinSize)
 
 	locationInput := textinput.New()
-	locationInput.Placeholder = "Target location (e.g. C:\\Users\\Downloads)"
+	locationInput.Placeholder = "Target location (e.g.rules C:\\Users\\Downloads)"
 	locationInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	locationInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	locationInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
@@ -65,6 +65,7 @@ func NewRulesModel() *RulesModel {
 		excludeInput:    excludeInput,
 		focusIndex:      0,
 		rulesPath:       rulesPath,
+		rules:           rules,
 	}
 }
 
@@ -106,24 +107,24 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Save button is focused
 			if m.focusIndex == 4 {
-				m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
-				m.rules.Path = m.locationInput.Value()
-				m.rules.MinSize = m.sizeInput.Value()
-				m.rules.Exclude = strings.Split(m.excludeInput.Value(), ",")
+				// m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
+				// m.rules.Path = m.locationInput.Value()
+				// m.rules.MinSize = m.sizeInput.Value()
+				// m.rules.Exclude = strings.Split(m.excludeInput.Value(), ",")
 
-				m.excludeInput.SetValue(strings.Join(m.rules.Exclude, ","))
-				m.locationInput.SetValue(m.rules.Path)
-				m.sizeInput.SetValue(m.rules.MinSize)
-				m.extensionsInput.SetValue(strings.Join(m.rules.Extensions, ","))
+				// m.excludeInput.SetValue(strings.Join(m.rules.Exclude, ","))
+				// m.locationInput.SetValue(m.rules.Path)
+				// m.sizeInput.SetValue(m.rules.MinSize)
+				// m.extensionsInput.SetValue(strings.Join(m.rules.Extensions, ","))
 
-				rules.UpdateRules(
+				m.rules.UpdateRules(
 					m.locationInput.Value(),
 					m.sizeInput.Value(),
 					strings.Split(m.extensionsInput.Value(), ","),
 					strings.Split(m.excludeInput.Value(), ","),
 				)
 
-				rules.GetRulesPath()
+				m.rules.GetRulesPath()
 				return m, nil
 			}
 
@@ -222,7 +223,7 @@ func (m *RulesModel) View() string {
 	s.WriteString("Tab: cycle fields • Enter: save rule • Esc: return to menu\n\n")
 
 	// AppData path
-	s.WriteString(PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", rules.GetRulesPath())))
+	s.WriteString(PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
 
 	return AppStyle.Render(s.String())
 }

@@ -1,4 +1,4 @@
-package fs
+package filemanager
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 )
 
 // recursively traverse deletion
-func DeleteFiles(dir string, extensions []string, exclude []string, minSize int64) {
+func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclude []string, minSize int64) {
 	taskCh := make(chan FileTask, runtime.NumCPU())
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
@@ -55,7 +55,7 @@ func DeleteFiles(dir string, extensions []string, exclude []string, minSize int6
 	})
 }
 
-func DeleteEmptySubfolders(dir string) {
+func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
 	emptyDirs := make([]string, 0)
 
 	filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
@@ -63,7 +63,7 @@ func DeleteEmptySubfolders(dir string) {
 			return nil
 		}
 
-		if IsEmptyDir(path) {
+		if f.IsEmptyDir(path) {
 			emptyDirs = append(emptyDirs, path)
 		}
 

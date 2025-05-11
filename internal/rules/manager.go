@@ -2,7 +2,6 @@ package rules
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -12,28 +11,45 @@ var (
 	RuleFileName = "rule.json"
 )
 
-type Rules struct {
-	Path       string   `json:",omitempty"`
-	Extensions []string `json:",omitempty"`
-	Exclude    []string `json:",omitempty"`
-	MinSize    string   `json:",omitempty"`
+func (d *defaultRules) UpdateRules(path, minSize string, extensions []string, exclude []string) error {
+	// Update the struct fields
+	d.Path = path
+	d.MinSize = minSize
+	d.Extensions = extensions
+	d.Exclude = exclude
+
+	// Marshal and save to file
+	rulesJSON, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(d.GetRulesPath(), rulesJSON, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func UpdateRules(path, minSize string, extensions []string, exclude []string) {
-	r := &Rules{Path: path, Extensions: extensions, Exclude: exclude, MinSize: minSize}
-	rulesJSON, _ := json.Marshal(r)
-	os.WriteFile(GetRulesPath(), rulesJSON, 0644)
+func (d *defaultRules) GetRules() (*defaultRules, error) {
+	jsonRules, err := os.ReadFile(d.GetRulesPath())
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new instance to avoid modifying the receiver
+	rules := &defaultRules{}
+	err = json.Unmarshal(jsonRules, rules)
+	if err != nil {
+		return nil, err
+	}
+
+	return rules, nil
 }
 
-func GetRules() *Rules {
-	jsonRules, _ := os.ReadFile(GetRulesPath())
-	r := &Rules{}
-	json.Unmarshal(jsonRules, r)
-	return r
-}
-
-func SetupRulesConfig() {
-	filePathRuleConfig := GetRulesPath()
+func (d *defaultRules) SetupRulesConfig() error {
+	filePathRuleConfig := d.GetRulesPath()
 	os.MkdirAll(filepath.Dir(filePathRuleConfig), 0755)
 
 	_, err := os.Stat(filePathRuleConfig)
@@ -50,39 +66,50 @@ func SetupRulesConfig() {
 		err := os.WriteFile(filePathRuleConfig, []byte(baseRules), 0644)
 
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
-func GetRulesPath() string {
+func (d *defaultRules) GetRulesPath() string {
 	userConfigDir, _ := os.UserConfigDir()
 	filePathRuleConfig := filepath.Join(userConfigDir, AppDirName, RuleFileName)
 
 	return filePathRuleConfig
 }
 
-func (r *Rules) Equals(other *Rules) bool {
-	if r.Path != other.Path || r.MinSize != other.MinSize {
+func (d *defaultRules) Equals(other Rules) bool {
+	if other == nil {
 		return false
 	}
 
-	if len(r.Extensions) != len(other.Extensions) {
+	otherRules, err := other.GetRules()
+	if err != nil {
 		return false
 	}
 
-	if len(r.Exclude) != len(other.Exclude) {
+	if d.Path != otherRules.Path || d.MinSize != otherRules.MinSize {
 		return false
 	}
 
-	for i := range r.Extensions {
-		if r.Extensions[i] != other.Extensions[i] {
+	if len(d.Extensions) != len(otherRules.Extensions) {
+		return false
+	}
+
+	if len(d.Exclude) != len(otherRules.Exclude) {
+		return false
+	}
+
+	for i := range d.Extensions {
+		if d.Extensions[i] != otherRules.Extensions[i] {
 			return false
 		}
 	}
 
-	for i := range r.Exclude {
-		if r.Exclude[i] != other.Exclude[i] {
+	for i := range d.Exclude {
+		if d.Exclude[i] != otherRules.Exclude[i] {
 			return false
 		}
 	}

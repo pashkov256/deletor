@@ -52,17 +52,16 @@ deletor
 ### CLI Mode (with filters):
 ```bash
 
-deletor -cli -d ~/Downloads -e mp4,zip  -s 10mb -subdirs --exclude data,backup
+deletor -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,backup
 ```
 ### Arguments:
 `-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
 
 `-d, --directory` — the path to the file search directory.
 
-`-s, --size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
+`--min-size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
 `--exclude` - exclude specific files/paths (e.g. data,backup)
-
 
 `-subdirs` - include subdirectories in scan, default false
 
