@@ -1,7 +1,7 @@
 
 
 <p align="center">
-  <a href="https://github.com/pashkov256/deletor"><img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/logo.png" alt="deletor"></a>
+  <a href="https://github.com/pashkov256/deletor"><img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/logo_v2.png" alt="deletor"></a>
 </p>
 <p align="center">
     <em>Manage and delete files efficiently with an interactive TUI and scriptable CLI.</em>
