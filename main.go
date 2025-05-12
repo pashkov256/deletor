@@ -102,10 +102,13 @@ func main() {
 		if len(toDeleteMap) != 0 {
 			printer.PrintFilesTable(toDeleteMap)
 
-			fmt.Println()
 			fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 
-			actionIsDelete := printer.AskForConfirmation("Delete these files?")
+			actionIsDelete := true
+
+			if !config.ConfirmDelete {
+				actionIsDelete = printer.AskForConfirmation("Delete these files?")
+			}
 
 			if actionIsDelete {
 				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
@@ -116,7 +119,6 @@ func main() {
 
 				utils.LogDeletionToFile(toDeleteMap)
 			}
-
 		} else {
 			printer.PrintWarning("File not found")
 		}

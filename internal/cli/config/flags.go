@@ -19,6 +19,7 @@ func GetFlags() *Config {
 	includeSubdirsScan := flag.Bool("subdirs", false, "Include subdirectories in scan")
 	isCLIMode := flag.Bool("cli", false, "CLI mode (default is TUI)")
 	progress := flag.Bool("progress", false, "Display a progress bar during file scanning")
+	confirmDelete := flag.Bool("confirm-delete", false, "Confirm that files are to be deleted?")
 
 	flag.Parse()
 
@@ -50,5 +51,6 @@ func GetFlags() *Config {
 	config.HaveProgress = *progress
 	config.IncludeSubdirs = *includeSubdirsScan
 	config.Directory = *dir
+	config.ConfirmDelete = *confirmDelete
 	return config
 }
