@@ -9,6 +9,7 @@ type Config struct {
 	ShowProgress   bool
 	IsCLIMode      bool
 	HaveProgress   bool
+	ConfirmDelete  bool
 }
 
 func LoadConfig() *Config {
