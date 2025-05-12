@@ -102,11 +102,11 @@ func main() {
 		if len(toDeleteMap) != 0 {
 			printer.PrintFilesTable(toDeleteMap)
 
-			fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
-
 			actionIsDelete := true
 
+			fmt.Println() // This is required for formatting
 			if !config.ConfirmDelete {
+				fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 				actionIsDelete = printer.AskForConfirmation("Delete these files?")
 			}
 
