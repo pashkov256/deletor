@@ -24,5 +24,5 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 		}
 	}
 
-	return info.Size() > f.MinSize && f.Extensions[filepath.Ext(info.Name())]
+	return info.Size() >= f.MinSize && f.Extensions[filepath.Ext(info.Name())]
 }
