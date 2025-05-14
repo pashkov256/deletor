@@ -18,7 +18,7 @@ import (
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/styles"
-	"github.com/pashkov256/deletor/internal/tui/views/tabs"
+	"github.com/pashkov256/deletor/internal/tui/tabs"
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
@@ -112,7 +112,7 @@ type CleanFilesModel struct {
 	tabManager      *tabs.CleanTabManager
 }
 
-func InitialModel(rules rules.Rules) *CleanFilesModel {
+func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
 	// Create a temporary model to get rules
 	lastestRules, _ := rules.GetRules()
 	latestDir := lastestRules.Path
@@ -223,7 +223,7 @@ func (m *CleanFilesModel) Init() tea.Cmd {
 	// Set initial focus to path input
 	m.FocusedElement = "path"
 	m.PathInput.Focus()
-	m.tabManager = tabs.NewCleanTabManager(m)
+	m.tabManager = tabs.NewCleanTabManager(m, tabs.NewCleanTabFactory())
 	// If we have a path, load files and calculate size
 	if m.currentPath != "" {
 		return tea.Batch(m.LoadFiles(), m.calculateDirSizeAsync())
@@ -234,7 +234,7 @@ func (m *CleanFilesModel) Init() tea.Cmd {
 }
 
 func Run(filemanager filemanager.FileManager, rules rules.Rules) error {
-	p := tea.NewProgram(InitialModel(rules),
+	p := tea.NewProgram(InitialCleanModel(rules),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithFPS(30),
@@ -1305,4 +1305,56 @@ func (m *CleanFilesModel) getLatestRules() (string, []string, int64, []string) {
 	latestMinSize, _ := utils.ToBytes(rules.MinSize)
 
 	return rules.Path, rules.Extensions, latestMinSize, rules.Exclude
+}
+
+func (m *CleanFilesModel) GetActiveTab() int {
+	return m.activeTab
+}
+
+func (m *CleanFilesModel) GetCurrentPath() string {
+	return m.currentPath
+}
+
+func (m *CleanFilesModel) GetExtensions() []string {
+	return m.extensions
+}
+
+func (m *CleanFilesModel) GetMinSize() int64 {
+	return m.minSize
+}
+
+func (m *CleanFilesModel) GetExclude() []string {
+	return m.exclude
+}
+
+func (m *CleanFilesModel) GetOptions() []string {
+	return m.Options
+}
+
+func (m *CleanFilesModel) GetOptionState() map[string]bool {
+	return m.OptionState
+}
+
+func (m *CleanFilesModel) GetFocusedElement() string {
+	return m.FocusedElement
+}
+
+func (m *CleanFilesModel) GetShowDirs() bool {
+	return m.showDirs
+}
+
+func (m *CleanFilesModel) GetDirSize() int64 {
+	return m.dirSize
+}
+
+func (m *CleanFilesModel) GetCalculatingSize() bool {
+	return m.calculatingSize
+}
+
+func (m *CleanFilesModel) GetFilteredSize() int64 {
+	return m.filteredSize
+}
+
+func (m *CleanFilesModel) GetFilteredCount() int {
+	return m.filteredCount
 }

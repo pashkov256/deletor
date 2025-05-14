@@ -41,7 +41,7 @@ func NewApp(
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFilesModel = views.InitialModel(a.rules)
+	a.cleanFilesModel = views.InitialCleanModel(a.rules)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
