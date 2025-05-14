@@ -4,15 +4,16 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pashkov256/deletor/internal/tui/models"
+
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type HelpTab struct {
-	model *models.CleanFilesModel
+	model *views.CleanFilesModel
 }
 
-func NewHelpTab(model *models.CleanFilesModel) *HelpTab {
+func NewHelpTab(model *views.CleanFilesModel) *HelpTab {
 	return &HelpTab{
 		model: model,
 	}

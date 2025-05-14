@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
-	"github.com/pashkov256/deletor/internal/tui/models"
+
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/views"
 )
@@ -20,7 +20,7 @@ const (
 
 type App struct {
 	menu            *views.MainMenu
-	cleanFilesModel *models.CleanFilesModel
+	cleanFilesModel *views.CleanFilesModel
 	rulesModel      *views.RulesModel
 	page            page
 	filemanager     filemanager.FileManager
@@ -57,7 +57,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if a.page != menuPage {
 				if a.page == rulesPage {
-					a.cleanFilesModel = views.InitialModel(a.rules)
+					a.cleanFilesModel = views.InitialCleanModel(a.rules)
 					cmds = append(cmds, a.cleanFilesModel.Init())
 				}
 				a.page = menuPage

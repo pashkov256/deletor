@@ -2,14 +2,14 @@ package tabs
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pashkov256/deletor/internal/tui/models"
+	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type MainTab struct {
-	model *models.CleanFilesModel
+	model *views.CleanFilesModel
 }
 
-func NewMainTab(model *models.CleanFilesModel) *MainTab {
+func NewMainTab(model *views.CleanFilesModel) *MainTab {
 	return &MainTab{
 		model: model,
 	}

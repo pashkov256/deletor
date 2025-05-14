@@ -5,15 +5,15 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pashkov256/deletor/internal/tui/models"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type OptionsTab struct {
-	model *models.CleanFilesModel
+	model *views.CleanFilesModel
 }
 
-func NewOptionsTab(model *models.CleanFilesModel) *OptionsTab {
+func NewOptionsTab(model *views.CleanFilesModel) *OptionsTab {
 	return &OptionsTab{
 		model: model,
 	}

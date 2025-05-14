@@ -35,7 +35,7 @@ func NewCleanTabManager(model interfaces.CleanModel, factory TabFactory) *CleanT
 	}
 
 	return &CleanTabManager{
-		TabManager: NewTabManager[interfaces.CleanModel](cleanTabs, &model),
+		TabManager: NewTabManager(cleanTabs, &model),
 		factory:    factory,
 	}
 }

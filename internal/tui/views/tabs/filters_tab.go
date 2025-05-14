@@ -4,15 +4,15 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pashkov256/deletor/internal/tui/models"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type FiltersTab struct {
-	model *models.CleanFilesModel
+	model *views.CleanFilesModel
 }
 
-func NewFiltersTab(model *models.CleanFilesModel) *FiltersTab {
+func NewFiltersTab(model *views.CleanFilesModel) *FiltersTab {
 	return &FiltersTab{
 		model: model,
 	}
