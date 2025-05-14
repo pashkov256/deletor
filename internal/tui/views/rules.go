@@ -1,4 +1,4 @@
-package tui
+package views
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/styles"
 )
 
 // RulesModel represents the rules management page
@@ -107,16 +108,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Save button is focused
 			if m.focusIndex == 4 {
-				// m.rules.Extensions = strings.Split(m.extensionsInput.Value(), ",")
-				// m.rules.Path = m.locationInput.Value()
-				// m.rules.MinSize = m.sizeInput.Value()
-				// m.rules.Exclude = strings.Split(m.excludeInput.Value(), ",")
-
-				// m.excludeInput.SetValue(strings.Join(m.rules.Exclude, ","))
-				// m.locationInput.SetValue(m.rules.Path)
-				// m.sizeInput.SetValue(m.rules.MinSize)
-				// m.extensionsInput.SetValue(strings.Join(m.rules.Extensions, ","))
-
+				//save rules
 				m.rules.UpdateRules(
 					m.locationInput.Value(),
 					m.sizeInput.Value(),
@@ -176,44 +168,44 @@ func (m *RulesModel) View() string {
 	var s strings.Builder
 
 	// Title
-	s.WriteString(TitleStyle.Render(" Rule Management "))
+	s.WriteString(styles.TitleStyle.Render(" Rule Management "))
 	s.WriteString("\n\n")
 
 	// Extensions input
-	extStyle := StandardInputStyle
+	extStyle := styles.StandardInputStyle
 	if m.focusIndex == 0 {
-		extStyle = StandardInputFocusedStyle
+		extStyle = styles.StandardInputFocusedStyle
 	}
 	s.WriteString(extStyle.Render("Extensions: " + m.extensionsInput.View()))
 	s.WriteString("\n")
 
 	// Size input
-	sizeStyle := StandardInputStyle
+	sizeStyle := styles.StandardInputStyle
 	if m.focusIndex == 1 {
-		sizeStyle = StandardInputFocusedStyle
+		sizeStyle = styles.StandardInputFocusedStyle
 	}
 	s.WriteString(sizeStyle.Render("Min Size: " + m.sizeInput.View()))
 	s.WriteString("\n")
 
 	// Location input
-	locStyle := StandardInputStyle
+	locStyle := styles.StandardInputStyle
 	if m.focusIndex == 2 {
-		locStyle = StandardInputFocusedStyle
+		locStyle = styles.StandardInputFocusedStyle
 	}
 	s.WriteString(locStyle.Render("Default path: " + m.locationInput.View()))
 	s.WriteString("\n")
 
-	excludeStyle := StandardInputStyle
+	excludeStyle := styles.StandardInputStyle
 	if m.focusIndex == 3 {
-		excludeStyle = StandardInputFocusedStyle
+		excludeStyle = styles.StandardInputFocusedStyle
 	}
 	s.WriteString(excludeStyle.Render("Exclude: " + m.excludeInput.View()))
 	s.WriteString("\n\n")
 
 	// Save button
-	saveButtonStyle := StandardButtonStyle
+	saveButtonStyle := styles.StandardButtonStyle
 	if m.focusIndex == 4 {
-		saveButtonStyle = StandardButtonFocusedStyle
+		saveButtonStyle = styles.StandardButtonFocusedStyle
 	}
 
 	s.WriteString(saveButtonStyle.Render("💾 Save rules"))
@@ -223,7 +215,7 @@ func (m *RulesModel) View() string {
 	s.WriteString("Tab: cycle fields • Enter: save rule • Esc: return to menu\n\n")
 
 	// AppData path
-	s.WriteString(PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
+	s.WriteString(styles.PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
 
-	return AppStyle.Render(s.String())
+	return styles.AppStyle.Render(s.String())
 }
