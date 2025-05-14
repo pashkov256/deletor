@@ -1,5 +1,7 @@
 package interfaces
 
+import "github.com/charmbracelet/bubbles/list"
+
 // CleanModel defines the interface that models must implement to work with clean tabs
 type CleanModel interface {
 	GetCurrentPath() string
@@ -15,4 +17,6 @@ type CleanModel interface {
 	GetFilteredSize() int64
 	GetFilteredCount() int
 	GetActiveTab() int
+	GetList() list.Model
+	GetDirList() list.Model
 }

@@ -9,6 +9,14 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
+// Define options in fixed order
+var options = []string{
+	"Show hidden files",
+	"Confirm deletion",
+	"Include subfolders",
+	"Delete empty subfolders",
+}
+
 type OptionsTab struct {
 	model *views.CleanFilesModel
 }
@@ -20,9 +28,8 @@ func NewOptionsTab(model *views.CleanFilesModel) *OptionsTab {
 }
 
 func (t *OptionsTab) View() string {
-
 	var content strings.Builder
-	for i, name := range t.model.Options {
+	for i, name := range options {
 		style := styles.OptionStyle
 		if t.model.OptionState[name] {
 			style = styles.SelectedOptionStyle
