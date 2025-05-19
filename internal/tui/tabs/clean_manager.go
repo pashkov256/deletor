@@ -4,38 +4,35 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
 )
 
-// CleanModel defines the interface that models must implement to work with clean tabs
-type CleanModel interface {
-	GetCurrentPath() string
-	GetExtensions() []string
-	GetMinSize() int64
-	GetExclude() []string
-	GetOptions() []string
-	GetOptionState() map[string]bool
-	GetFocusedElement() string
-	GetShowDirs() bool
-	GetDirSize() int64
-	GetCalculatingSize() bool
-	GetFilteredSize() int64
-	GetFilteredCount() int
-	GetActiveTab() int
-}
-
+// CleanTabManager manages the tabs for the clean view
 type CleanTabManager struct {
-	*TabManager[interfaces.CleanModel]
-	factory TabFactory
+	model     interfaces.CleanModel
+	tabs      []Tab
+	activeTab int
 }
 
-func NewCleanTabManager(model interfaces.CleanModel, factory TabFactory) *CleanTabManager {
-	cleanTabs := []Tab{
-		factory.NewMainTab(model),
-		factory.NewFiltersTab(model),
-		factory.NewOptionsTab(model),
-		factory.NewHelpTab(model),
-	}
-
+// NewCleanTabManager creates a new CleanTabManager
+func NewCleanTabManager(model interfaces.CleanModel, factory *CleanTabFactory) *CleanTabManager {
 	return &CleanTabManager{
-		TabManager: NewTabManager(cleanTabs, &model),
-		factory:    factory,
+		model:     model,
+		tabs:      factory.CreateTabs(model),
+		activeTab: 0,
+	}
+}
+
+// GetActiveTab returns the currently active tab
+func (m *CleanTabManager) GetActiveTab() Tab {
+	return m.tabs[m.activeTab]
+}
+
+// GetActiveTabIndex returns the index of the currently active tab
+func (m *CleanTabManager) GetActiveTabIndex() int {
+	return m.activeTab
+}
+
+// SetActiveTabIndex sets the active tab index
+func (m *CleanTabManager) SetActiveTabIndex(index int) {
+	if index >= 0 && index < len(m.tabs) {
+		m.activeTab = index
 	}
 }

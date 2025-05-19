@@ -5,18 +5,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/styles"
-	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type HelpTab struct {
-	model *views.CleanFilesModel
-}
-
-func NewHelpTab(model *views.CleanFilesModel) *HelpTab {
-	return &HelpTab{
-		model: model,
-	}
+	model interfaces.CleanModel
 }
 
 func (t *HelpTab) View() string {

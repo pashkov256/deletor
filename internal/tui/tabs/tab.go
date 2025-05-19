@@ -20,8 +20,5 @@ type TabStyles struct {
 
 // TabFactory - interface for creating tabs
 type TabFactory interface {
-	NewMainTab(model interface{}) Tab
-	NewFiltersTab(model interface{}) Tab
-	NewOptionsTab(model interface{}) Tab
-	NewHelpTab(model interface{}) Tab
+	CreateTabs(model interface{}) []Tab
 }

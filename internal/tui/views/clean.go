@@ -16,74 +16,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/tabs"
 	"github.com/pashkov256/deletor/internal/utils"
 )
-
-type CleanItem struct {
-	Path string
-	Size int64
-}
-
-func (i CleanItem) Title() string {
-	if i.Size == -1 {
-		return "📂 .." // Parent directory
-	}
-
-	if i.Size == 0 {
-		return "📁 " + filepath.Base(i.Path) // Directory
-	}
-
-	// Regular file
-	filename := filepath.Base(i.Path)
-	ext := filepath.Ext(filename)
-
-	// Choose icon based on file extension
-	icon := "📄 " // Default file icon
-	switch strings.ToLower(ext) {
-	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp":
-		icon = "🖼️ " // Image
-	case ".mp3", ".wav", ".flac", ".ogg":
-		icon = "🎵 " // Audio
-	case ".mp4", ".avi", ".mkv", ".mov", ".wmv":
-		icon = "🎬 " // Video
-	case ".pdf":
-		icon = "📕 " // PDF
-	case ".doc", ".docx", ".txt", ".rtf":
-		icon = "📝 " // Document
-	case ".zip", ".rar", ".tar", ".gz", ".7z":
-		icon = "🗜️ " // Archive
-	case ".exe", ".msi", ".bat":
-		icon = "⚙️ " // Executable
-	}
-
-	// Format the size with unit
-	sizeStr := utils.FormatSize(i.Size)
-
-	// Calculate padding for alignment
-	padding := 50 - len(filename)
-	if padding < 0 {
-		padding = 0
-	}
-
-	return fmt.Sprintf("%s%s%s%s", icon, filename, strings.Repeat(" ", padding), sizeStr)
-}
-
-func (i CleanItem) Description() string { return i.Path }
-func (i CleanItem) FilterValue() string { return i.Path }
-
-// Message for directory size updates
-type dirSizeMsg struct {
-	size int64
-}
-
-// Message for filtered files size updates
-type filteredSizeMsg struct {
-	size  int64
-	count int
-}
 
 type CleanFilesModel struct {
 	List            list.Model
@@ -99,7 +37,7 @@ type CleanFilesModel struct {
 	OptionState     map[string]bool
 	Err             error
 	FocusedElement  string // "path", "ext", "size", "button", "option1", "option2", "option3"
-	FileToDelete    *CleanItem
+	FileToDelete    *models.CleanItem
 	ShowDirs        bool
 	DirList         list.Model
 	DirSize         int64 // Cached directory size
@@ -110,6 +48,17 @@ type CleanFilesModel struct {
 	Rules           rules.Rules
 	Filemanager     filemanager.FileManager
 	TabManager      *tabs.CleanTabManager
+}
+
+// Message for directory size updates
+type dirSizeMsg struct {
+	size int64
+}
+
+// Message for filtered files size updates
+type filteredSizeMsg struct {
+	size  int64
+	count int
 }
 
 func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
@@ -247,186 +196,7 @@ func (m *CleanFilesModel) View() string {
 	content.WriteString(tabsRow)
 	content.WriteString("\n")
 
-	if activeTab == 3 {
-		content.WriteString(m.TabManager.GetActiveTab().View())
-	} else if activeTab == 0 {
-		pathStyle := styles.StandardInputStyle
-		if m.FocusedElement == "path" {
-			pathStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(pathStyle.Render("Current Path: " + m.PathInput.View()))
-
-		// If no path is set, show only the start button
-		if m.CurrentPath == "" {
-			startButtonStyle := styles.LaunchButtonStyle
-			if m.FocusedElement == "startButton" {
-				startButtonStyle = styles.LaunchButtonFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(startButtonStyle.Render("📂 Launch"))
-		} else {
-			// Show full interface when path is set
-			extStyle := styles.StandardInputStyle
-			if m.FocusedElement == "ext" {
-				extStyle = styles.StandardInputFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(extStyle.Render("Extensions: " + m.ExtInput.View()))
-			content.WriteString("\n")
-			var activeList list.Model
-			if m.ShowDirs {
-				activeList = m.DirList
-			} else {
-				activeList = m.List
-			}
-			fileCount := len(activeList.Items())
-			filteredSizeText := utils.FormatSize(m.FilteredSize)
-			content.WriteString("\n")
-			if !m.ShowDirs {
-				content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
-					m.FilteredCount, filteredSizeText)))
-			} else {
-				content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
-					filepath.Base(m.CurrentPath), fileCount)))
-			}
-			content.WriteString("\n")
-			listStyle := styles.ListStyle
-			if m.FocusedElement == "list" {
-				listStyle = styles.ListFocusedStyle
-			}
-
-			var listContent strings.Builder
-			if len(activeList.Items()) == 0 {
-				if !m.ShowDirs {
-					listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
-				} else {
-					listContent.WriteString("No directories found in this location.")
-				}
-			} else {
-				items := activeList.Items()
-				selectedIndex := activeList.Index()
-				totalItems := len(items)
-
-				visibleItems := 10
-				if visibleItems > totalItems {
-					visibleItems = totalItems
-				}
-
-				startIdx := 0
-				if selectedIndex > visibleItems-3 && totalItems > visibleItems {
-					startIdx = selectedIndex - (visibleItems / 2)
-					if startIdx+visibleItems > totalItems {
-						startIdx = totalItems - visibleItems
-					}
-				}
-				if startIdx < 0 {
-					startIdx = 0
-				}
-
-				endIdx := startIdx + visibleItems
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					item := items[i].(CleanItem)
-
-					icon := "📄 "
-					if item.Size == -1 {
-						icon = "⬆️ "
-					} else if item.Size == 0 {
-						icon = "📁 "
-					} else {
-						ext := strings.ToLower(filepath.Ext(item.Path))
-						switch ext {
-						case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
-							icon = "🖼️ "
-						case ".mp3", ".wav", ".flac", ".ogg":
-							icon = "🎵 "
-						case ".mp4", ".avi", ".mkv", ".mov":
-							icon = "🎬 "
-						case ".zip", ".rar", ".7z", ".tar", ".gz":
-							icon = "🗜️ "
-						case ".exe", ".msi":
-							icon = "⚙️ "
-						case ".pdf":
-							icon = "📕 "
-						case ".doc", ".docx", ".txt":
-							icon = "📝 "
-						}
-					}
-
-					filename := filepath.Base(item.Path)
-					sizeStr := ""
-					if item.Size > 0 {
-						sizeStr = utils.FormatSize(item.Size)
-					} else if item.Size == 0 {
-						sizeStr = "DIR"
-					} else {
-						sizeStr = "UP DIR"
-					}
-
-					prefix := "  "
-					style := lipgloss.NewStyle()
-
-					if i == selectedIndex {
-						prefix = "> "
-						style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
-					} else if item.Size == -1 || item.Size == 0 {
-						style = style.Foreground(lipgloss.Color("#4DC4FF"))
-					}
-
-					displayName := filename
-					if len(displayName) > 40 {
-						displayName = displayName[:37] + "..."
-					}
-
-					padding := 44 - len(displayName)
-					if padding < 1 {
-						padding = 1
-					}
-
-					fileLine := fmt.Sprintf("%s%s%s%s%s",
-						prefix,
-						icon,
-						displayName,
-						strings.Repeat(" ", padding),
-						sizeStr)
-
-					listContent.WriteString(style.Render(fileLine))
-					listContent.WriteString("\n")
-				}
-
-				if totalItems > visibleItems {
-					scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
-						startIdx+1, endIdx, totalItems,
-						float64(selectedIndex+1)/float64(totalItems)*100)
-					listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
-				}
-			}
-			content.WriteString(listStyle.Render(listContent.String()))
-
-			// Buttons section
-			content.WriteString("\n\n")
-			if m.FocusedElement == "dirButton" {
-				content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️ Show directories"))
-			} else {
-				content.WriteString(styles.StandardButtonStyle.Render("➡️ Show directories"))
-			}
-			content.WriteString("\n\n")
-
-			if m.FocusedElement == "button" {
-				content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
-			} else {
-				content.WriteString(styles.DeleteButtonStyle.Render("🗑️ Start cleaning"))
-			}
-			content.WriteString("\n")
-		}
-	} else if activeTab == 1 {
-		content.WriteString(m.TabManager.GetActiveTab().View())
-	} else if activeTab == 2 {
-		content.WriteString(m.TabManager.GetActiveTab().View())
-	}
+	content.WriteString(m.TabManager.GetActiveTab().View())
 
 	// Combine everything
 	var ui string
@@ -680,7 +450,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.LoadFiles()
 				case "list":
 					if !m.ShowDirs && m.List.SelectedItem() != nil {
-						selectedItem := m.List.SelectedItem().(CleanItem)
+						selectedItem := m.List.SelectedItem().(models.CleanItem)
 						if selectedItem.Size == -1 {
 							// Handle parent directory selection
 							m.CurrentPath = selectedItem.Path
@@ -699,7 +469,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, tea.Batch(cmds...)
 						}
 					} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
-						selectedDir := m.DirList.SelectedItem().(CleanItem)
+						selectedDir := m.DirList.SelectedItem().(models.CleanItem)
 						m.CurrentPath = selectedDir.Path
 						m.PathInput.SetValue(selectedDir.Path)
 						m.ShowDirs = false
@@ -782,11 +552,13 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "f1":
 			m.ActiveTab = 0
+			m.TabManager.SetActiveTabIndex(0)
 			m.FocusedElement = "path"
 			m.PathInput.Focus()
 			return m, nil
 		case "f2":
 			m.ActiveTab = 1
+			m.TabManager.SetActiveTabIndex(1)
 			m.FocusedElement = "exclude"
 			m.ExcludeInput.Focus()
 			m.PathInput.Blur()
@@ -795,6 +567,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "f3":
 			m.ActiveTab = 2
+			m.TabManager.SetActiveTabIndex(2)
 			m.FocusedElement = "option1"
 			return m, nil
 		case "f4":
@@ -954,7 +727,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		// Add to parent directory
 		parentDir := filepath.Dir(currentDir)
 		if parentDir != currentDir {
-			items = append(items, CleanItem{
+			items = append(items, models.CleanItem{
 				Path: parentDir,
 				Size: -1, // Special value for parent directory
 			})
@@ -982,7 +755,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 				}
 			}
 
-			items = append(items, CleanItem{
+			items = append(items, models.CleanItem{
 				Path: path,
 				Size: 0, // Directory
 			})
@@ -1040,7 +813,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			totalFilteredSize += size
 			filteredCount++
 
-			items = append(items, CleanItem{
+			items = append(items, models.CleanItem{
 				Path: path,
 				Size: size,
 			})
@@ -1060,7 +833,7 @@ func (m *CleanFilesModel) loadDirs() tea.Cmd {
 		// Add parent directory with special display
 		parentDir := filepath.Dir(m.CurrentPath)
 		if parentDir != m.CurrentPath {
-			items = append(items, CleanItem{
+			items = append(items, models.CleanItem{
 				Path: parentDir,
 				Size: -1, // Special value for parent directory
 			})
@@ -1073,7 +846,7 @@ func (m *CleanFilesModel) loadDirs() tea.Cmd {
 		}
 
 		// Create a channel for results
-		results := make(chan CleanItem, 100)
+		results := make(chan models.CleanItem, 100)
 		done := make(chan bool)
 
 		// Start a goroutine to collect results
@@ -1092,7 +865,7 @@ func (m *CleanFilesModel) loadDirs() tea.Cmd {
 					if !m.OptionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
 						continue
 					}
-					results <- CleanItem{
+					results <- models.CleanItem{
 						Path: filepath.Join(m.CurrentPath, entry.Name()),
 						Size: 0,
 					}
@@ -1106,7 +879,7 @@ func (m *CleanFilesModel) loadDirs() tea.Cmd {
 
 		// Sort directories by name
 		sort.Slice(items, func(i, j int) bool {
-			return items[i].(CleanItem).Path < items[j].(CleanItem).Path
+			return items[i].(models.CleanItem).Path < items[j].(models.CleanItem).Path
 		})
 
 		// Update path input with current path
@@ -1220,12 +993,12 @@ func openFileExplorer(path string) tea.Cmd {
 
 func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	if m.List.SelectedItem() != nil && !m.OptionState["Include subfolders"] {
-		selectedItem := m.List.SelectedItem().(CleanItem)
+		selectedItem := m.List.SelectedItem().(models.CleanItem)
 		if selectedItem.Size > 0 { // Only delete files, not directories
 			if !m.OptionState["Confirm deletion"] {
 				// If confirm deletion is disabled, delete all files
 				for _, listItem := range m.List.Items() {
-					if fileItem, ok := listItem.(CleanItem); ok && fileItem.Size > 0 {
+					if fileItem, ok := listItem.(models.CleanItem); ok && fileItem.Size > 0 {
 						err := os.Remove(fileItem.Path)
 						if err != nil {
 							m.Err = err
@@ -1319,4 +1092,63 @@ func (m *CleanFilesModel) GetFilteredCount() int {
 
 func (m *CleanFilesModel) GetList() list.Model {
 	return m.List
+}
+
+func (m *CleanFilesModel) GetDirList() list.Model {
+	return m.DirList
+}
+
+func (m *CleanFilesModel) GetRules() rules.Rules {
+	return m.Rules
+}
+
+func (m *CleanFilesModel) GetFilemanager() filemanager.FileManager {
+	return m.Filemanager
+}
+
+func (m *CleanFilesModel) GetFileToDelete() *models.CleanItem {
+	return m.FileToDelete
+}
+
+func (m *CleanFilesModel) GetPathInput() textinput.Model {
+	return m.PathInput
+}
+
+func (m *CleanFilesModel) GetExtInput() textinput.Model {
+	return m.ExtInput
+}
+
+func (m *CleanFilesModel) GetSizeInput() textinput.Model {
+	return m.SizeInput
+}
+
+func (m *CleanFilesModel) GetExcludeInput() textinput.Model {
+	return m.ExcludeInput
+}
+
+func (m *CleanFilesModel) SetFocusedElement(element string) {
+	m.FocusedElement = element
+}
+
+func (m *CleanFilesModel) SetShowDirs(show bool) {
+	m.ShowDirs = show
+}
+
+func (m *CleanFilesModel) SetOptionState(option string, state bool) {
+	if m.OptionState == nil {
+		m.OptionState = make(map[string]bool)
+	}
+	m.OptionState[option] = state
+}
+
+func (m *CleanFilesModel) SetMinSize(size int64) {
+	m.MinSize = size
+}
+
+func (m *CleanFilesModel) SetExclude(exclude []string) {
+	m.Exclude = exclude
+}
+
+func (m *CleanFilesModel) SetExtensions(extensions []string) {
+	m.Extensions = extensions
 }

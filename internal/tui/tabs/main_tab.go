@@ -8,29 +8,28 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/pashkov256/deletor/internal/models"
+	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/styles"
-	"github.com/pashkov256/deletor/internal/tui/views"
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
 type MainTab struct {
-	model *views.CleanFilesModel
+	model interfaces.CleanModel
 }
 
-func NewMainTab(model *views.CleanFilesModel) *MainTab {
-	return &MainTab{
-		model: model,
-	}
-}
+func (t *MainTab) Init() tea.Cmd              { return nil }
+func (t *MainTab) Update(msg tea.Msg) tea.Cmd { return nil }
 
 func (t *MainTab) View() string {
 	var content strings.Builder
 	pathStyle := styles.StandardInputStyle
-	if t.model.FocusedElement == "path" {
+	if t.model.GetFocusedElement() == "path" {
 		pathStyle = styles.StandardInputFocusedStyle
 	}
-	content.WriteString(pathStyle.Render("Current Path: " + t.model.PathInput.View()))
+	content.WriteString(pathStyle.Render("Current Path: " + t.model.GetPathInput().View()))
 
+	// If no path is set, show only the start button
 	if t.model.GetCurrentPath() == "" {
 		startButtonStyle := styles.LaunchButtonStyle
 		if t.model.GetFocusedElement() == "startButton" {
@@ -45,13 +44,13 @@ func (t *MainTab) View() string {
 			extStyle = styles.StandardInputFocusedStyle
 		}
 		content.WriteString("\n")
-		content.WriteString(extStyle.Render("Extensions: " + t.model.ExtInput.View()))
+		content.WriteString(extStyle.Render("Extensions: " + t.model.GetExtInput().View()))
 		content.WriteString("\n")
 		var activeList list.Model
 		if t.model.GetShowDirs() {
-			activeList = t.model.DirList
+			activeList = t.model.GetDirList()
 		} else {
-			activeList = t.model.List
+			activeList = t.model.GetList()
 		}
 		fileCount := len(activeList.Items())
 		filteredSizeText := utils.FormatSize(t.model.GetFilteredSize())
@@ -101,8 +100,9 @@ func (t *MainTab) View() string {
 			if endIdx > totalItems {
 				endIdx = totalItems
 			}
+
 			for i := startIdx; i < endIdx; i++ {
-				item := items[i].(views.CleanItem)
+				item := items[i].(models.CleanItem)
 
 				icon := "📄 "
 				if item.Size == -1 {
@@ -128,6 +128,7 @@ func (t *MainTab) View() string {
 						icon = "📝 "
 					}
 				}
+
 				filename := filepath.Base(item.Path)
 				sizeStr := ""
 				if item.Size > 0 {
@@ -167,8 +168,8 @@ func (t *MainTab) View() string {
 
 				listContent.WriteString(style.Render(fileLine))
 				listContent.WriteString("\n")
-
 			}
+
 			if totalItems > visibleItems {
 				scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
 					startIdx+1, endIdx, totalItems,
@@ -176,7 +177,6 @@ func (t *MainTab) View() string {
 				listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
 			}
 		}
-
 		content.WriteString(listStyle.Render(listContent.String()))
 
 		// Buttons section
@@ -197,12 +197,4 @@ func (t *MainTab) View() string {
 	}
 
 	return content.String()
-}
-
-func (t *MainTab) Init() tea.Cmd {
-	return nil
-}
-
-func (t *MainTab) Update(msg tea.Msg) tea.Cmd {
-	return nil
 }
