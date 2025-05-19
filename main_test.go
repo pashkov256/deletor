@@ -33,7 +33,6 @@ func TestPrintFilesTable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Перехватываем вывод
 			old := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
@@ -48,9 +47,9 @@ func TestPrintFilesTable(t *testing.T) {
 			got := buf.String()
 
 			// Удаляем цветовые коды перед сравнением
-			got = strings.ReplaceAll(got, "\x1b[33m", "") // желтый
-			got = strings.ReplaceAll(got, "\x1b[0m", "")  // сброс
-			got = strings.ReplaceAll(got, "\x1b[37m", "") // белый
+			got = strings.ReplaceAll(got, "\x1b[33m", "")
+			got = strings.ReplaceAll(got, "\x1b[0m", "")
+			got = strings.ReplaceAll(got, "\x1b[37m", "")
 
 			if got != tt.want {
 				t.Errorf("\ngot:\n%q\nwant:\n%q", got, tt.want)

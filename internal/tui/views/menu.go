@@ -8,22 +8,9 @@ import (
 
 var (
 	docStyle = lipgloss.NewStyle().
-			Margin(1).
-			Padding(1, 2).
-			Align(lipgloss.Center)
-
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
-			Padding(0, 2).
-			Align(lipgloss.Center)
-
-	selectedItemStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#7D56F4")).
-				Bold(true).
-				Padding(0, 1)
-	appStyle = lipgloss.NewStyle().Padding(0, 1)
+		Margin(1).
+		Padding(1, 2).
+		Align(lipgloss.Center)
 )
 
 type Item struct {

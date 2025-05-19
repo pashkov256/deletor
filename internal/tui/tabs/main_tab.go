@@ -24,7 +24,7 @@ func (t *MainTab) Update(msg tea.Msg) tea.Cmd { return nil }
 func (t *MainTab) View() string {
 	var content strings.Builder
 	pathStyle := styles.StandardInputStyle
-	if t.model.GetFocusedElement() == "path" {
+	if t.model.GetFocusedElement() == "pathInput" {
 		pathStyle = styles.StandardInputFocusedStyle
 	}
 	content.WriteString(pathStyle.Render("Current Path: " + t.model.GetPathInput().View()))
@@ -40,7 +40,7 @@ func (t *MainTab) View() string {
 	} else {
 		// Show full interface when path is set
 		extStyle := styles.StandardInputStyle
-		if t.model.GetFocusedElement() == "ext" {
+		if t.model.GetFocusedElement() == "extInput" {
 			extStyle = styles.StandardInputFocusedStyle
 		}
 		content.WriteString("\n")
@@ -188,7 +188,7 @@ func (t *MainTab) View() string {
 		}
 		content.WriteString("\n\n")
 
-		if t.model.GetFocusedElement() == "button" {
+		if t.model.GetFocusedElement() == "deleteButton" {
 			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
 		} else {
 			content.WriteString(styles.DeleteButtonStyle.Render("🗑️ Start cleaning"))

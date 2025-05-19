@@ -41,7 +41,7 @@ func NewApp(
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFilesModel = views.InitialCleanModel(a.rules)
+	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
@@ -57,7 +57,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if a.page != menuPage {
 				if a.page == rulesPage {
-					a.cleanFilesModel = views.InitialCleanModel(a.rules)
+					a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
 					cmds = append(cmds, a.cleanFilesModel.Init())
 				}
 				a.page = menuPage

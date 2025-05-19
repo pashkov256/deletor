@@ -10,32 +10,41 @@ import (
 )
 
 // Define options in fixed order
-var options = []string{
+
+type OptionsTab struct {
+	model interfaces.CleanModel
+}
+
+var DefaultOptionState = map[string]bool{
+	"Show hidden files":       false,
+	"Confirm deletion":        false,
+	"Include subfolders":      false,
+	"Delete empty subfolders": false,
+}
+
+var DefaultOption = []string{
 	"Show hidden files",
 	"Confirm deletion",
 	"Include subfolders",
 	"Delete empty subfolders",
 }
 
-type OptionsTab struct {
-	model interfaces.CleanModel
-}
-
 func (t *OptionsTab) View() string {
 	var content strings.Builder
-	optionState := t.model.GetOptionState()
 
-	for i, name := range options {
+	for optionIndex, name := range DefaultOption {
+
 		style := styles.OptionStyle
-		if optionState[name] {
+		if DefaultOptionState[name] {
 			style = styles.SelectedOptionStyle
 		}
-		if t.model.GetFocusedElement() == fmt.Sprintf("option%d", i+1) {
+		if t.model.GetFocusedElement() == fmt.Sprintf("option%d", optionIndex+1) {
 			style = styles.OptionFocusedStyle
 		}
-		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
-		content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[optionState[name]], name)))
+		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", optionIndex+1)))
+		content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[DefaultOptionState[name]], name)))
 		content.WriteString("\n")
+		optionIndex++
 	}
 	return content.String()
 

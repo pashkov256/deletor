@@ -18,7 +18,7 @@ func (t *FiltersTab) Update(msg tea.Msg) tea.Cmd { return nil }
 func (t *FiltersTab) View() string {
 	var content strings.Builder
 	excludeStyle := styles.StandardInputStyle
-	if t.model.GetFocusedElement() == "exclude" {
+	if t.model.GetFocusedElement() == "excludeInput" {
 		excludeStyle = styles.StandardInputFocusedStyle
 	}
 	excludeInput := t.model.GetExcludeInput()
@@ -26,7 +26,7 @@ func (t *FiltersTab) View() string {
 	content.WriteString(excludeStyle.Render("Exclude: " + excludeInput.View()))
 	content.WriteString("\n")
 	sizeStyle := styles.StandardInputStyle
-	if t.model.GetFocusedElement() == "size" {
+	if t.model.GetFocusedElement() == "minSize" {
 		sizeStyle = styles.StandardInputFocusedStyle
 	}
 	sizeInput := t.model.GetSizeInput()

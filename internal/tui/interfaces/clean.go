@@ -22,7 +22,6 @@ type CleanModel interface {
 	GetDirSize() int64
 	GetFilteredSize() int64
 	GetFilteredCount() int
-	GetActiveTab() int
 	GetOptionState() map[string]bool
 	GetMinSize() int64
 	GetExclude() []string
@@ -42,5 +41,7 @@ type CleanModel interface {
 	SetExclude(exclude []string)
 	SetExtensions(extensions []string)
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
+	CalculateDirSizeAsync() tea.Cmd
 	LoadFiles() tea.Cmd
+	LoadDirs() tea.Cmd
 }

@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -26,7 +25,7 @@ import (
 type CleanFilesModel struct {
 	List            list.Model
 	ExtInput        textinput.Model
-	SizeInput       textinput.Model
+	MinSizeInput    textinput.Model
 	PathInput       textinput.Model
 	ExcludeInput    textinput.Model
 	CurrentPath     string
@@ -36,7 +35,7 @@ type CleanFilesModel struct {
 	Options         []string
 	OptionState     map[string]bool
 	Err             error
-	FocusedElement  string // "path", "ext", "size", "button", "option1", "option2", "option3"
+	FocusedElement  string // "pathInput", "extInput","excludeInput", "minSize", "deleteButton","dirButton", "option1", "option2", "option3"
 	FileToDelete    *models.CleanItem
 	ShowDirs        bool
 	DirList         list.Model
@@ -44,7 +43,6 @@ type CleanFilesModel struct {
 	CalculatingSize bool  // Flag to indicate size calculation in progress
 	FilteredSize    int64 // Total size of filtered files
 	FilteredCount   int   // Count of filtered files
-	ActiveTab       int   // 0 for files, 1 for exclude, 2 for options, 3 for hot keys
 	Rules           rules.Rules
 	Filemanager     filemanager.FileManager
 	TabManager      *tabs.CleanTabManager
@@ -55,13 +53,7 @@ type dirSizeMsg struct {
 	size int64
 }
 
-// Message for filtered files size updates
-type filteredSizeMsg struct {
-	size  int64
-	count int
-}
-
-func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
+func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *CleanFilesModel {
 	// Create a temporary model to get rules
 	lastestRules, _ := rules.GetRules()
 	latestDir := lastestRules.Path
@@ -77,13 +69,13 @@ func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
 	extInput.TextStyle = styles.TextInputTextStyle
 	extInput.Cursor.Style = styles.TextInputCursorStyle
 
-	sizeInput := textinput.New()
-	sizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
-	sizeInput.SetValue(latestMinSize)
+	minSizeInput := textinput.New()
+	minSizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
+	minSizeInput.SetValue(latestMinSize)
 	minSize, _ := utils.ToBytes(latestMinSize)
-	sizeInput.PromptStyle = styles.TextInputPromptStyle
-	sizeInput.TextStyle = styles.TextInputTextStyle
-	sizeInput.Cursor.Style = styles.TextInputCursorStyle
+	minSizeInput.PromptStyle = styles.TextInputPromptStyle
+	minSizeInput.TextStyle = styles.TextInputTextStyle
+	minSizeInput.Cursor.Style = styles.TextInputCursorStyle
 
 	pathInput := textinput.New()
 	pathInput.SetValue(latestDir)
@@ -132,13 +124,14 @@ func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
 	return &CleanFilesModel{
 		List:            l,
 		ExtInput:        extInput,
-		SizeInput:       sizeInput,
+		MinSizeInput:    minSizeInput,
 		PathInput:       pathInput,
 		ExcludeInput:    excludeInput,
 		CurrentPath:     latestDir,
 		Extensions:      latestExtensions,
 		MinSize:         minSize,
 		Exclude:         latestExclude,
+		OptionState:     tabs.DefaultOptionState,
 		FocusedElement:  "list",
 		ShowDirs:        false,
 		DirList:         dirList,
@@ -146,35 +139,24 @@ func InitialCleanModel(rules rules.Rules) *CleanFilesModel {
 		CalculatingSize: false,
 		FilteredSize:    0,
 		FilteredCount:   0,
-		ActiveTab:       0,
 		Rules:           rules,
+		Filemanager:     fileManager,
 	}
 }
 
 func (m *CleanFilesModel) Init() tea.Cmd {
 	// Set initial focus to path input
-	m.FocusedElement = "path"
+	m.FocusedElement = "pathInput"
 	m.PathInput.Focus()
 	m.TabManager = tabs.NewCleanTabManager(m, tabs.NewCleanTabFactory())
+
 	// If we have a path, load files and calculate size
 	if m.CurrentPath != "" {
-		return tea.Batch(m.LoadFiles(), m.calculateDirSizeAsync())
+		return tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
 	}
 
 	// Otherwise just return the blink command for the path input
 	return textinput.Blink
-}
-
-func Run(filemanager filemanager.FileManager, rules rules.Rules) error {
-	p := tea.NewProgram(InitialCleanModel(rules),
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-		tea.WithFPS(30),
-		tea.WithInputTTY(),
-		tea.WithOutput(os.Stderr),
-	)
-	_, err := p.Run()
-	return err
 }
 
 func (m *CleanFilesModel) View() string {
@@ -196,6 +178,7 @@ func (m *CleanFilesModel) View() string {
 	content.WriteString(tabsRow)
 	content.WriteString("\n")
 
+	//Render active tab
 	content.WriteString(m.TabManager.GetActiveTab().View())
 
 	// Combine everything
@@ -223,12 +206,11 @@ func (m *CleanFilesModel) View() string {
 func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	activeTab := m.TabManager.GetActiveTabIndex()
+
 	switch msg := msg.(type) {
-	case dirSizeMsg:
-		// Update the directory size
-		m.DirSize = msg.size
-		return m, nil
+	case tea.KeyMsg:
+		// Handle keyboard events directly
+		return m.Handle(msg)
 
 	case tea.WindowSizeMsg:
 		// Properly set both width and height
@@ -243,10 +225,14 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmds = append(cmds, m.LoadFiles())
 		// Trigger directory size calculation when changing directory
-		cmds = append(cmds, m.calculateDirSizeAsync())
+		cmds = append(cmds, m.CalculateDirSizeAsync())
 		return m, tea.Batch(cmds...)
 
-	// Handle message for setting items in the list
+	case dirSizeMsg:
+		// Update the directory size
+		m.DirSize = msg.size
+		return m, nil
+
 	case []list.Item:
 		if m.ShowDirs {
 			m.DirList.SetItems(msg)
@@ -263,402 +249,9 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		m.Err = msg
 		return m, nil
-
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "ctrl+d":
-			return m.OnDelete()
-		case "tab", "shift+tab":
-			// Handle tab navigation based on active tab
-			if activeTab == 0 {
-				if m.CurrentPath == "" {
-					// When no path is set, only allow focusing between path input and start button
-					if msg.String() == "tab" {
-						if m.FocusedElement == "path" {
-							m.FocusedElement = "startButton"
-							m.PathInput.Blur()
-						} else {
-							m.FocusedElement = "path"
-							m.PathInput.Focus()
-						}
-					} else {
-						if m.FocusedElement == "path" {
-							m.FocusedElement = "startButton"
-							m.PathInput.Blur()
-						} else {
-							m.FocusedElement = "path"
-							m.PathInput.Focus()
-						}
-					}
-					return m, nil
-				}
-				// Normal tab behavior when path is set
-				if msg.String() == "tab" {
-					switch m.FocusedElement {
-					case "path":
-						m.FocusedElement = "ext"
-						m.PathInput.Blur()
-						m.ExtInput.Focus()
-					case "ext":
-						m.ExtInput.Blur()
-						m.FocusedElement = "size"
-						m.SizeInput.Focus()
-					case "size":
-						m.SizeInput.Blur()
-						m.FocusedElement = "list"
-					case "list":
-						m.FocusedElement = "dirButton"
-					case "dirButton":
-						m.FocusedElement = "button"
-					case "button":
-						m.FocusedElement = "path"
-						m.PathInput.Focus()
-					}
-				} else {
-					switch m.FocusedElement {
-					case "path":
-						m.PathInput.Blur()
-						m.FocusedElement = "button"
-					case "button":
-						m.FocusedElement = "dirButton"
-					case "dirButton":
-						m.FocusedElement = "list"
-					case "list":
-						m.FocusedElement = "size"
-						m.SizeInput.Focus()
-					case "size":
-						m.SizeInput.Blur()
-						m.FocusedElement = "ext"
-						m.ExtInput.Focus()
-					case "ext":
-						m.ExtInput.Blur()
-						m.FocusedElement = "path"
-						m.PathInput.Focus()
-					}
-				}
-			} else if activeTab == 1 {
-				// Tab navigation for Filters tab
-				if msg.String() == "tab" {
-					switch m.FocusedElement {
-					case "exclude":
-						m.ExcludeInput.Blur()
-						m.FocusedElement = "size"
-						m.SizeInput.Focus()
-					case "size":
-						m.SizeInput.Blur()
-						m.FocusedElement = "exclude"
-						m.ExcludeInput.Focus()
-					}
-				} else {
-					switch m.FocusedElement {
-					case "exclude":
-						m.ExcludeInput.Blur()
-						m.FocusedElement = "size"
-						m.SizeInput.Focus()
-					case "size":
-						m.SizeInput.Blur()
-						m.FocusedElement = "exclude"
-						m.ExcludeInput.Focus()
-					}
-				}
-			} else if activeTab == 2 {
-				// Tab navigation for Options tab
-				if msg.String() == "tab" {
-					switch m.FocusedElement {
-					case "option1":
-						m.FocusedElement = "option2"
-					case "option2":
-						m.FocusedElement = "option3"
-					case "option3":
-						m.FocusedElement = "option4"
-					case "option4":
-						m.FocusedElement = "option1"
-					}
-				} else {
-					switch m.FocusedElement {
-					case "option1":
-						m.FocusedElement = "option4"
-					case "option2":
-						m.FocusedElement = "option1"
-					case "option3":
-						m.FocusedElement = "option2"
-					case "option4":
-						m.FocusedElement = "option3"
-					}
-				}
-			} else if activeTab == 3 {
-				// Hot Keys tab navigation
-				if msg.String() == "tab" {
-					switch m.FocusedElement {
-					case "hotKeys":
-						m.FocusedElement = "navigation"
-					case "navigation":
-						m.FocusedElement = "fileOperations"
-					case "fileOperations":
-						m.FocusedElement = "filterOperations"
-					case "filterOperations":
-						m.FocusedElement = "directoryNavigation"
-					case "directoryNavigation":
-						m.FocusedElement = "options"
-					case "options":
-						m.FocusedElement = "hotKeys"
-					}
-				} else {
-					switch m.FocusedElement {
-					case "hotKeys":
-						m.FocusedElement = "options"
-					case "options":
-						m.FocusedElement = "directoryNavigation"
-					case "directoryNavigation":
-						m.FocusedElement = "fileOperations"
-					case "fileOperations":
-						m.FocusedElement = "navigation"
-					case "navigation":
-						m.FocusedElement = "hotKeys"
-					}
-				}
-			}
-			return m, nil
-		case "enter":
-			if m.CurrentPath == "" {
-				if m.FocusedElement == "startButton" {
-					// Validate and set the path
-					path := m.PathInput.Value()
-					if path != "" {
-						// Expand tilde in path
-						expandedPath := utils.ExpandTilde(path)
-						if _, err := os.Stat(expandedPath); err == nil {
-							m.CurrentPath = expandedPath
-
-							// Load files for the new path
-							cmds = append(cmds, m.LoadFiles(), m.calculateDirSizeAsync())
-
-							// Set focus to path input
-							m.FocusedElement = "path"
-							m.PathInput.Focus()
-						} else {
-							m.Err = fmt.Errorf("invalid path: %s", path)
-						}
-					}
-				}
-			} else {
-				switch m.FocusedElement {
-				case "ext", "size", "exclude":
-					// Обновляем список файлов при нажатии Enter на полях ввода
-					return m, m.LoadFiles()
-				case "list":
-					if !m.ShowDirs && m.List.SelectedItem() != nil {
-						selectedItem := m.List.SelectedItem().(models.CleanItem)
-						if selectedItem.Size == -1 {
-							// Handle parent directory selection
-							m.CurrentPath = selectedItem.Path
-							m.PathInput.SetValue(selectedItem.Path)
-							// Recalculate directory size when changing directory
-							cmds = append(cmds, m.LoadFiles(), m.calculateDirSizeAsync())
-							return m, tea.Batch(cmds...)
-						}
-						// If it's a directory, navigate into it
-						info, err := os.Stat(selectedItem.Path)
-						if err == nil && info.IsDir() {
-							m.CurrentPath = selectedItem.Path
-							m.PathInput.SetValue(selectedItem.Path)
-							// Recalculate directory size when changing directory
-							cmds = append(cmds, m.LoadFiles(), m.calculateDirSizeAsync())
-							return m, tea.Batch(cmds...)
-						}
-					} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
-						selectedDir := m.DirList.SelectedItem().(models.CleanItem)
-						m.CurrentPath = selectedDir.Path
-						m.PathInput.SetValue(selectedDir.Path)
-						m.ShowDirs = false
-						// Recalculate directory size when changing directory
-						cmds = append(cmds, m.LoadFiles(), m.calculateDirSizeAsync())
-						return m, tea.Batch(cmds...)
-					}
-				case "dirButton":
-					m.ShowDirs = true
-					return m, m.loadDirs()
-				case "button":
-					if activeTab == 0 {
-						return m.OnDelete()
-					}
-					return m, nil
-				case "option1", "option2", "option3", "option4":
-					idx := 0
-					if m.FocusedElement == "option2" {
-						idx = 1
-					}
-					if m.FocusedElement == "option3" {
-						idx = 2
-					}
-					if m.FocusedElement == "option4" {
-						idx = 3
-					}
-					if idx < len(m.Options) {
-						optName := m.Options[idx]
-						m.OptionState[optName] = !m.OptionState[optName]
-						m.FocusedElement = "option" + fmt.Sprintf("%d", idx+1)
-
-						return m, nil
-					}
-				}
-			}
-		}
-
-		// Global hotkeys that work regardless of focus
-		switch msg.String() {
-		case "ctrl+r": // Refresh files
-			return m, m.LoadFiles()
-		case "ctrl+d": // Delete files
-			return m.OnDelete()
-		case "ctrl+o": // Open current directory in file explorer
-			cmd := openFileExplorer(m.CurrentPath)
-			return m, cmd
-		case "alt+c": // Clear filters
-			m.SizeInput.SetValue("")
-			m.ExcludeInput.SetValue("")
-			return m, m.LoadFiles()
-		case "alt+1": // Toggle hidden files
-			m.OptionState["Show hidden files"] = !m.OptionState["Show hidden files"]
-			return m, m.LoadFiles()
-		case "alt+2": // Toggle confirm deletion
-			m.OptionState["Confirm deletion"] = !m.OptionState["Confirm deletion"]
-			return m, nil
-		case "alt+3": // Toggle include subfolders
-			m.OptionState["Include subfolders"] = !m.OptionState["Include subfolders"]
-			return m, nil
-		case "alt+4": // Toggle delete empty subfolders
-			m.OptionState["Delete empty subfolders"] = !m.OptionState["Delete empty subfolders"]
-			return m, nil
-		case "left", "right": // Tab switching
-			if msg.String() == "left" && m.ActiveTab > 0 {
-				m.ActiveTab--
-				m.TabManager.SetActiveTabIndex(m.ActiveTab - 1)
-				if m.ActiveTab == 1 {
-					m.ExcludeInput.Focus()
-					m.FocusedElement = "exclude"
-				}
-			}
-			if msg.String() == "right" && m.ActiveTab < 3 {
-				m.ActiveTab++
-				m.TabManager.SetActiveTabIndex(m.ActiveTab + 1)
-				if m.ActiveTab == 1 {
-					m.ExcludeInput.Focus()
-					m.FocusedElement = "exclude"
-				}
-			}
-			return m, nil
-		case "f1":
-			m.ActiveTab = 0
-			m.TabManager.SetActiveTabIndex(0)
-			m.FocusedElement = "path"
-			m.PathInput.Focus()
-			return m, nil
-		case "f2":
-			m.ActiveTab = 1
-			m.TabManager.SetActiveTabIndex(1)
-			m.FocusedElement = "exclude"
-			m.ExcludeInput.Focus()
-			m.PathInput.Blur()
-			m.ExtInput.Blur()
-			m.SizeInput.Blur()
-			return m, nil
-		case "f3":
-			m.ActiveTab = 2
-			m.TabManager.SetActiveTabIndex(2)
-			m.FocusedElement = "option1"
-			return m, nil
-		case "f4":
-			m.TabManager.SetActiveTabIndex(3)
-			m.ActiveTab = 3
-			return m, nil
-		case "up", "down": // Always handle arrow keys for list navigation regardless of focus
-			// Make list navigation global - arrow keys always navigate the list
-			if !m.ShowDirs {
-				m.List, cmd = m.List.Update(msg)
-				cmds = append(cmds, cmd)
-			} else {
-				m.DirList, cmd = m.DirList.Update(msg)
-				cmds = append(cmds, cmd)
-			}
-			return m, tea.Batch(cmds...)
-		}
-
-		// Handle space key for options
-		if (msg.String() == " " || msg.String() == "enter") && m.ActiveTab == 2 {
-			if m.FocusedElement == "option1" || m.FocusedElement == "option2" || m.FocusedElement == "option3" || m.FocusedElement == "option4" {
-				idx := int(m.FocusedElement[len(m.FocusedElement)-1] - '1')
-				if idx >= 0 && idx < len(m.Options) {
-					optName := m.Options[idx]
-					m.OptionState[optName] = !m.OptionState[optName]
-					return m, nil
-				}
-			}
-		}
-
-		// Handle escape key
-		if msg.String() == "esc" {
-			// When in directories view, go back to files
-			if m.ShowDirs {
-				m.ShowDirs = false
-				return m, nil
-			}
-
-			// Remove focus from inputs, set focus to list
-			m.PathInput.Blur()
-			m.ExtInput.Blur()
-			m.SizeInput.Blur()
-			m.FocusedElement = "list"
-			return m, nil
-		}
-
-		// Number keys for options
-		if msg.String() == "1" || msg.String() == "2" {
-			if !m.PathInput.Focused() && !m.ExtInput.Focused() && !m.SizeInput.Focused() {
-				idx := int(msg.String()[0] - '1')
-				if idx >= 0 && idx < len(m.Options) {
-					optName := m.Options[idx]
-					m.OptionState[optName] = !m.OptionState[optName]
-					return m, m.LoadFiles()
-				}
-			}
-		}
 	}
 
-	// Handle input updates
-	switch m.FocusedElement {
-	case "path":
-		m.PathInput, cmd = m.PathInput.Update(msg)
-		cmds = append(cmds, cmd)
-	case "ext":
-		if m.CurrentPath != "" {
-			m.ExtInput, cmd = m.ExtInput.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-	case "size":
-		if m.CurrentPath != "" {
-			m.SizeInput, cmd = m.SizeInput.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-	case "exclude":
-		if m.CurrentPath != "" {
-			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-	case "list":
-		if m.CurrentPath != "" {
-			if m.ShowDirs {
-				m.DirList, cmd = m.DirList.Update(msg)
-			} else {
-				m.List, cmd = m.List.Update(msg)
-			}
-			cmds = append(cmds, cmd)
-		}
-	}
-
-	return m, tea.Batch(cmds...)
+	return m, tea.Batch(cmd, tea.Batch(cmds...))
 }
 
 func (m *CleanFilesModel) LoadFiles() tea.Cmd {
@@ -705,7 +298,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		}
 
 		// Get user-specified min size
-		sizeStr := m.SizeInput.Value()
+		sizeStr := m.MinSizeInput.Value()
 		if sizeStr != "" {
 			minSize, err := utils.ToBytes(sizeStr)
 			if err == nil {
@@ -826,7 +419,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 	}
 }
 
-func (m *CleanFilesModel) loadDirs() tea.Cmd {
+func (m *CleanFilesModel) LoadDirs() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
 
@@ -890,104 +483,12 @@ func (m *CleanFilesModel) loadDirs() tea.Cmd {
 }
 
 // Asynchronous directory size calculation
-func (m *CleanFilesModel) calculateDirSizeAsync() tea.Cmd {
+func (m *CleanFilesModel) CalculateDirSizeAsync() tea.Cmd {
 	return func() tea.Msg {
 		m.CalculatingSize = true
-		size := calculateDirSize(m.CurrentPath)
+		size := m.Filemanager.CalculateDirSize(m.CurrentPath)
 		m.CalculatingSize = false
 		return dirSizeMsg{size: size}
-	}
-}
-
-// Function to calculate directory size recursively with option to cancel
-func calculateDirSize(path string) int64 {
-	// For very large directories, return a placeholder value immediately
-	// to avoid blocking the UI
-	_, err := os.Stat(path)
-	if err != nil {
-		return 0
-	}
-
-	// If it's a very large directory (like C: or Program Files)
-	// just return 0 immediately to prevent lag
-	if strings.HasSuffix(path, ":\\") || strings.Contains(path, "Program Files") {
-		return 0
-	}
-
-	var totalSize int64 = 0
-
-	// Use a channel to limit concurrency
-	semaphore := make(chan struct{}, 10)
-	var wg sync.WaitGroup
-
-	// Create a function to process a directory
-	var processDir func(string) int64
-	processDir = func(dirPath string) int64 {
-		var size int64 = 0
-		entries, err := os.ReadDir(dirPath)
-		if err != nil {
-			return 0
-		}
-
-		for _, entry := range entries {
-			// Skip hidden files and directories unless enabled
-			if strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
-
-			fullPath := filepath.Join(dirPath, entry.Name())
-			if entry.IsDir() {
-				// Process directories with concurrency limits
-				wg.Add(1)
-				go func(p string) {
-					semaphore <- struct{}{}
-					defer func() {
-						<-semaphore
-						wg.Done()
-					}()
-					dirSize := processDir(p)
-					atomic.AddInt64(&totalSize, dirSize)
-				}(fullPath)
-			} else {
-				// Process files directly
-				info, err := entry.Info()
-				if err == nil {
-					fileSize := info.Size()
-					atomic.AddInt64(&totalSize, fileSize)
-					size += fileSize
-				}
-			}
-		}
-		return size
-	}
-
-	// Start processing
-	processDir(path)
-
-	wg.Wait()
-
-	return totalSize
-}
-
-// Helper function to open directory in file explorer
-func openFileExplorer(path string) tea.Cmd {
-	return func() tea.Msg {
-		var cmd *exec.Cmd
-
-		if runtime.GOOS == "windows" {
-			cmd = exec.Command("explorer", path)
-		} else if runtime.GOOS == "darwin" {
-			cmd = exec.Command("open", path)
-		} else {
-			cmd = exec.Command("xdg-open", path)
-		}
-
-		err := cmd.Start()
-		if err != nil {
-			return fmt.Errorf("could not open file explorer: %v", err)
-		}
-
-		return nil
 	}
 }
 
@@ -1016,7 +517,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	} else if m.OptionState["Include subfolders"] {
 		// Delete all files in the current directory and all subfolders
-		m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.SizeInput.Value()))
+		m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()))
 
 		if m.OptionState["Delete empty subfolders"] {
 			m.Filemanager.DeleteEmptySubfolders(m.CurrentPath)
@@ -1027,19 +528,401 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *CleanFilesModel) getLatestRules() (string, []string, int64, []string) {
-	rules, err := m.Rules.GetRules()
-	if err != nil {
-		return "", []string{}, 0, []string{}
+// opens the system's file explorer at the specified path
+func (m *CleanFilesModel) OpenFileExplorer(path string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "windows":
+			cmd = exec.Command("explorer", path)
+		case "darwin":
+			cmd = exec.Command("open", path)
+		default: // "linux", "freebsd", "openbsd", "netbsd"
+			cmd = exec.Command("xdg-open", path)
+		}
+		if err := cmd.Start(); err != nil {
+			return tea.Msg(err)
+		}
+		return nil
 	}
-
-	latestMinSize, _ := utils.ToBytes(rules.MinSize)
-
-	return rules.Path, rules.Extensions, latestMinSize, rules.Exclude
 }
 
-func (m *CleanFilesModel) GetActiveTab() int {
-	return m.ActiveTab
+// Handle processes a key message and returns appropriate model and command
+func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		return m.handleTab()
+	case "shift+tab":
+		return m.handleShiftTab()
+	case "up", "down":
+		// Always handle arrow keys for list navigation regardless of focus
+		// Make list navigation global - arrow keys always navigate the list
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		if !m.ShowDirs {
+			m.List, cmd = m.List.Update(msg)
+			cmds = append(cmds, cmd)
+		} else {
+			m.DirList, cmd = m.DirList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case "f1":
+		return m.handleF1()
+	case "f2":
+		return m.handleF2()
+	case "f3":
+		return m.handleF3()
+	case "f4":
+		return m.handleF4()
+	case "ctrl+r":
+		return m, m.LoadFiles()
+	case "ctrl+d":
+		return m.OnDelete()
+	case "ctrl+o":
+		return m, m.OpenFileExplorer(m.CurrentPath)
+	case "alt+c":
+		return m.handleAltC()
+	case "alt+1": // Toggle hidden files
+		m.OptionState["Show hidden files"] = !m.OptionState["Show hidden files"]
+		return m, m.LoadFiles()
+	case "alt+2": // Toggle confirm deletion
+		m.OptionState["Confirm deletion"] = !m.OptionState["Confirm deletion"]
+		return m, nil
+	case "alt+3": // Toggle include subfolders
+		m.OptionState["Include subfolders"] = !m.OptionState["Include subfolders"]
+		return m, nil
+	case "alt+4": // Toggle delete empty subfolders
+		m.OptionState["Delete empty subfolders"] = !m.OptionState["Delete empty subfolders"]
+		return m, nil
+	case "enter":
+		return m.handleEnter()
+	case " ":
+		return m.handleSpace()
+	case "list":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		if m.CurrentPath != "" {
+			if m.ShowDirs {
+				m.DirList, cmd = m.DirList.Update(msg)
+			} else {
+				m.List, cmd = m.List.Update(msg)
+			}
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+	default:
+		switch m.FocusedElement {
+		case "pathInput":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.PathInput, cmd = m.PathInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		case "extInput":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.ExtInput, cmd = m.ExtInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		case "minSize":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		case "excludeInput":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		}
+		return m, nil
+	}
+
+}
+
+func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
+	activeTab := m.TabManager.GetActiveTabIndex()
+
+	switch activeTab {
+	case 0: //Main tab
+		if m.CurrentPath == "" { // When no path is set, only allow focusing between path input and start button
+			switch m.FocusedElement {
+			case "pathInput":
+				m.FocusedElement = "startButton"
+				m.PathInput.Blur()
+			case "startButton":
+				m.FocusedElement = "pathInput"
+				m.PathInput.Focus()
+			}
+			return m, nil
+		} else { //When path is set
+			switch m.FocusedElement {
+			case "pathInput":
+				m.FocusedElement = "extInput"
+				m.PathInput.Blur()
+				m.ExtInput.Focus()
+			case "extInput":
+				m.ExtInput.Blur()
+				m.FocusedElement = "minSize"
+				m.MinSizeInput.Focus()
+			case "minSize":
+				m.MinSizeInput.Blur()
+				m.FocusedElement = "list"
+			case "list":
+				m.FocusedElement = "dirButton"
+			case "dirButton":
+				m.FocusedElement = "deleteButton"
+			case "deleteButton":
+				m.FocusedElement = "pathInput"
+				m.PathInput.Focus()
+			}
+		}
+	case 1: // Tab navigation for Filters tab
+		switch m.FocusedElement {
+		case "excludeInput":
+			m.ExcludeInput.Blur()
+			m.FocusedElement = "minSize"
+			m.MinSizeInput.Focus()
+		case "minSize":
+			m.MinSizeInput.Blur()
+			m.FocusedElement = "excludeInput"
+			m.ExcludeInput.Focus()
+		}
+	case 2: // Tab navigation for Options tab
+		switch m.FocusedElement {
+		case "option1":
+			m.FocusedElement = "option2"
+		case "option2":
+			m.FocusedElement = "option3"
+		case "option3":
+			m.FocusedElement = "option4"
+		case "option4":
+			m.FocusedElement = "option1"
+		}
+	}
+
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
+	// Handle space key for options
+	if strings.HasPrefix(m.FocusedElement, "option") {
+		// Extract option number from the focused element (e.g. "option1" -> "1")
+		optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+		idx, err := strconv.Atoi(optionNum)
+		if err != nil {
+			return m, nil
+		}
+		if idx < 1 || idx > len(tabs.DefaultOption) {
+			return m, nil
+		}
+		idx-- // Convert to 0-based index
+
+		// Get the option name and toggle its state
+		optName := tabs.DefaultOption[idx]
+		m.OptionState[optName] = !m.OptionState[optName]
+
+		// Keep focus on the current option
+		m.FocusedElement = "option" + optionNum
+
+		// If this is the "Show hidden files" option, reload files
+		if optName == "Show hidden files" {
+			return m, m.LoadFiles()
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
+	activeTab := m.TabManager.GetActiveTabIndex()
+
+	switch activeTab {
+	case 0: //Main tab
+		if m.CurrentPath == "" { // When no path is set, only allow focusing between path input and start button
+			switch m.FocusedElement {
+			case "pathInput":
+				m.FocusedElement = "startButton"
+				m.PathInput.Blur()
+
+			case "startButton":
+				m.FocusedElement = "pathInput"
+				m.PathInput.Focus()
+			}
+		} else {
+			switch m.FocusedElement {
+			case "pathInput":
+				m.PathInput.Blur()
+				m.FocusedElement = "deleteButton"
+			case "deleteButton":
+				m.FocusedElement = "dirButton"
+			case "dirButton":
+				m.FocusedElement = "list"
+			case "list":
+				m.FocusedElement = "minSize"
+				m.MinSizeInput.Focus()
+			case "minSize":
+				m.MinSizeInput.Blur()
+				m.FocusedElement = "extInput"
+				m.ExtInput.Focus()
+			case "extInput":
+				m.ExtInput.Blur()
+				m.FocusedElement = "pathInput"
+				m.PathInput.Focus()
+			}
+		}
+	case 1: // Tab navigation for Filters tab
+		switch m.FocusedElement {
+		case "excludeInput":
+			m.ExcludeInput.Blur()
+			m.FocusedElement = "minSize"
+			m.MinSizeInput.Focus()
+		case "minSize":
+			m.MinSizeInput.Blur()
+			m.FocusedElement = "excludeInput"
+			m.ExcludeInput.Focus()
+		}
+	case 2: // Tab navigation for Options tab
+		switch m.FocusedElement {
+		case "option1":
+			m.FocusedElement = "option4"
+		case "option2":
+			m.FocusedElement = "option1"
+		case "option3":
+			m.FocusedElement = "option2"
+		case "option4":
+			m.FocusedElement = "option3"
+		}
+	}
+
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleF1() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(0)
+	m.FocusedElement = "pathInput"
+	pathInput := m.GetPathInput()
+	pathInput.Focus()
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleF2() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(1)
+	m.FocusedElement = "excludeInput"
+	excludeInput := m.GetExcludeInput()
+	excludeInput.Focus()
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleF3() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(2)
+	m.FocusedElement = "option1"
+	return m, nil
+}
+func (m *CleanFilesModel) handleF4() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(3)
+	m.FocusedElement = "option1"
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleAltC() (tea.Model, tea.Cmd) {
+	m.MinSizeInput.SetValue("")
+	m.ExcludeInput.SetValue("")
+	return m, m.LoadFiles()
+}
+
+func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
+	if m.CurrentPath == "" {
+		if m.FocusedElement == "startButton" {
+			path := m.PathInput.Value()
+			if path != "" {
+				expandedPath := utils.ExpandTilde(path)
+				if _, err := os.Stat(expandedPath); err == nil {
+					m.CurrentPath = expandedPath
+					m.FocusedElement = "pathInput"
+					m.PathInput.Focus()
+					return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
+				} else {
+					m.SetErr(fmt.Errorf("invalid path: %s", path))
+				}
+			}
+		}
+	} else {
+		switch m.FocusedElement {
+		case "extInput", "minSize", "excludeInput":
+			// Update the list of files when pressing Enter in the input fields
+			return m, m.LoadFiles()
+
+		case "dirButton":
+			m.ShowDirs = true
+			return m, m.LoadDirs()
+		case "deleteButton":
+			return m.OnDelete()
+		case "list":
+			var cmds []tea.Cmd
+			if !m.ShowDirs && m.List.SelectedItem() != nil {
+				selectedItem := m.List.SelectedItem().(models.CleanItem)
+				if selectedItem.Size == -1 {
+					// Handle parent directory selection
+					m.CurrentPath = selectedItem.Path
+					m.PathInput.SetValue(selectedItem.Path)
+					// Recalculate directory size when changing directory
+					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+					return m, tea.Batch(cmds...)
+				}
+				// If it's a directory, navigate into it
+				info, err := os.Stat(selectedItem.Path)
+				if err == nil && info.IsDir() {
+					m.CurrentPath = selectedItem.Path
+					m.PathInput.SetValue(selectedItem.Path)
+					// Recalculate directory size when changing directory
+					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+					return m, tea.Batch(cmds...)
+				}
+			} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
+				selectedDir := m.DirList.SelectedItem().(models.CleanItem)
+				m.CurrentPath = selectedDir.Path
+				m.PathInput.SetValue(selectedDir.Path)
+				m.ShowDirs = false
+				// Recalculate directory size when changing directory
+				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+				return m, tea.Batch(cmds...)
+			}
+		default:
+			// Handle space key for options
+			if strings.HasPrefix(m.FocusedElement, "option") {
+				// Extract option number from the focused element (e.g. "option1" -> "1")
+				optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+				idx, err := strconv.Atoi(optionNum)
+				if err != nil {
+					return m, nil
+				}
+				if idx < 1 || idx > len(tabs.DefaultOption) {
+					return m, nil
+				}
+				idx-- // Convert to 0-based index
+
+				// Get the option name and toggle its state
+				optName := tabs.DefaultOption[idx]
+				m.OptionState[optName] = !m.OptionState[optName]
+
+				// Keep focus on the current option
+				m.FocusedElement = "option" + optionNum
+
+				// If this is the "Show hidden files" option, reload files
+				if optName == "Show hidden files" {
+					return m, m.LoadFiles()
+				}
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+	return m, nil
 }
 
 func (m *CleanFilesModel) GetCurrentPath() string {
@@ -1119,7 +1002,7 @@ func (m *CleanFilesModel) GetExtInput() textinput.Model {
 }
 
 func (m *CleanFilesModel) GetSizeInput() textinput.Model {
-	return m.SizeInput
+	return m.MinSizeInput
 }
 
 func (m *CleanFilesModel) GetExcludeInput() textinput.Model {
@@ -1151,4 +1034,32 @@ func (m *CleanFilesModel) SetExclude(exclude []string) {
 
 func (m *CleanFilesModel) SetExtensions(extensions []string) {
 	m.Extensions = extensions
+}
+
+func (m *CleanFilesModel) SetCurrentPath(path string) {
+	m.CurrentPath = path
+}
+
+func (m *CleanFilesModel) SetPathInput(input textinput.Model) {
+	m.PathInput = input
+}
+
+func (m *CleanFilesModel) SetExtInput(input textinput.Model) {
+	m.ExtInput = input
+}
+
+func (m *CleanFilesModel) SetExcludeInput(input textinput.Model) {
+	m.ExcludeInput = input
+}
+
+func (m *CleanFilesModel) SetSizeInput(input textinput.Model) {
+	m.MinSizeInput = input
+}
+
+func (m *CleanFilesModel) GetErr() error {
+	return m.Err
+}
+
+func (m *CleanFilesModel) SetErr(err error) {
+	m.Err = err
 }
