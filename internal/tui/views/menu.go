@@ -1,4 +1,4 @@
-package tui
+package views
 
 import (
 	"github.com/charmbracelet/bubbles/list"
@@ -8,42 +8,29 @@ import (
 
 var (
 	docStyle = lipgloss.NewStyle().
-			Margin(1).
-			Padding(1, 2).
-			Align(lipgloss.Center)
-
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
-			Padding(0, 2).
-			Align(lipgloss.Center)
-
-	selectedItemStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#7D56F4")).
-				Bold(true).
-				Padding(0, 1)
-	appStyle = lipgloss.NewStyle().Padding(0, 1)
+		Margin(1).
+		Padding(1, 2).
+		Align(lipgloss.Center)
 )
 
-type item struct {
+type Item struct {
 	title string
 }
 
-func (i item) Title() string       { return i.title }
-func (i item) Description() string { return "" }
-func (i item) FilterValue() string { return i.title }
+func (i Item) Title() string       { return i.title }
+func (i Item) Description() string { return "" }
+func (i Item) FilterValue() string { return i.title }
 
 type MainMenu struct {
-	list list.Model
+	List list.Model
 }
 
 func NewMainMenu() *MainMenu {
 	items := []list.Item{
-		item{title: "🧹 Clean Files"},
-		item{title: "⚙️ Manage Rules"},
-		item{title: "📊 Statistics"},
-		item{title: "🚪 Exit"},
+		Item{title: "🧹 Clean Files"},
+		Item{title: "⚙️ Manage Rules"},
+		Item{title: "📊 Statistics"},
+		Item{title: "🚪 Exit"},
 	}
 
 	delegate := list.NewDefaultDelegate()
@@ -62,7 +49,7 @@ func NewMainMenu() *MainMenu {
 		Padding(0, 1)
 
 	return &MainMenu{
-		list: l,
+		List: l,
 	}
 }
 
@@ -73,14 +60,14 @@ func (m *MainMenu) Init() tea.Cmd {
 func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.list.SetSize(msg.Width-4, msg.Height-6)
+		m.List.SetSize(msg.Width-4, msg.Height-6)
 	}
 
 	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
+	m.List, cmd = m.List.Update(msg)
 	return m, cmd
 }
 
 func (m *MainMenu) View() string {
-	return docStyle.Render(m.list.View())
+	return docStyle.Render(m.List.View())
 }

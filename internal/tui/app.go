@@ -4,6 +4,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
+
+	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 type page int
@@ -16,13 +19,12 @@ const (
 )
 
 type App struct {
-	menu        *MainMenu
-	cleanFiles  *model
-	rulesModel  *RulesModel
-	page        page
-	err         error
-	filemanager filemanager.FileManager
-	rules       rules.Rules
+	menu            *views.MainMenu
+	cleanFilesModel *views.CleanFilesModel
+	rulesModel      *views.RulesModel
+	page            page
+	filemanager     filemanager.FileManager
+	rules           rules.Rules
 }
 
 func NewApp(
@@ -30,8 +32,8 @@ func NewApp(
 	rules rules.Rules,
 ) *App {
 	return &App{
-		menu:        NewMainMenu(),
-		rulesModel:  NewRulesModel(rules),
+		menu:        views.NewMainMenu(),
+		rulesModel:  views.NewRulesModel(rules),
 		page:        menuPage,
 		filemanager: filemanager,
 		rules:       rules,
@@ -39,8 +41,8 @@ func NewApp(
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFiles = initialModel(a.rules)
-	return tea.Batch(a.menu.Init(), a.cleanFiles.Init(), a.rulesModel.Init())
+	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -55,18 +57,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if a.page != menuPage {
 				if a.page == rulesPage {
-					a.cleanFiles = initialModel(a.rules)
-					cmds = append(cmds, a.cleanFiles.Init())
+					a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+					cmds = append(cmds, a.cleanFilesModel.Init())
 				}
 				a.page = menuPage
 				return a, tea.Batch(cmds...)
 			}
 		case "enter":
 			if a.page == menuPage {
-				switch a.menu.list.SelectedItem().(item).Title() {
+				switch a.menu.List.SelectedItem().(views.Item).Title() {
 				case "🧹 Clean Files":
 					a.page = cleanPage
-					cmds = append(cmds, a.cleanFiles.loadFiles())
+					cmds = append(cmds, a.cleanFilesModel.LoadFiles())
 				case "⚙️ Manage Rules":
 					a.page = rulesPage
 				case "📊 Statistics":
@@ -82,18 +84,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch a.page {
 	case menuPage:
 		menuModel, menuCmd := a.menu.Update(msg)
-		menu := menuModel.(*MainMenu)
+		menu := menuModel.(*views.MainMenu)
 		a.menu = menu
 		cmd = menuCmd
 	case cleanPage:
-		cleanModel, cleanCmd := a.cleanFiles.Update(msg)
-		if m, ok := cleanModel.(*model); ok {
-			a.cleanFiles = m
+		cleanModel, cleanCmd := a.cleanFilesModel.Update(msg)
+		if m, ok := cleanModel.(*views.CleanFilesModel); ok {
+			a.cleanFilesModel = m
 		}
 		cmd = cleanCmd
 	case rulesPage:
 		rulesModel, rulesCmd := a.rulesModel.Update(msg)
-		if r, ok := rulesModel.(*RulesModel); ok {
+		if r, ok := rulesModel.(*views.RulesModel); ok {
 			a.rulesModel = r
 		}
 		cmd = rulesCmd
@@ -108,11 +110,11 @@ func (a *App) View() string {
 	case menuPage:
 		content = a.menu.View()
 	case cleanPage:
-		content = a.cleanFiles.View()
+		content = a.cleanFilesModel.View()
 	case rulesPage:
 		content = a.rulesModel.View()
 	case statsPage:
 		content = "Statistics page coming soon..."
 	}
-	return AppStyle.Render(content)
+	return styles.AppStyle.Render(content)
 }

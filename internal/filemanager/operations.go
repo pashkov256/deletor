@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // recursively traverse deletion
@@ -73,4 +75,74 @@ func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
 	for i := len(emptyDirs) - 1; i >= 0; i-- {
 		os.Remove(emptyDirs[i])
 	}
+}
+
+// Function to calculate directory size recursively with option to cancel
+func (f *defaultFileManager) CalculateDirSize(path string) int64 {
+	// For very large directories, return a placeholder value immediately
+	// to avoid blocking the UI
+	_, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+
+	// If it's a very large directory (like C: or Program Files)
+	// just return 0 immediately to prevent lag
+	if strings.HasSuffix(path, ":\\") || strings.Contains(path, "Program Files") {
+		return 0
+	}
+
+	var totalSize int64 = 0
+
+	// Use a channel to limit concurrency
+	semaphore := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+
+	// Create a function to process a directory
+	var processDir func(string) int64
+	processDir = func(dirPath string) int64 {
+		var size int64 = 0
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			return 0
+		}
+
+		for _, entry := range entries {
+			// Skip hidden files and directories unless enabled
+			if strings.HasPrefix(entry.Name(), ".") {
+				continue
+			}
+
+			fullPath := filepath.Join(dirPath, entry.Name())
+			if entry.IsDir() {
+				// Process directories with concurrency limits
+				wg.Add(1)
+				go func(p string) {
+					semaphore <- struct{}{}
+					defer func() {
+						<-semaphore
+						wg.Done()
+					}()
+					dirSize := processDir(p)
+					atomic.AddInt64(&totalSize, dirSize)
+				}(fullPath)
+			} else {
+				// Process files directly
+				info, err := entry.Info()
+				if err == nil {
+					fileSize := info.Size()
+					atomic.AddInt64(&totalSize, fileSize)
+					size += fileSize
+				}
+			}
+		}
+		return size
+	}
+
+	// Start processing
+	processDir(path)
+
+	wg.Wait()
+
+	return totalSize
 }

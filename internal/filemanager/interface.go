@@ -7,6 +7,7 @@ type FileManager interface {
 	DeleteEmptySubfolders(dir string)
 	IsEmptyDir(dir string) bool
 	ExpandTilde(path string) string
+	CalculateDirSize(path string) int64
 }
 
 type FileTask struct {
