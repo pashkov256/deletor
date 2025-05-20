@@ -163,3 +163,53 @@ func ParseExtToMap(extSlice []string) map[string]struct{} {
 
 	return extMap
 }
+
+func ParseTimeDuration(timeStr string) (time.Time, error) {
+	timeStr = strings.TrimSpace(strings.ToLower(timeStr))
+
+	// Find the first non-digit character
+	var unitIndex int
+	for unitIndex = 0; unitIndex < len(timeStr); unitIndex++ {
+		if timeStr[unitIndex] < '0' || timeStr[unitIndex] > '9' {
+			break
+		}
+	}
+
+	if unitIndex == 0 {
+		return time.Time{}, nil
+	}
+
+	// Parse the number
+	numStr := timeStr[:unitIndex]
+	num, err := strconv.ParseInt(numStr, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid number: %s", numStr)
+	}
+
+	// Get the unit part
+	unit := strings.TrimSpace(timeStr[unitIndex:])
+
+	// Calculate the duration
+	var duration time.Duration
+	switch {
+	case strings.HasPrefix(unit, "sec"):
+		duration = time.Duration(num) * time.Second
+	case strings.HasPrefix(unit, "min"):
+		duration = time.Duration(num) * time.Minute
+	case strings.HasPrefix(unit, "hour"):
+		duration = time.Duration(num) * time.Hour
+	case strings.HasPrefix(unit, "day"):
+		duration = time.Duration(num) * 24 * time.Hour
+	case strings.HasPrefix(unit, "week"):
+		duration = time.Duration(num) * 7 * 24 * time.Hour
+	case strings.HasPrefix(unit, "month"):
+		duration = time.Duration(num) * 30 * 24 * time.Hour
+	case strings.HasPrefix(unit, "year"):
+		duration = time.Duration(num) * 365 * 24 * time.Hour
+	default:
+		return time.Time{}, fmt.Errorf("unknown time unit: %s", unit)
+	}
+
+	// Return the time that is duration from now
+	return time.Now().Add(-duration), nil
+}

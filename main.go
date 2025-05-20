@@ -30,7 +30,6 @@ func main() {
 		}
 
 	} else {
-
 		extMap := utils.ParseExtToMap(config.Extensions)
 
 		fileScanner := filemanager.NewFileScanner(fm, &filemanager.FileFilter{
@@ -66,7 +65,7 @@ func main() {
 			actionIsDelete := true
 
 			fmt.Println() // This is required for formatting
-			if !config.ConfirmDelete {
+			if config.ConfirmDelete {
 				fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 				actionIsDelete = printer.AskForConfirmation("Delete these files?")
 			}
@@ -84,5 +83,4 @@ func main() {
 			printer.PrintWarning("File not found")
 		}
 	}
-
 }

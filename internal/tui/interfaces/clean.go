@@ -33,6 +33,8 @@ type CleanModel interface {
 	GetMinSizeInput() textinput.Model
 	GetMaxSizeInput() textinput.Model
 	GetExcludeInput() textinput.Model
+	GetNewerInput() textinput.Model
+	GetOlderInput() textinput.Model
 
 	// Setters and state updates
 	SetFocusedElement(element string)

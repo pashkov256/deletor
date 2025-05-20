@@ -67,7 +67,7 @@ deletor -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,
 
 `-progress` - display a progress bar during file scanning
 
-`-confirm-delete` - if present will skip the final confirmation check 
+`-confirm-delete` - confirmation before deleting files
 
 
 ## ✨ The Power of Dual Modes: TUI and CLI

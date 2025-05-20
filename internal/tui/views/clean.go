@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -29,6 +30,8 @@ type CleanFilesModel struct {
 	MaxSizeInput    textinput.Model
 	PathInput       textinput.Model
 	ExcludeInput    textinput.Model
+	OlderInput      textinput.Model
+	NewerInput      textinput.Model
 	CurrentPath     string
 	Extensions      []string
 	MinSize         int64
@@ -37,7 +40,7 @@ type CleanFilesModel struct {
 	Options         []string
 	OptionState     map[string]bool
 	Err             error
-	FocusedElement  string // "pathInput", "extInput","excludeInput", "minSize","maxSize", "deleteButton","dirButton", "option1", "option2", "option3"
+	FocusedElement  string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "option1", "option2", "option3"
 	FileToDelete    *models.CleanItem
 	ShowDirs        bool
 	DirList         list.Model
@@ -65,14 +68,14 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	latestExclude := lastestRules.Exclude
 	// Initialize inputs
 	extInput := textinput.New()
-	extInput.Placeholder = "(e.g. js,png,zip)..."
+	extInput.Placeholder = "e.g. js,png,zip"
 	extInput.SetValue(strings.Join(latestExtensions, ","))
 	extInput.PromptStyle = styles.TextInputPromptStyle
 	extInput.TextStyle = styles.TextInputTextStyle
 	extInput.Cursor.Style = styles.TextInputCursorStyle
 
 	minSizeInput := textinput.New()
-	minSizeInput.Placeholder = "(e.g. 10b,10kb,10mb,10gb,10tb)..."
+	minSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
 	minSizeInput.SetValue(latestMinSize)
 	minSize, _ := utils.ToBytes(latestMinSize)
 	minSizeInput.PromptStyle = styles.TextInputPromptStyle
@@ -80,7 +83,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	minSizeInput.Cursor.Style = styles.TextInputCursorStyle
 
 	maxSizeInput := textinput.New()
-	maxSizeInput.Placeholder = "(e.g. 10b,10kb,10mb,10gb,10tb)..."
+	maxSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
 	maxSizeInput.PromptStyle = styles.TextInputPromptStyle
 	maxSizeInput.TextStyle = styles.TextInputTextStyle
 	maxSizeInput.Cursor.Style = styles.TextInputCursorStyle
@@ -92,11 +95,20 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	pathInput.Cursor.Style = styles.TextInputCursorStyle
 
 	excludeInput := textinput.New()
-	excludeInput.Placeholder = "Exclude specific files/paths (e.g. data,backup)"
 	excludeInput.SetValue(strings.Join(latestExclude, ","))
 	excludeInput.PromptStyle = styles.TextInputPromptStyle
 	excludeInput.TextStyle = styles.TextInputTextStyle
 	excludeInput.Cursor.Style = styles.TextInputCursorStyle
+
+	olderInput := textinput.New()
+	olderInput.PromptStyle = styles.TextInputPromptStyle
+	olderInput.TextStyle = styles.TextInputTextStyle
+	olderInput.Cursor.Style = styles.TextInputCursorStyle
+
+	newerInput := textinput.New()
+	newerInput.PromptStyle = styles.TextInputPromptStyle
+	newerInput.TextStyle = styles.TextInputTextStyle
+	newerInput.Cursor.Style = styles.TextInputCursorStyle
 
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
@@ -136,6 +148,8 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		MaxSizeInput:    maxSizeInput,
 		PathInput:       pathInput,
 		ExcludeInput:    excludeInput,
+		OlderInput:      olderInput,
+		NewerInput:      newerInput,
 		CurrentPath:     latestDir,
 		Extensions:      latestExtensions,
 		MinSize:         minSize,
@@ -274,6 +288,25 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		m.Extensions = utils.ParseExtToSlice(m.ExtInput.Value())
 		m.Exclude = utils.ParseExcludeToSlice(m.ExcludeInput.Value())
 
+		var olderDuration, newerDuration time.Time
+		var err error
+
+		if m.OlderInput.Value() != "" {
+			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid older than time: %v", err)
+				return nil
+			}
+		}
+
+		if m.NewerInput.Value() != "" {
+			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid newer than time: %v", err)
+				return nil
+			}
+		}
+
 		minSizeStr := m.MinSizeInput.Value()
 		if minSizeStr != "" {
 			minSize, err := utils.ToBytes(minSizeStr)
@@ -316,7 +349,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			})
 		}
 
-		filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude)
+		filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude, olderDuration, newerDuration)
 
 		// Then collect files
 		for _, fileInfo := range fileInfos {
@@ -542,8 +575,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.handleEnter()
-	case " ":
-		return m.handleSpace()
+
 	case "list":
 		var cmd tea.Cmd
 		var cmds []tea.Cmd
@@ -570,13 +602,13 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.ExtInput, cmd = m.ExtInput.Update(msg)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "minSize":
+		case "minSizeInput":
 			var cmd tea.Cmd
 			var cmds []tea.Cmd
 			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "maxSize":
+		case "maxSizeInput":
 			var cmd tea.Cmd
 			var cmds []tea.Cmd
 			m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
@@ -588,7 +620,25 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
+		case "olderInput":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.OlderInput, cmd = m.OlderInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		case "newerInput":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.NewerInput, cmd = m.NewerInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 		}
+
+		//If you put the space handling above, then you will not be able to write a space in input.
+		if msg.String() == " " {
+			return m.handleSpace()
+		}
+
 		return m, nil
 	}
 
@@ -631,14 +681,22 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 		switch m.FocusedElement {
 		case "excludeInput":
 			m.ExcludeInput.Blur()
-			m.FocusedElement = "minSize"
+			m.FocusedElement = "minSizeInput"
 			m.MinSizeInput.Focus()
-		case "minSize":
+		case "minSizeInput":
 			m.MinSizeInput.Blur()
-			m.FocusedElement = "maxSize"
+			m.FocusedElement = "maxSizeInput"
 			m.MaxSizeInput.Focus()
-		case "maxSize":
+		case "maxSizeInput":
 			m.MaxSizeInput.Blur()
+			m.FocusedElement = "olderInput"
+			m.OlderInput.Focus()
+		case "olderInput":
+			m.OlderInput.Blur()
+			m.FocusedElement = "newerInput"
+			m.NewerInput.Focus()
+		case "newerInput":
+			m.NewerInput.Blur()
 			m.FocusedElement = "excludeInput"
 			m.ExcludeInput.Focus()
 		}
@@ -725,16 +783,24 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 		switch m.FocusedElement {
 		case "excludeInput":
 			m.ExcludeInput.Blur()
-			m.FocusedElement = "maxSize"
-			m.MinSizeInput.Focus()
-		case "minSize":
+			m.FocusedElement = "newerInput"
+			m.NewerInput.Focus()
+		case "minSizeInput":
 			m.MinSizeInput.Blur()
 			m.FocusedElement = "excludeInput"
 			m.ExcludeInput.Focus()
-		case "maxSize":
+		case "maxSizeInput":
 			m.MaxSizeInput.Blur()
-			m.FocusedElement = "minSize"
-			m.ExcludeInput.Focus()
+			m.FocusedElement = "minSizeInput"
+			m.MinSizeInput.Focus()
+		case "olderInput":
+			m.OlderInput.Blur()
+			m.FocusedElement = "maxSizeInput"
+			m.MaxSizeInput.Focus()
+		case "newerInput":
+			m.NewerInput.Blur()
+			m.FocusedElement = "olderInput"
+			m.OlderInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
 		switch m.FocusedElement {
@@ -803,7 +869,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 	} else {
 		switch m.FocusedElement {
-		case "extInput", "minSize", "maxSize", "excludeInput":
+		case "extInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput":
 			// Update the list of files when pressing Enter in the input fields
 			return m, m.LoadFiles()
 		case "dirButton":
@@ -959,6 +1025,14 @@ func (m *CleanFilesModel) GetMaxSizeInput() textinput.Model {
 
 func (m *CleanFilesModel) GetExcludeInput() textinput.Model {
 	return m.ExcludeInput
+}
+
+func (m *CleanFilesModel) GetOlderInput() textinput.Model {
+	return m.OlderInput
+}
+
+func (m *CleanFilesModel) GetNewerInput() textinput.Model {
+	return m.NewerInput
 }
 
 func (m *CleanFilesModel) SetFocusedElement(element string) {
