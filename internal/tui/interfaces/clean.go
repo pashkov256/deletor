@@ -30,7 +30,8 @@ type CleanModel interface {
 	GetFocusedElement() string
 	GetPathInput() textinput.Model
 	GetExtInput() textinput.Model
-	GetSizeInput() textinput.Model
+	GetMinSizeInput() textinput.Model
+	GetMaxSizeInput() textinput.Model
 	GetExcludeInput() textinput.Model
 
 	// Setters and state updates

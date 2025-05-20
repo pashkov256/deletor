@@ -26,16 +26,18 @@ type CleanFilesModel struct {
 	List            list.Model
 	ExtInput        textinput.Model
 	MinSizeInput    textinput.Model
+	MaxSizeInput    textinput.Model
 	PathInput       textinput.Model
 	ExcludeInput    textinput.Model
 	CurrentPath     string
 	Extensions      []string
 	MinSize         int64
+	MaxSize         int64
 	Exclude         []string
 	Options         []string
 	OptionState     map[string]bool
 	Err             error
-	FocusedElement  string // "pathInput", "extInput","excludeInput", "minSize", "deleteButton","dirButton", "option1", "option2", "option3"
+	FocusedElement  string // "pathInput", "extInput","excludeInput", "minSize","maxSize", "deleteButton","dirButton", "option1", "option2", "option3"
 	FileToDelete    *models.CleanItem
 	ShowDirs        bool
 	DirList         list.Model
@@ -70,12 +72,18 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	extInput.Cursor.Style = styles.TextInputCursorStyle
 
 	minSizeInput := textinput.New()
-	minSizeInput.Placeholder = "(e.g. 10kb,10mb,10b)..."
+	minSizeInput.Placeholder = "(e.g. 10b,10kb,10mb,10gb,10tb)..."
 	minSizeInput.SetValue(latestMinSize)
 	minSize, _ := utils.ToBytes(latestMinSize)
 	minSizeInput.PromptStyle = styles.TextInputPromptStyle
 	minSizeInput.TextStyle = styles.TextInputTextStyle
 	minSizeInput.Cursor.Style = styles.TextInputCursorStyle
+
+	maxSizeInput := textinput.New()
+	maxSizeInput.Placeholder = "(e.g. 10b,10kb,10mb,10gb,10tb)..."
+	maxSizeInput.PromptStyle = styles.TextInputPromptStyle
+	maxSizeInput.TextStyle = styles.TextInputTextStyle
+	maxSizeInput.Cursor.Style = styles.TextInputCursorStyle
 
 	pathInput := textinput.New()
 	pathInput.SetValue(latestDir)
@@ -125,6 +133,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		List:            l,
 		ExtInput:        extInput,
 		MinSizeInput:    minSizeInput,
+		MaxSizeInput:    maxSizeInput,
 		PathInput:       pathInput,
 		ExcludeInput:    excludeInput,
 		CurrentPath:     latestDir,
@@ -262,45 +271,12 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 
 		currentDir := m.CurrentPath
 
-		// Get user-specified extensions
-		extStr := m.ExtInput.Value()
-		if extStr != "" {
-			// Parse extensions from input
-			m.Extensions = []string{}
-			for _, ext := range strings.Split(extStr, ",") {
-				ext = strings.TrimSpace(ext)
-				if ext != "" {
-					// Add dot prefix if needed
-					if !strings.HasPrefix(ext, ".") {
-						ext = "." + ext
-					}
-					m.Extensions = append(m.Extensions, strings.ToLower(ext))
-				}
-			}
-		} else {
-			// If no extensions specified, show all files
-			m.Extensions = []string{}
-		}
+		m.Extensions = utils.ParseExtToSlice(m.ExtInput.Value())
+		m.Exclude = utils.ParseExcludeToSlice(m.ExcludeInput.Value())
 
-		excludeStr := m.ExcludeInput.Value()
-		if excludeStr != "" {
-			// Parse extensions from input
-			m.Exclude = []string{}
-			for _, exc := range strings.Split(excludeStr, ",") {
-				exc = strings.TrimSpace(exc)
-				if exc != "" {
-					m.Exclude = append(m.Exclude, exc)
-				}
-			}
-		} else {
-			// If no extensions specified, show all files
-			m.Exclude = []string{}
-		}
-
-		// Get user-specified min size
-		sizeStr := m.MinSizeInput.Value()
-		if sizeStr != "" {
-			minSize, err := utils.ToBytes(sizeStr)
+		minSizeStr := m.MinSizeInput.Value()
+		if minSizeStr != "" {
+			minSize, err := utils.ToBytes(minSizeStr)
 			if err == nil {
 				m.MinSize = minSize
 			} else {
@@ -310,6 +286,20 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		} else {
 			// If no size specified, show all files regardless of size
 			m.MinSize = 0
+		}
+
+		maxSizeStr := m.MaxSizeInput.Value()
+		if maxSizeStr != "" {
+			maxSize, err := utils.ToBytes(maxSizeStr)
+			if err == nil {
+				m.MaxSize = maxSize
+			} else {
+				// If invalid size, reset to 0
+				m.MaxSize = 0
+			}
+		} else {
+			// If no size specified, show all files regardless of size
+			m.MaxSize = 0
 		}
 
 		fileInfos, err := os.ReadDir(currentDir)
@@ -326,8 +316,9 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			})
 		}
 
+		filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude)
+
 		// First collect directories
-	dirLoop:
 		for _, fileInfo := range fileInfos {
 			if !fileInfo.IsDir() {
 				continue
@@ -340,12 +331,14 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 
 			path := filepath.Join(currentDir, fileInfo.Name())
 
+			fi, err := fileInfo.Info()
+
+			if err != nil {
+				continue
+			}
+
 			if len(m.Exclude) > 0 && fileInfo.IsDir() {
-				for _, excludePattern := range m.Exclude {
-					if strings.Contains(filepath.ToSlash(path+"/"), excludePattern+"/") {
-						continue dirLoop
-					}
-				}
+				filter.ExcludeFilter(fi, currentDir)
 			}
 
 			items = append(items, models.CleanItem{
@@ -355,7 +348,6 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		}
 
 		// Then collect files
-	fileLoop:
 		for _, fileInfo := range fileInfos {
 			if fileInfo.IsDir() {
 				continue
@@ -374,32 +366,13 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 
 			size := info.Size()
 
-			// Apply extension filter if specified
-			if len(m.Extensions) > 0 {
-				ext := strings.ToLower(filepath.Ext(path))
-				matched := false
-				for _, allowedExt := range m.Extensions {
-					if ext == allowedExt {
-						matched = true
-						break
-					}
-				}
-				if !matched {
-					continue
-				}
-			}
-
-			// Apply size filter if specified
-			if m.MinSize > 0 && size < m.MinSize {
+			fi, err := fileInfo.Info()
+			if err != nil {
 				continue
 			}
 
-			if len(m.Exclude) > 0 && !fileInfo.IsDir() {
-				for _, excludePattern := range m.Exclude {
-					if strings.HasPrefix(fileInfo.Name(), excludePattern) {
-						continue fileLoop
-					}
-				}
+			if !filter.MatchesFilters(fi, currentDir) {
+				continue
 			}
 
 			// Add to filtered size and count
@@ -632,6 +605,12 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
+		case "maxSize":
+			var cmd tea.Cmd
+			var cmds []tea.Cmd
+			m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 		case "excludeInput":
 			var cmd tea.Cmd
 			var cmds []tea.Cmd
@@ -667,10 +646,6 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 				m.ExtInput.Focus()
 			case "extInput":
 				m.ExtInput.Blur()
-				m.FocusedElement = "minSize"
-				m.MinSizeInput.Focus()
-			case "minSize":
-				m.MinSizeInput.Blur()
 				m.FocusedElement = "list"
 			case "list":
 				m.FocusedElement = "dirButton"
@@ -689,6 +664,10 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 			m.MinSizeInput.Focus()
 		case "minSize":
 			m.MinSizeInput.Blur()
+			m.FocusedElement = "maxSize"
+			m.MaxSizeInput.Focus()
+		case "maxSize":
+			m.MaxSizeInput.Blur()
 			m.FocusedElement = "excludeInput"
 			m.ExcludeInput.Focus()
 		}
@@ -763,12 +742,8 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			case "dirButton":
 				m.FocusedElement = "list"
 			case "list":
-				m.FocusedElement = "minSize"
-				m.MinSizeInput.Focus()
-			case "minSize":
-				m.MinSizeInput.Blur()
 				m.FocusedElement = "extInput"
-				m.ExtInput.Focus()
+				m.MinSizeInput.Focus()
 			case "extInput":
 				m.ExtInput.Blur()
 				m.FocusedElement = "pathInput"
@@ -779,11 +754,15 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 		switch m.FocusedElement {
 		case "excludeInput":
 			m.ExcludeInput.Blur()
-			m.FocusedElement = "minSize"
+			m.FocusedElement = "maxSize"
 			m.MinSizeInput.Focus()
 		case "minSize":
 			m.MinSizeInput.Blur()
 			m.FocusedElement = "excludeInput"
+			m.ExcludeInput.Focus()
+		case "maxSize":
+			m.MaxSizeInput.Blur()
+			m.FocusedElement = "minSize"
 			m.ExcludeInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
@@ -853,10 +832,9 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 	} else {
 		switch m.FocusedElement {
-		case "extInput", "minSize", "excludeInput":
+		case "extInput", "minSize", "maxSize", "excludeInput":
 			// Update the list of files when pressing Enter in the input fields
 			return m, m.LoadFiles()
-
 		case "dirButton":
 			m.ShowDirs = true
 			return m, m.LoadDirs()
@@ -1001,8 +979,11 @@ func (m *CleanFilesModel) GetExtInput() textinput.Model {
 	return m.ExtInput
 }
 
-func (m *CleanFilesModel) GetSizeInput() textinput.Model {
+func (m *CleanFilesModel) GetMinSizeInput() textinput.Model {
 	return m.MinSizeInput
+}
+func (m *CleanFilesModel) GetMaxSizeInput() textinput.Model {
+	return m.MaxSizeInput
 }
 
 func (m *CleanFilesModel) GetExcludeInput() textinput.Model {

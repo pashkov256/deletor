@@ -17,6 +17,7 @@ func (t *FiltersTab) Update(msg tea.Msg) tea.Cmd { return nil }
 
 func (t *FiltersTab) View() string {
 	var content strings.Builder
+
 	excludeStyle := styles.StandardInputStyle
 	if t.model.GetFocusedElement() == "excludeInput" {
 		excludeStyle = styles.StandardInputFocusedStyle
@@ -25,11 +26,21 @@ func (t *FiltersTab) View() string {
 	excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
 	content.WriteString(excludeStyle.Render("Exclude: " + excludeInput.View()))
 	content.WriteString("\n")
-	sizeStyle := styles.StandardInputStyle
+
+	minSizeStyle := styles.StandardInputStyle
+	maxSizeStyle := styles.StandardInputStyle
 	if t.model.GetFocusedElement() == "minSize" {
-		sizeStyle = styles.StandardInputFocusedStyle
+		minSizeStyle = styles.StandardInputFocusedStyle
 	}
-	sizeInput := t.model.GetSizeInput()
-	content.WriteString(sizeStyle.Render("Min size: " + sizeInput.View()))
+	if t.model.GetFocusedElement() == "maxSize" {
+		maxSizeStyle = styles.StandardInputFocusedStyle
+	}
+
+	minSizeInput := t.model.GetMinSizeInput()
+	maxSizeInput := t.model.GetMaxSizeInput()
+
+	content.WriteString(minSizeStyle.Render("Min size: " + minSizeInput.View()))
+	content.WriteString("\n")
+	content.WriteString(maxSizeStyle.Render("Max size: " + maxSizeInput.View()))
 	return content.String()
 }

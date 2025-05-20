@@ -117,3 +117,49 @@ func LogDeletionToFile(files map[string]string) {
 	}
 	defer file.Close()
 }
+
+func ParseExtToSlice(extensions string) []string {
+	extSlice := make([]string, 0)
+	if extensions != "" {
+
+		for _, ext := range strings.Split(extensions, ",") {
+			ext = strings.TrimSpace(ext)
+			if ext != "" {
+				// Add dot prefix if needed
+				if !strings.HasPrefix(ext, ".") {
+					ext = "." + ext
+				}
+				extSlice = append(extSlice, strings.ToLower(ext))
+			}
+		}
+	}
+	return extSlice
+}
+
+func ParseExcludeToSlice(exclude string) []string {
+	excludeSlice := make([]string, 0)
+
+	if exclude != "" {
+		for _, exc := range strings.Split(exclude, ",") {
+			exc = strings.TrimSpace(exc)
+			if exc != "" {
+				excludeSlice = append(excludeSlice, exc)
+			}
+		}
+	}
+
+	return excludeSlice
+}
+
+func ParseExtToMap(extSlice []string) map[string]struct{} {
+	extMap := make(map[string]struct{})
+
+	for _, extItem := range extSlice {
+		if extItem == "" {
+			continue
+		}
+		extMap[extItem] = struct{}{}
+	}
+
+	return extMap
+}
