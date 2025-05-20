@@ -24,6 +24,7 @@
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
+- ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
 - 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
 - 🧠 **Rules System**: Create and manage deletion presets for repeated use
