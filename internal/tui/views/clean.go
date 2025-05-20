@@ -318,35 +318,6 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 
 		filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude)
 
-		// First collect directories
-		for _, fileInfo := range fileInfos {
-			if !fileInfo.IsDir() {
-				continue
-			}
-
-			// Skip hidden directories unless enabled
-			if !m.OptionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
-				continue
-			}
-
-			path := filepath.Join(currentDir, fileInfo.Name())
-
-			fi, err := fileInfo.Info()
-
-			if err != nil {
-				continue
-			}
-
-			if len(m.Exclude) > 0 && fileInfo.IsDir() {
-				filter.ExcludeFilter(fi, currentDir)
-			}
-
-			items = append(items, models.CleanItem{
-				Path: path,
-				Size: 0, // Directory
-			})
-		}
-
 		// Then collect files
 		for _, fileInfo := range fileInfos {
 			if fileInfo.IsDir() {

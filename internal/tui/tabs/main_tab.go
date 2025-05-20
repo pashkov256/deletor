@@ -144,7 +144,7 @@ func (t *MainTab) View() string {
 
 				if i == selectedIndex {
 					prefix = "> "
-					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066FF")).Bold(true)
+					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0254cf")).Bold(true)
 				} else if item.Size == -1 || item.Size == 0 {
 					style = style.Foreground(lipgloss.Color("#4DC4FF"))
 				}

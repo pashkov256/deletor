@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/joho/godotenv"
 	"github.com/pashkov256/deletor/internal/cli/config"
 	"github.com/pashkov256/deletor/internal/cli/output"
 	"github.com/pashkov256/deletor/internal/filemanager"
@@ -16,32 +14,6 @@ import (
 
 type Task struct {
 	info os.FileInfo
-}
-
-var extensionFromFlag bool
-var sizeFromFlag bool
-var ext []string
-var size string
-
-func init() {
-	extensionFromFlag = false
-	sizeFromFlag = false
-
-	err := godotenv.Load()
-	if err != nil {
-		extensionFromFlag = true
-		sizeFromFlag = true
-	}
-
-	ext = strings.Split(os.Getenv("EXTENSIONS"), ",")
-	if len(ext) == 1 && ext[0] == "" {
-		extensionFromFlag = true
-	}
-
-	size = os.Getenv("MAX_SIZE")
-	if size == "" {
-		sizeFromFlag = true
-	}
 }
 
 func main() {
@@ -58,9 +30,6 @@ func main() {
 		}
 
 	} else {
-		if len(config.Extensions) == 0 && !extensionFromFlag {
-			config.Extensions = ext
-		}
 
 		extMap := utils.ParseExtToMap(config.Extensions)
 
