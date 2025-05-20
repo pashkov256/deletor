@@ -8,6 +8,7 @@ type FileManager interface {
 	IsEmptyDir(dir string) bool
 	ExpandTilde(path string) string
 	CalculateDirSize(path string) int64
+	NewFileFilter(minSize, maxSize int64, extensions map[string]struct{}, exclude []string) *FileFilter
 }
 
 type FileTask struct {

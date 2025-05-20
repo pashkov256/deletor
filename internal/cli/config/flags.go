@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/pashkov256/deletor/internal/utils"
 )
@@ -27,16 +26,14 @@ func GetFlags() *Config {
 
 	// Parse exclude patterns
 	if *excludeFlag != "" {
-		config.Exclude = strings.Split(*excludeFlag, ",")
+		config.Exclude = utils.ParseExcludeToSlice(*excludeFlag)
 	}
 
 	// Convert extensions to slice
 	if *extensions != "" {
-		config.Extensions = strings.Split(*extensions, ",")
-		for i := range config.Extensions {
-			config.Extensions[i] = strings.TrimSpace(config.Extensions[i])
-		}
+		config.Extensions = utils.ParseExtToSlice(*extensions)
 	}
+
 	// Convert size to bytes
 	if *minSize != "" {
 		sizeBytes, err := utils.ToBytes(*minSize)

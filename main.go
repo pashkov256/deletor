@@ -58,19 +58,11 @@ func main() {
 		}
 
 	} else {
-		extMap := make(map[string]bool)
-
 		if len(config.Extensions) == 0 && !extensionFromFlag {
 			config.Extensions = ext
 		}
 
-		// Populate extension map
-		for _, extItem := range config.Extensions {
-			if extItem == "" {
-				continue
-			}
-			extMap[fmt.Sprint(".", extItem)] = true
-		}
+		extMap := utils.ParseExtToMap(config.Extensions)
 
 		fileScanner := filemanager.NewFileScanner(fm, &filemanager.FileFilter{
 			MinSize:    config.MinSize,
