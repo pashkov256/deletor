@@ -477,24 +477,58 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 				// If confirm deletion is disabled, delete all files
 				for _, listItem := range m.List.Items() {
 					if fileItem, ok := listItem.(models.CleanItem); ok && fileItem.Size > 0 {
-						err := os.Remove(fileItem.Path)
-						if err != nil {
-							m.Err = err
+						// If send files to trash is enabled, move all files to trash
+						if m.OptionState["Send files to trash"] {
+							m.Filemanager.MoveFileToTrash(fileItem.Path)
+						} else {
+							err := os.Remove(fileItem.Path)
+							if err != nil {
+								m.Err = err
+							}
 						}
 					}
 				}
 			} else {
-				// Delete just the selected file
-				err := os.Remove(selectedItem.Path)
-				if err != nil {
-					m.Err = err
+				// If send files to trash is enabled, move all files to trash
+				if m.OptionState["Send files to trash"] {
+					m.Filemanager.MoveFileToTrash(selectedItem.Path)
+				} else {
+					// Delete just the selected file
+					err := os.Remove(selectedItem.Path)
+					if err != nil {
+						m.Err = err
+					}
 				}
 			}
 			return m, m.LoadFiles()
 		}
 	} else if m.OptionState["Include subfolders"] {
-		// Delete all files in the current directory and all subfolders
-		m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()))
+		var olderDuration, newerDuration time.Time
+		var err error
+
+		if m.OlderInput.Value() != "" {
+			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid older than time: %v", err)
+				return m, nil
+			}
+		}
+
+		if m.NewerInput.Value() != "" {
+			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid newer than time: %v", err)
+				return m, nil
+			}
+		}
+
+		if m.OptionState["Send files to trash"] {
+			fmt.Println("FILIIIKI TRASH IF INCLISE")
+			m.Filemanager.MoveFilesToTrash(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+		} else {
+			// Delete all files in the current directory and all subfolders
+			m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+		}
 
 		if m.OptionState["Delete empty subfolders"] {
 			m.Filemanager.DeleteEmptySubfolders(m.CurrentPath)
@@ -709,8 +743,11 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 		case "option3":
 			m.FocusedElement = "option4"
 		case "option4":
+			m.FocusedElement = "option5"
+		case "option5":
 			m.FocusedElement = "option1"
 		}
+
 	}
 
 	return m, nil
@@ -772,7 +809,7 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 				m.FocusedElement = "list"
 			case "list":
 				m.FocusedElement = "extInput"
-				m.MinSizeInput.Focus()
+				m.ExtInput.Focus()
 			case "extInput":
 				m.ExtInput.Blur()
 				m.FocusedElement = "pathInput"
@@ -805,13 +842,15 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 	case 2: // Tab navigation for Options tab
 		switch m.FocusedElement {
 		case "option1":
-			m.FocusedElement = "option4"
+			m.FocusedElement = "option5"
 		case "option2":
 			m.FocusedElement = "option1"
 		case "option3":
 			m.FocusedElement = "option2"
 		case "option4":
 			m.FocusedElement = "option3"
+		case "option5":
+			m.FocusedElement = "option4"
 		}
 	}
 

@@ -46,7 +46,7 @@ func TestPrintFilesTable(t *testing.T) {
 			io.Copy(&buf, r)
 			got := buf.String()
 
-			// Удаляем цветовые коды перед сравнением
+			// Remove color codes before comparison
 			got = strings.ReplaceAll(got, "\x1b[33m", "")
 			got = strings.ReplaceAll(got, "\x1b[0m", "")
 			got = strings.ReplaceAll(got, "\x1b[37m", "")

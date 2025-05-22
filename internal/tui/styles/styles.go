@@ -108,8 +108,8 @@ var (
 			Height(9)
 
 	ListFocusedStyle = ListStyle.Copy().
-				Border(lipgloss.NormalBorder()).
-				BorderForeground(lipgloss.Color("#1E90FF"))
+				Border(lipgloss.DoubleBorder()).
+				BorderForeground(lipgloss.Color("#0067cf"))
 
 	// Option styles
 	OptionStyle = lipgloss.NewStyle().
