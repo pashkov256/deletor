@@ -126,3 +126,10 @@ Together, we can make Deletor even better! 🚀
 
 ## 📜 License
 This project is distributed under the **MIT** license.
+
+--- 
+### Thank you to these wonderful people for their contributions!
+
+<a href="https://github.com/pashkov256/deletor/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=pashkov256/deletor" />
+</a>
