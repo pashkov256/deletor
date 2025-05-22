@@ -3,14 +3,18 @@
 <p align="center">
   <a href="https://github.com/pashkov256/deletor"><img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/logo_v3.png" alt="deletor"></a>
 </p>
+
+<p align="center">
+        <a href="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"><img src="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"></a>
+        <a href="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"/></a>
+  <br/>
+    <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
+    <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+
 <p align="center">
     <em>Manage and delete files efficiently with an interactive TUI and scriptable CLI.</em>
 </p>
-<p align="center">
-  <a href="https://pkg.go.dev/github.com/pashkov256/deletor"><img src="https://pkg.go.dev/badge/github.com/pashkov256/deletor/v1.svg" alt="deletor"></a>
-  <a><img src="https://img.shields.io/github/issues/pashkov256/deletor" alt="deletor"></a>
-  <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
-    <a href="https://deepwiki.com/pashkov256/deletor"><img src="https://deepwiki.com/badge.svg" alt="deepwiki"></a>
+
 <hr>
 </p>
 
