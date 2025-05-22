@@ -35,7 +35,6 @@ func (t *OptionsTab) View() string {
 	var content strings.Builder
 
 	for optionIndex, name := range DefaultOption {
-
 		style := styles.OptionStyle
 		if DefaultOptionState[name] {
 			style = styles.SelectedOptionStyle
@@ -44,12 +43,27 @@ func (t *OptionsTab) View() string {
 			style = styles.OptionFocusedStyle
 		}
 		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", optionIndex+1)))
-		content.WriteString(style.Render(fmt.Sprintf("[%s] %-20s", map[bool]string{true: "✓", false: "○"}[DefaultOptionState[name]], name)))
+
+		// Add emojis based on option name
+		emoji := ""
+		switch name {
+		case "Show hidden files":
+			emoji = "👁️"
+		case "Confirm deletion":
+			emoji = "⚠️"
+		case "Include subfolders":
+			emoji = "📁"
+		case "Delete empty subfolders":
+			emoji = "🗑️"
+		case "Send files to trash":
+			emoji = "♻️"
+		}
+
+		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[DefaultOptionState[name]], emoji, name)))
 		content.WriteString("\n")
 		optionIndex++
 	}
 	return content.String()
-
 }
 
 func (t *OptionsTab) Init() tea.Cmd {
