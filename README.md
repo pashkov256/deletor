@@ -119,7 +119,7 @@ It explains how to set up the project, coding standards, and the process for sub
 Together, we can make Deletor even better! 🚀
 
 
-## Web docs
+## AI docs
 <a href="https://pashkov256.github.io/deletor-doc">https://pashkov256.github.io/deletor-doc</a>
 
 
