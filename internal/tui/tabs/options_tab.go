@@ -20,6 +20,7 @@ var DefaultOptionState = map[string]bool{
 	"Confirm deletion":        false,
 	"Include subfolders":      false,
 	"Delete empty subfolders": false,
+	"Send files to trash":     false,
 }
 
 var DefaultOption = []string{
@@ -27,6 +28,7 @@ var DefaultOption = []string{
 	"Confirm deletion",
 	"Include subfolders",
 	"Delete empty subfolders",
+	"Send files to trash",
 }
 
 func (t *OptionsTab) View() string {

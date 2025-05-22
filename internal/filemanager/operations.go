@@ -7,11 +7,16 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
+
+	"github.com/Bios-Marcel/wastebasket/v2"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
-// recursively traverse deletion
-func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclude []string, minSize int64) {
+func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo), dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
+	filter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
 	taskCh := make(chan FileTask, runtime.NumCPU())
+
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
 			return nil
@@ -26,35 +31,22 @@ func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclud
 			taskCh <- FileTask{info: info}
 			defer func() { <-taskCh }() // Release token when done
 
-			if len(exclude) != 0 {
-				for _, excludePattern := range exclude {
-					if strings.Contains(filepath.ToSlash(path), excludePattern+"/") ||
-						strings.HasPrefix(info.Name(), excludePattern) {
-						return
-					}
-				}
+			if filter.MatchesFilters(info, path) {
+				callback(info)
 			}
 
-			if len(extensions) > 0 {
-				ext := strings.ToLower(filepath.Ext(path))
-				matched := false
-				for _, allowedExt := range extensions {
-					if ext == allowedExt {
-						matched = true
-						break
-					}
-				}
-				if !matched {
-					return
-				}
-			}
-
-			if info.Size() > minSize {
-				os.Remove(path)
-			}
 		}(path, info)
 		return nil
 	})
+}
+
+// recursively traverse deletion
+func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
+	callback := func(fi os.FileInfo) {
+		os.Remove(fi.Name())
+	}
+
+	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
 }
 
 func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
@@ -145,4 +137,17 @@ func (f *defaultFileManager) CalculateDirSize(path string) int64 {
 	wg.Wait()
 
 	return totalSize
+}
+
+// Recursively move file to recycle bin
+func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
+	callback := func(fi os.FileInfo) {
+		f.MoveFileToTrash(fi.Name())
+	}
+	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
+}
+
+// Recursively move files to recycle bin by path
+func (f *defaultFileManager) MoveFileToTrash(filePath string) {
+	wastebasket.Trash(filePath)
 }
