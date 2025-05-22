@@ -16,7 +16,7 @@
 
 
 
-<a href="https://pashkov256.github.io/deletor-doc"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
+<a href="https://code2tutorial.com/tutorial/703eb201-66d4-482e-b339-786fe892c1d9/01_file_system_engine_.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
