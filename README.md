@@ -20,16 +20,15 @@
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
-- 🗑️ **Delete by Extension**: Deletes files with specified extensions (e.g., .mp4, .zip)
+- ♻️ **Safe Deletion: Files**: are moved to the system trash/recycle bin instead of permanent deletion
+- ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
+- 🗑️ **Extensions Filter**: Deletes files with specified extensions (e.g., .mp4, .zip)
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
-- ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
 - 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
 - 🧠 **Rules System**: Create and manage deletion presets for repeated use
-- 📊 **Formatted Output**: Clean, aligned display of file information
-
 
 ---
 <p align="center">
