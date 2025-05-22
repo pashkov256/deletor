@@ -523,7 +523,6 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 
 		if m.OptionState["Send files to trash"] {
-			fmt.Println("FILIIIKI TRASH IF INCLISE")
 			m.Filemanager.MoveFilesToTrash(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
 		} else {
 			// Delete all files in the current directory and all subfolders
