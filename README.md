@@ -120,7 +120,7 @@ Together, we can make Deletor even better! 🚀
 
 
 ## AI docs
-<a href="https://pashkov256.github.io/deletor-doc">https://pashkov256.github.io/deletor-doc</a>
+<a href="https://code2tutorial.com/tutorial/703eb201-66d4-482e-b339-786fe892c1d9/01_file_system_engine_.md">https://code2tutorial.com/tutorial/703eb201-66d4-482e-b339-786fe892c1d9/01_file_system_engine_.md</a>
 
 
 
