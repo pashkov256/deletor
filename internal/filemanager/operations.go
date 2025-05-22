@@ -13,7 +13,7 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
-func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo), dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
+func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
 	filter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
 	taskCh := make(chan FileTask, runtime.NumCPU())
 
@@ -32,7 +32,7 @@ func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo), 
 			defer func() { <-taskCh }() // Release token when done
 
 			if filter.MatchesFilters(info, path) {
-				callback(info)
+				callback(info, path)
 			}
 
 		}(path, info)
@@ -42,8 +42,8 @@ func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo), 
 
 // recursively traverse deletion
 func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
-	callback := func(fi os.FileInfo) {
-		os.Remove(fi.Name())
+	callback := func(fi os.FileInfo, path string) {
+		os.Remove(path)
 	}
 
 	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
@@ -141,8 +141,8 @@ func (f *defaultFileManager) CalculateDirSize(path string) int64 {
 
 // Recursively move file to recycle bin
 func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
-	callback := func(fi os.FileInfo) {
-		f.MoveFileToTrash(fi.Name())
+	callback := func(fi os.FileInfo, path string) {
+		f.MoveFileToTrash(path)
 	}
 	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
 }
