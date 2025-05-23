@@ -154,7 +154,7 @@ func (t *MainTab) View() string {
 					displayName = displayName[:37] + "..."
 				}
 
-				padding := 44 - len(displayName)
+				padding := 60 - len(displayName)
 				if padding < 1 {
 					padding = 1
 				}

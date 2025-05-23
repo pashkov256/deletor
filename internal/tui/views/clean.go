@@ -185,8 +185,8 @@ func (m *CleanFilesModel) Init() tea.Cmd {
 func (m *CleanFilesModel) View() string {
 	// --- Tabs rendering ---
 	activeTab := m.TabManager.GetActiveTabIndex()
-	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "❔ [F4] Help"}
-	tabs := make([]string, 4)
+	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "📖 [F4] Log", "❔ [F5] Help"}
+	tabs := make([]string, 5)
 	for i, name := range tabNames {
 		style := styles.TabStyle
 		if activeTab == i {
@@ -586,6 +586,8 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleF3()
 	case "f4":
 		return m.handleF4()
+	case "f5":
+		return m.handleF5()
 	case "ctrl+r":
 		return m, m.LoadFiles()
 	case "ctrl+d":
@@ -879,7 +881,11 @@ func (m *CleanFilesModel) handleF3() (tea.Model, tea.Cmd) {
 }
 func (m *CleanFilesModel) handleF4() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(3)
-	m.FocusedElement = "option1"
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleF5() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(4)
 	return m, nil
 }
 

@@ -44,38 +44,6 @@
 go install github.com/pashkov256/deletor@latest
 ```
 
-### Using Package Managers
-
-#### Windows (Scoop)
-```powershell
-scoop install deletor
-```
-
-#### Linux (Ubuntu/Debian)
-```bash
-# Add the repository
-curl -fsSL https://pashkov256.github.io/deletor/gpg | sudo gpg --dearmor -o /usr/share/keyrings/deletor-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/deletor-archive-keyring.gpg] https://pashkov256.github.io/deletor/apt stable main" | sudo tee /etc/apt/sources.list.d/deletor.list
-
-# Update and install
-sudo apt update
-sudo apt install deletor
-```
-
-#### Linux (Arch Linux)
-```bash
-# Using yay
-yay -S deletor
-
-# Using pacman (if available in community repository)
-sudo pacman -S deletor
-```
-
-#### macOS (Homebrew)
-```bash
-brew install deletor
-```
-
 ## 🛠 Usage
 
 ### TUI Mode (default):

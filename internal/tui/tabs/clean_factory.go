@@ -15,6 +15,7 @@ func (f *CleanTabFactory) CreateTabs(model interfaces.CleanModel) []Tab {
 		&MainTab{model: model},
 		&FiltersTab{model: model},
 		&OptionsTab{model: model},
+		&LogTab{model: model},
 		&HelpTab{model: model},
 	}
 }
