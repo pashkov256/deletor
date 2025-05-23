@@ -1,0 +1,23 @@
+{
+    "version": "1.0.0",
+    "description": "A powerful file deletion tool with TUI and CLI interfaces",
+    "homepage": "https://github.com/pashkov256/deletor",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/pashkov256/deletor/releases/download/v1.0.0/deletor-windows-amd64.exe",
+            "hash": "auto"
+        }
+    },
+    "bin": "deletor-windows-amd64.exe",
+    "checkver": {
+        "github": "https://github.com/pashkov256/deletor"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/pashkov256/deletor/releases/download/v$version/deletor-windows-amd64.exe"
+            }
+        }
+    }
+} 

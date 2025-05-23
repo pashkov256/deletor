@@ -1,5 +1,3 @@
-
-
 <p align="center">
   <a href="https://github.com/pashkov256/deletor"><img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/logo_v3.png" alt="deletor"></a>
 </p>
@@ -7,9 +5,9 @@
 <p align="center">
         <a href="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"><img src="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"></a>
         <a href="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"/></a>
-  <br/>
-    <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
-    <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+        <a href="https://github.com/pashkov256/deletor/actions/workflows/build.yml"><img src="https://github.com/pashkov256/deletor/actions/workflows/build.yml/badge.svg" alt="Build Status"></a>
+        <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
+        <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 
 <p align="center">
     <em>Manage and delete files efficiently with an interactive TUI and scriptable CLI.</em>
@@ -40,11 +38,43 @@
 </p>
 
 ## 📦 Installation
+
+### Using Go
 ```bash
-go install github.com/pashkov256/deletor
+go install github.com/pashkov256/deletor@latest
 ```
 
+### Using Package Managers
 
+#### Windows (Scoop)
+```powershell
+scoop install deletor
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+# Add the repository
+curl -fsSL https://pashkov256.github.io/deletor/gpg | sudo gpg --dearmor -o /usr/share/keyrings/deletor-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/deletor-archive-keyring.gpg] https://pashkov256.github.io/deletor/apt stable main" | sudo tee /etc/apt/sources.list.d/deletor.list
+
+# Update and install
+sudo apt update
+sudo apt install deletor
+```
+
+#### Linux (Arch Linux)
+```bash
+# Using yay
+yay -S deletor
+
+# Using pacman (if available in community repository)
+sudo pacman -S deletor
+```
+
+#### macOS (Homebrew)
+```bash
+brew install deletor
+```
 
 ## 🛠 Usage
 
