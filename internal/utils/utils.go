@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 )
 
 func FormatSize(bytes int64) string {
@@ -212,4 +213,8 @@ func ParseTimeDuration(timeStr string) (time.Time, error) {
 
 	// Return the time that is duration from now
 	return time.Now().Add(-duration), nil
+}
+
+func GenerateUUID() string {
+	return uuid.New().String()
 }

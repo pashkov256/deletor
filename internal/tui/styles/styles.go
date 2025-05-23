@@ -132,4 +132,8 @@ var (
 	PathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
 			Italic(true)
+
+	InfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ebd700")).
+			Padding(0, 1)
 )

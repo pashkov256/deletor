@@ -16,6 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -51,6 +52,7 @@ type CleanFilesModel struct {
 	Rules           rules.Rules
 	Filemanager     filemanager.FileManager
 	TabManager      *tabs.CleanTabManager
+	Logger          *logging.Logger
 }
 
 // Message for directory size updates
@@ -141,7 +143,17 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	dirList.SetShowHelp(false)
 	dirList.Styles.Title = styles.TitleStyle
 
-	return &CleanFilesModel{
+	// Initialize logger
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		fmt.Printf("Error getting user config dir: %v\n", err)
+		return nil
+	}
+
+	logPath := filepath.Join(userConfigDir, "deletor", "deletor.log")
+
+	// Create model first
+	model := &CleanFilesModel{
 		List:            l,
 		ExtInput:        extInput,
 		MinSizeInput:    minSizeInput,
@@ -154,7 +166,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		Extensions:      latestExtensions,
 		MinSize:         minSize,
 		Exclude:         latestExclude,
-		OptionState:     tabs.DefaultOptionState,
+		OptionState:     make(map[string]bool),
 		FocusedElement:  "list",
 		ShowDirs:        false,
 		DirList:         dirList,
@@ -165,6 +177,30 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		Rules:           rules,
 		Filemanager:     fileManager,
 	}
+
+	// Initialize tab manager
+	model.TabManager = tabs.NewCleanTabManager(model, tabs.NewCleanTabFactory())
+
+	// Initialize logger with callback
+	logger, err := logging.NewLogger(logPath, func(stats *logging.ScanStatistics) {
+		if model.TabManager != nil {
+			if logTab, ok := model.TabManager.GetActiveTab().(*tabs.LogTab); ok {
+				logTab.UpdateStats(stats)
+			}
+		}
+	})
+	if err != nil {
+		fmt.Printf("Error initializing logger: %v\n", err)
+		return nil
+	}
+
+	// Set logger in model
+	model.Logger = logger
+
+	// Log initial message
+	logger.Log(logging.INFO, "Application started")
+
+	return model
 }
 
 func (m *CleanFilesModel) Init() tea.Cmd {
@@ -185,8 +221,8 @@ func (m *CleanFilesModel) Init() tea.Cmd {
 func (m *CleanFilesModel) View() string {
 	// --- Tabs rendering ---
 	activeTab := m.TabManager.GetActiveTabIndex()
-	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "❔ [F4] Help"}
-	tabs := make([]string, 4)
+	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "📖 [F4] Log", "❔ [F5] Help"}
+	tabs := make([]string, 5)
 	for i, name := range tabNames {
 		style := styles.TabStyle
 		if activeTab == i {
@@ -470,72 +506,141 @@ func (m *CleanFilesModel) CalculateDirSizeAsync() tea.Cmd {
 }
 
 func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
-	if m.List.SelectedItem() != nil && !m.OptionState["Include subfolders"] {
-		selectedItem := m.List.SelectedItem().(models.CleanItem)
-		if selectedItem.Size > 0 { // Only delete files, not directories
-			if !m.OptionState["Confirm deletion"] {
-				// If confirm deletion is disabled, delete all files
-				for _, listItem := range m.List.Items() {
-					if fileItem, ok := listItem.(models.CleanItem); ok && fileItem.Size > 0 {
-						// If send files to trash is enabled, move all files to trash
-						if m.OptionState["Send files to trash"] {
-							m.Filemanager.MoveFileToTrash(fileItem.Path)
-						} else {
-							err := os.Remove(fileItem.Path)
-							if err != nil {
-								m.Err = err
-							}
-						}
-					}
-				}
-			} else {
-				// If send files to trash is enabled, move all files to trash
-				if m.OptionState["Send files to trash"] {
-					m.Filemanager.MoveFileToTrash(selectedItem.Path)
-				} else {
-					// Delete just the selected file
-					err := os.Remove(selectedItem.Path)
-					if err != nil {
-						m.Err = err
-					}
-				}
-			}
-			return m, m.LoadFiles()
-		}
-	} else if m.OptionState["Include subfolders"] {
-		var olderDuration, newerDuration time.Time
-		var err error
+	// Create statistics for this operation
+	stats := &logging.ScanStatistics{
+		StartTime:     time.Now(),
+		Directory:     m.CurrentPath,
+		OperationType: "delete",
+	}
 
-		if m.OlderInput.Value() != "" {
-			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
-			if err != nil {
-				m.Err = fmt.Errorf("invalid older than time: %v", err)
-				return m, nil
+	// Get selected item and all items
+	selectedItem := m.List.SelectedItem()
+	allItems := m.List.Items()
+
+	// Debug log
+	if m.Logger != nil {
+		m.Logger.Log(logging.DEBUG, fmt.Sprintf("Selected item: %+v", selectedItem))
+		m.Logger.Log(logging.DEBUG, fmt.Sprintf("Total items in list: %d", len(allItems)))
+	}
+
+	// Initialize counters
+	stats.TotalFiles = 0
+	stats.TotalSize = 0
+	stats.DeletedFiles = 0
+	stats.DeletedSize = 0
+	stats.TrashedFiles = 0
+	stats.TrashedSize = 0
+
+	// Process files based on Confirm deletion option
+	if m.OptionState["Confirm deletion"] {
+		// Single file deletion mode
+		if selectedItem == nil {
+			if m.Logger != nil {
+				m.Logger.Log(logging.DEBUG, "No file selected for deletion")
 			}
+			return m, nil
 		}
 
-		if m.NewerInput.Value() != "" {
-			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
-			if err != nil {
-				m.Err = fmt.Errorf("invalid newer than time: %v", err)
-				return m, nil
-			}
+		item := selectedItem.(models.CleanItem)
+		// Skip parent directory entry
+		if item.Size == -1 {
+			return m, nil
 		}
+
+		stats.TotalFiles = 1
+		stats.TotalSize = item.Size
 
 		if m.OptionState["Send files to trash"] {
-			m.Filemanager.MoveFilesToTrash(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+			// Move to trash
+			m.Filemanager.MoveFileToTrash(item.Path)
+			stats.TrashedFiles = 1
+			stats.TrashedSize = item.Size
+
+			if m.Logger != nil {
+				m.Logger.Log(logging.DEBUG, fmt.Sprintf("Moved to trash: %s (size: %d)", item.Path, item.Size))
+			}
 		} else {
-			// Delete all files in the current directory and all subfolders
-			m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+			// Permanent deletion
+			if err := os.Remove(item.Path); err != nil {
+				if m.Logger != nil {
+					m.Logger.Log(logging.ERROR, fmt.Sprintf("Failed to delete file: %v", err))
+				}
+				return m, nil
+			}
+			stats.DeletedFiles = 1
+			stats.DeletedSize = item.Size
+
+			if m.Logger != nil {
+				m.Logger.Log(logging.DEBUG, fmt.Sprintf("Deleted: %s (size: %d)", item.Path, item.Size))
+			}
+		}
+	} else {
+		// Batch deletion mode - process all selected files
+		if len(allItems) == 0 {
+			if m.Logger != nil {
+				m.Logger.Log(logging.DEBUG, "No files to delete")
+			}
+			return m, nil
 		}
 
-		if m.OptionState["Delete empty subfolders"] {
-			m.Filemanager.DeleteEmptySubfolders(m.CurrentPath)
-		}
+		stats.TotalFiles = int64(len(allItems))
 
-		return m, m.LoadFiles()
+		for _, item := range allItems {
+			cleanItem := item.(models.CleanItem)
+
+			// Skip parent directory entry
+			if cleanItem.Size == -1 {
+				continue
+			}
+
+			stats.TotalSize += cleanItem.Size
+
+			if m.OptionState["Send files to trash"] {
+				// Move to trash
+				m.Filemanager.MoveFileToTrash(cleanItem.Path)
+				stats.TrashedFiles++
+				stats.TrashedSize += cleanItem.Size
+
+				if m.Logger != nil {
+					m.Logger.Log(logging.DEBUG, fmt.Sprintf("Moved to trash: %s (size: %d)", cleanItem.Path, cleanItem.Size))
+				}
+			} else {
+				// Permanent deletion
+				if err := os.Remove(cleanItem.Path); err != nil {
+					if m.Logger != nil {
+						m.Logger.Log(logging.ERROR, fmt.Sprintf("Failed to delete file: %v", err))
+					}
+					continue
+				}
+				stats.DeletedFiles++
+				stats.DeletedSize += cleanItem.Size
+
+				if m.Logger != nil {
+					m.Logger.Log(logging.DEBUG, fmt.Sprintf("Deleted: %s (size: %d)", cleanItem.Path, cleanItem.Size))
+				}
+			}
+		}
 	}
-	return m, nil
+
+	// Update end time
+	stats.EndTime = time.Now()
+
+	// Log final statistics
+	if m.Logger != nil {
+		m.Logger.Log(logging.INFO, fmt.Sprintf("Delete operation completed. Statistics: %+v", stats))
+		m.Logger.UpdateStats(stats)
+	}
+
+	// Update all LogTabs
+	if m.TabManager != nil {
+		for _, tab := range m.TabManager.GetAllTabs() {
+			if logTab, ok := tab.(*tabs.LogTab); ok {
+				logTab.UpdateStats(stats)
+			}
+		}
+	}
+
+	return m, m.LoadFiles()
 }
 
 // opens the system's file explorer at the specified path
@@ -586,6 +691,8 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleF3()
 	case "f4":
 		return m.handleF4()
+	case "f5":
+		return m.handleF5()
 	case "ctrl+r":
 		return m, m.LoadFiles()
 	case "ctrl+d":
@@ -744,9 +851,16 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 		case "option4":
 			m.FocusedElement = "option5"
 		case "option5":
+			m.FocusedElement = "option6"
+		case "option6":
+			m.FocusedElement = "option7"
+		case "option7":
+			m.FocusedElement = "option8"
+		case "option8":
+			m.FocusedElement = "option1"
+		default:
 			m.FocusedElement = "option1"
 		}
-
 	}
 
 	return m, nil
@@ -769,6 +883,11 @@ func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 		// Get the option name and toggle its state
 		optName := tabs.DefaultOption[idx]
 		m.OptionState[optName] = !m.OptionState[optName]
+
+		// Debug log when option is toggled
+		if m.Logger != nil {
+			m.Logger.Log(logging.DEBUG, fmt.Sprintf("Option '%s' toggled to: %v", optName, m.OptionState[optName]))
+		}
 
 		// Keep focus on the current option
 		m.FocusedElement = "option" + optionNum
@@ -841,7 +960,7 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 	case 2: // Tab navigation for Options tab
 		switch m.FocusedElement {
 		case "option1":
-			m.FocusedElement = "option5"
+			m.FocusedElement = "option8"
 		case "option2":
 			m.FocusedElement = "option1"
 		case "option3":
@@ -850,6 +969,14 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.FocusedElement = "option3"
 		case "option5":
 			m.FocusedElement = "option4"
+		case "option6":
+			m.FocusedElement = "option5"
+		case "option7":
+			m.FocusedElement = "option6"
+		case "option8":
+			m.FocusedElement = "option7"
+		default:
+			m.FocusedElement = "option8"
 		}
 	}
 
@@ -879,7 +1006,11 @@ func (m *CleanFilesModel) handleF3() (tea.Model, tea.Cmd) {
 }
 func (m *CleanFilesModel) handleF4() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(3)
-	m.FocusedElement = "option1"
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleF5() (tea.Model, tea.Cmd) {
+	m.TabManager.SetActiveTabIndex(4)
 	return m, nil
 }
 
@@ -946,7 +1077,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 		default:
-			// Handle space key for options
+			// Handle space or enter key for options
 			if strings.HasPrefix(m.FocusedElement, "option") {
 				// Extract option number from the focused element (e.g. "option1" -> "1")
 				optionNum := strings.TrimPrefix(m.FocusedElement, "option")
@@ -962,6 +1093,11 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				// Get the option name and toggle its state
 				optName := tabs.DefaultOption[idx]
 				m.OptionState[optName] = !m.OptionState[optName]
+
+				// Debug log when option is toggled
+				if m.Logger != nil {
+					m.Logger.Log(logging.DEBUG, fmt.Sprintf("Option '%s' toggled to: %v", optName, m.OptionState[optName]))
+				}
 
 				// Keep focus on the current option
 				m.FocusedElement = "option" + optionNum
