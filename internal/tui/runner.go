@@ -12,7 +12,6 @@ func Start(
 ) error {
 	app := NewApp(filemanager, rules)
 	p := tea.NewProgram(app, tea.WithAltScreen())
-	rules.SetupRulesConfig()
 	_, err := p.Run()
 	return err
 }
