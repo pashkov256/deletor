@@ -17,7 +17,7 @@ type Task struct {
 }
 
 func main() {
-	var rules = rules.NewRules()
+	config := config.GetFlags()
 
 	rules.SetupRulesConfig()
 	var config = config.GetFlags()
