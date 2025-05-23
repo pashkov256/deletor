@@ -17,10 +17,12 @@ type Task struct {
 }
 
 func main() {
-	config := config.GetFlags()
+	var rules = rules.NewRules()
+
+	rules.SetupRulesConfig()
+	var config = config.GetFlags()
 
 	var fm filemanager.FileManager = filemanager.NewFileManager()
-	rules := rules.NewRules()
 
 	if !config.IsCLIMode {
 		// Start TUI
