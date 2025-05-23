@@ -4,11 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-)
 
-var (
-	AppDirName   = "deletor"
-	RuleFileName = "rule.json"
+	"github.com/pashkov256/deletor/internal/path"
 )
 
 func (d *defaultRules) UpdateRules(path, minSize string, extensions []string, exclude []string) error {
@@ -75,7 +72,7 @@ func (d *defaultRules) SetupRulesConfig() error {
 
 func (d *defaultRules) GetRulesPath() string {
 	userConfigDir, _ := os.UserConfigDir()
-	filePathRuleConfig := filepath.Join(userConfigDir, AppDirName, RuleFileName)
+	filePathRuleConfig := filepath.Join(userConfigDir, path.AppDirName, path.RuleFileName)
 
 	return filePathRuleConfig
 }

@@ -1,6 +1,8 @@
 package tabs
 
 import (
+	"fmt"
+
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
 )
 
@@ -13,9 +15,19 @@ type CleanTabManager struct {
 
 // NewCleanTabManager creates a new CleanTabManager
 func NewCleanTabManager(model interfaces.CleanModel, factory *CleanTabFactory) *CleanTabManager {
+	// Create tabs
+	tabs := factory.CreateTabs(model)
+
+	// Initialize each tab
+	for _, tab := range tabs {
+		if err := tab.Init(); err != nil {
+			fmt.Printf("Error initializing tab: %v\n", err)
+		}
+	}
+
 	return &CleanTabManager{
 		model:     model,
-		tabs:      factory.CreateTabs(model),
+		tabs:      tabs,
 		activeTab: 0,
 	}
 }
@@ -35,4 +47,9 @@ func (m *CleanTabManager) SetActiveTabIndex(index int) {
 	if index >= 0 && index < len(m.tabs) {
 		m.activeTab = index
 	}
+}
+
+// GetAllTabs returns all tabs
+func (m *CleanTabManager) GetAllTabs() []Tab {
+	return m.tabs
 }

@@ -5,7 +5,6 @@
 <p align="center">
         <a href="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"><img src="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"></a>
         <a href="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"/></a>
-        <a href="https://github.com/pashkov256/deletor/actions/workflows/build.yml"><img src="https://github.com/pashkov256/deletor/actions/workflows/build.yml/badge.svg" alt="Build Status"></a>
         <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
         <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 
@@ -27,6 +26,7 @@
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
 - 🗑️ **Extensions Filter**: Deletes files with specified extensions (e.g., .mp4, .zip)
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
+- 📖 **Log Operations**: log the various fields and look at the tui table, or parse the file
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
 - ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
 - 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files

@@ -1,4 +1,4 @@
-package service
+package logging
 
 import (
 	"encoding/json"
@@ -7,12 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/pashkov256/deletor/internal/logging"
-	"github.com/pashkov256/deletor/internal/logging/storage"
-	"github.com/pashkov256/deletor/internal/utils"
 )
 
+// LogLevel represents the severity level of a log message
 type LogLevel string
 
 const (
@@ -21,23 +18,38 @@ const (
 	ERROR LogLevel = "ERROR"
 )
 
+// ScanStatistics represents statistics for a file scanning operation
+type ScanStatistics struct {
+	TotalFiles    int64
+	TotalSize     int64
+	DeletedFiles  int64
+	DeletedSize   int64
+	TrashedFiles  int64
+	TrashedSize   int64
+	IgnoredFiles  int64
+	IgnoredSize   int64
+	StartTime     time.Time
+	EndTime       time.Time
+	Directory     string
+	OperationType string
+}
+
 type LogEntry struct {
-	Timestamp time.Time               `json:"timestamp"`
-	Level     LogLevel                `json:"level"`
-	Message   string                  `json:"message"`
-	Stats     *logging.ScanStatistics `json:"stats,omitempty"`
+	Timestamp time.Time       `json:"timestamp"`
+	Level     LogLevel        `json:"level"`
+	Message   string          `json:"message"`
+	Stats     *ScanStatistics `json:"stats,omitempty"`
 }
 
 type Logger struct {
 	mu            sync.Mutex
 	logFile       *os.File
 	configPath    string
-	storage       *storage.FileStorage
-	currentScan   *logging.ScanStatistics
-	statsCallback func(*logging.ScanStatistics)
+	currentScan   *ScanStatistics
+	StatsCallback func(*ScanStatistics)
 }
 
-func NewLogger(configPath string, statsCallback func(*logging.ScanStatistics)) (*Logger, error) {
+func NewLogger(configPath string, statsCallback func(*ScanStatistics)) (*Logger, error) {
 	// Ensure config directory exists
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
@@ -49,14 +61,10 @@ func NewLogger(configPath string, statsCallback func(*logging.ScanStatistics)) (
 		return nil, fmt.Errorf("failed to open log file: %w", err)
 	}
 
-	// Initialize storage
-	storage := storage.NewFileStorage(filepath.Dir(configPath))
-
 	return &Logger{
 		logFile:       logFile,
 		configPath:    configPath,
-		storage:       storage,
-		statsCallback: statsCallback,
+		StatsCallback: statsCallback,
 	}, nil
 }
 
@@ -83,33 +91,13 @@ func (l *Logger) Log(level LogLevel, message string) error {
 	return nil
 }
 
-func (l *Logger) StartScan(path string) (string, error) {
-	scanID := utils.GenerateUUID()
-	l.currentScan = &logging.ScanStatistics{
-		StartTime:     time.Now(),
-		Directory:     path,
-		OperationType: "scan",
-	}
-	return scanID, nil
-}
-
-func (l *Logger) EndScan(scanID string) error {
-	l.currentScan.EndTime = time.Now()
-
-	return l.storage.SaveStatistics(l.currentScan)
-}
-
-func (l *Logger) LogOperation(operation *logging.FileOperation) error {
-	return l.storage.SaveOperation(operation)
-}
-
-func (l *Logger) UpdateStats(stats *logging.ScanStatistics) {
+func (l *Logger) UpdateStats(stats *ScanStatistics) {
 	l.mu.Lock()
 	l.currentScan = stats
 	l.mu.Unlock()
 
-	if l.statsCallback != nil {
-		l.statsCallback(stats)
+	if l.StatsCallback != nil {
+		l.StatsCallback(stats)
 	}
 }
 

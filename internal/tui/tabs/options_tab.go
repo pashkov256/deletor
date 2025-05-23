@@ -21,6 +21,9 @@ var DefaultOptionState = map[string]bool{
 	"Include subfolders":      false,
 	"Delete empty subfolders": false,
 	"Send files to trash":     false,
+	"Log operations":          false,
+	"Log to file":             false,
+	"Show statistics":         true,
 }
 
 var DefaultOption = []string{
@@ -29,6 +32,9 @@ var DefaultOption = []string{
 	"Include subfolders",
 	"Delete empty subfolders",
 	"Send files to trash",
+	"Log operations",
+	"Log to file",
+	"Show statistics",
 }
 
 func (t *OptionsTab) View() string {
@@ -36,7 +42,7 @@ func (t *OptionsTab) View() string {
 
 	for optionIndex, name := range DefaultOption {
 		style := styles.OptionStyle
-		if DefaultOptionState[name] {
+		if t.model.GetOptionState()[name] {
 			style = styles.SelectedOptionStyle
 		}
 		if t.model.GetFocusedElement() == fmt.Sprintf("option%d", optionIndex+1) {
@@ -48,18 +54,24 @@ func (t *OptionsTab) View() string {
 		emoji := ""
 		switch name {
 		case "Show hidden files":
-			emoji = "👁️"
+			emoji = "👁️‎"
 		case "Confirm deletion":
-			emoji = "⚠️"
+			emoji = "⚠️‎"
 		case "Include subfolders":
-			emoji = "📁"
+			emoji = "📁‎"
 		case "Delete empty subfolders":
-			emoji = "🗑️"
+			emoji = "🗑️‎"
 		case "Send files to trash":
-			emoji = "♻️"
+			emoji = "♻️‎"
+		case "Log operations":
+			emoji = "📝‎"
+		case "Log to file":
+			emoji = "📄‎"
+		case "Show statistics":
+			emoji = "📊‎"
 		}
 
-		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[DefaultOptionState[name]], emoji, name)))
+		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]], emoji, name)))
 		content.WriteString("\n")
 		optionIndex++
 	}

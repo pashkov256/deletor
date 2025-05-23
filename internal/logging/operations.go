@@ -13,7 +13,6 @@ const (
 )
 
 type FileOperation struct {
-	ScanID        string        `json:"scan_id"`
 	Timestamp     time.Time     `json:"timestamp"`
 	FilePath      string        `json:"file_path"`
 	FileSize      int64         `json:"file_size"`
@@ -22,9 +21,8 @@ type FileOperation struct {
 	RuleApplied   string        `json:"rule_applied"`
 }
 
-func NewFileOperation(scanID, filePath string, size int64, opType OperationType, reason, rule string) *FileOperation {
+func NewFileOperation(filePath string, size int64, opType OperationType, reason, rule string) *FileOperation {
 	return &FileOperation{
-		ScanID:        scanID,
 		Timestamp:     time.Now(),
 		FilePath:      filePath,
 		FileSize:      size,
