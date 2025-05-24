@@ -28,6 +28,7 @@ func (t *HelpTab) View() string {
 	content.WriteString(styles.OptionStyle.Render("File Operations:"))
 	content.WriteString("\n")
 	content.WriteString("  Ctrl+R   - Refresh file list\n")
+	content.WriteString("  Ctrl+S   - Show dirs in file list\n")
 	content.WriteString("  Crtl+O   - Open in explorer\n")
 	content.WriteString("  Ctrl+D   - Delete files\n\n")
 

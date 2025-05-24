@@ -249,9 +249,8 @@ func (m *CleanFilesModel) View() string {
 		// For other tabs, show content with hot keys
 		ui = lipgloss.JoinVertical(lipgloss.Left,
 			content.String(),
-			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list",
-			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+O: open in explorer • Ctrl+C: quit",
-			"Left/Right arrow keys: switch tabs",
+			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list\n",
+			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+S: show dirs • Ctrl+O: open in explorer • Ctrl+C: quit",
 		)
 	}
 
@@ -699,6 +698,14 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleF5()
 	case "ctrl+r":
 		return m, m.LoadFiles()
+	case "ctrl+s": //toogle dir mode or files mode
+		if m.ShowDirs {
+			m.ShowDirs = false
+			return m, m.LoadFiles()
+		} else {
+			m.ShowDirs = true
+			return m, m.LoadDirs()
+		}
 	case "ctrl+d":
 		return m.OnDelete()
 	case "ctrl+o":
