@@ -111,6 +111,15 @@ var (
 				Border(lipgloss.DoubleBorder()).
 				BorderForeground(lipgloss.Color("#0067cf"))
 
+	// Item styles
+	ItemStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#dddddd"))
+
+	SelectedItemStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Background(lipgloss.Color("#0066ff")).
+				Bold(true)
+
 	// Option styles
 	OptionStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
