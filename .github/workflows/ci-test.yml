@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Run tests and collect coverage
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
@@ -22,8 +22,12 @@ jobs:
       - name: Get dependencies
         run: go mod download
 
-      - name: Run validation tests
-        run: go test -v ./internal/validation
 
-      - name: Run all tests
-        run: go test -v ./... 
+      - name: Run tests with coverage
+        run: go test -v -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: pashkov256/deletor 
