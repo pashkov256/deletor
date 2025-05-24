@@ -380,8 +380,9 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		parentDir := filepath.Dir(currentDir)
 		if parentDir != currentDir {
 			items = append(items, models.CleanItem{
-				Path: parentDir,
-				Size: -1, // Special value for parent directory
+				Path:  parentDir,
+				Size:  -1, // Special value for parent directory
+				IsDir: true,
 			})
 		}
 
@@ -420,8 +421,9 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			filteredCount++
 
 			items = append(items, models.CleanItem{
-				Path: path,
-				Size: size,
+				Path:  path,
+				Size:  size,
+				IsDir: false,
 			})
 		}
 
@@ -440,8 +442,9 @@ func (m *CleanFilesModel) LoadDirs() tea.Cmd {
 		parentDir := filepath.Dir(m.CurrentPath)
 		if parentDir != m.CurrentPath {
 			items = append(items, models.CleanItem{
-				Path: parentDir,
-				Size: -1, // Special value for parent directory
+				Path:  parentDir,
+				Size:  -1, // Special value for parent directory
+				IsDir: true,
 			})
 		}
 
@@ -472,8 +475,9 @@ func (m *CleanFilesModel) LoadDirs() tea.Cmd {
 						continue
 					}
 					results <- models.CleanItem{
-						Path: filepath.Join(m.CurrentPath, entry.Name()),
-						Size: 0,
+						Path:  filepath.Join(m.CurrentPath, entry.Name()),
+						Size:  0,
+						IsDir: true,
 					}
 				}
 			}
@@ -1042,8 +1046,13 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 			// Update the list of files when pressing Enter in the input fields
 			return m, m.LoadFiles()
 		case "dirButton":
-			m.ShowDirs = true
-			return m, m.LoadDirs()
+			if m.ShowDirs { //Toggle switch
+				m.ShowDirs = false
+				return m, m.LoadFiles()
+			} else {
+				m.ShowDirs = true
+				return m, m.LoadDirs()
+			}
 		case "deleteButton":
 			return m.OnDelete()
 		case "list":

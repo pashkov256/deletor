@@ -106,67 +106,160 @@ func (t *MainTab) View() string {
 
 				icon := "📄 "
 				if item.Size == -1 {
-					icon = "⬆️ "
-				} else if item.Size == 0 {
+					icon = "🢁  "
+				} else if item.IsDir {
 					icon = "📁 "
 				} else {
 					ext := strings.ToLower(filepath.Ext(item.Path))
 					switch ext {
-					case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".apng":
-						icon = "🖼️ "
-					case ".mp3", ".wav", ".flac", ".ogg":
-						icon = "🎵 "
-					case ".mp4", ".avi", ".mkv", ".mov":
-						icon = "🎬 "
-					case ".zip", ".rar", ".7z", ".tar", ".gz":
-						icon = "🗜️ "
-					case ".exe", ".msi":
-						icon = "⚙️ "
+					// Programming languages
+					case ".go":
+						icon = "🐹 " // Go mascot
+					case ".js", ".jsx":
+						icon = "📜 " // JavaScript
+					case ".ts", ".tsx":
+						icon = "📘 " // TypeScript
+					case ".py":
+						icon = "🐍 " // Python
+					case ".java":
+						icon = "☕ " // Java
+					case ".cpp", ".c", ".h":
+						icon = "⚙️ " // C/C++
+					case ".rs":
+						icon = "🦀 " // Rust
+					case ".php":
+						icon = "🐘 " // PHP
+					case ".rb":
+						icon = "💎 " // Ruby
+					case ".swift":
+						icon = "🐦 " // Swift
+					case ".kt", ".kts":
+						icon = "⚡ " // Kotlin
+					case ".scala":
+						icon = "⚡ " // Scala
+					case ".hs":
+						icon = "λ " // Haskell
+					case ".lua":
+						icon = "🌙 " // Lua
+					case ".sh", ".bash":
+						icon = "🐚 " // Shell
+					case ".ps1":
+						icon = "💻 " // PowerShell
+					case ".bat", ".cmd":
+						icon = "🪟 " // Windows batch
+					case ".env":
+						icon = "⚙️ " // Environment file
+					case ".json":
+						icon = "📋 " // JSON
+					case ".xml":
+						icon = "📑 " // XML
+					case ".yaml", ".yml":
+						icon = "📝 " // YAML
+					case ".toml":
+						icon = "⚙️ " // TOML
+					case ".ini", ".cfg", ".conf":
+						icon = "⚙️ " // Config files
+					case ".md", ".markdown":
+						icon = "📖 " // Markdown
+					case ".txt":
+						icon = "📝 " // Text
+					case ".log":
+						icon = "📋 " // Log files
+					case ".csv":
+						icon = "📊 " // CSV
+					case ".xlsx", ".xls":
+						icon = "📊 " // Excel
+					case ".doc", ".docx":
+						icon = "📄 " // Word
 					case ".pdf":
-						icon = "📕 "
-					case ".doc", ".docx", ".txt":
-						icon = "📝 "
+						icon = "📕 " // PDF
+					case ".ppt", ".pptx":
+						icon = "📑 " // PowerPoint
+					case ".html", ".htm":
+						icon = "🌐 " // HTML
+					case ".css":
+						icon = "🎨 " // CSS
+					case ".scss", ".sass":
+						icon = "🎨 " // SASS/SCSS
+					case ".sql":
+						icon = "🗄️ " // SQL
+					case ".db", ".sqlite", ".sqlite3":
+						icon = "🗄️ " // Database
+					case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg":
+						icon = "🖼️ " // Images
+					case ".mp3", ".wav", ".flac", ".ogg", ".m4a":
+						icon = "🎵 " // Audio
+					case ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".webm":
+						icon = "🎬 " // Video
+					case ".zip", ".rar", ".tar", ".gz", ".7z", ".bz2":
+						icon = "🗜️ " // Archives
+					case ".exe", ".msi", ".app":
+						icon = "⚙️ " // Executables
+					case ".dll", ".so", ".dylib":
+						icon = "🔧 " // Libraries
+					case ".iso", ".img":
+						icon = "💿 " // Disk images
+					case ".ttf", ".otf", ".woff", ".woff2":
+						icon = "📝 " // Fonts
+					case ".gitignore":
+						icon = "🚫 " // Git ignore
+					case ".git":
+						icon = "📦 " // Git
+					case ".dockerfile", ".dockerignore":
+						icon = "🐳 " // Docker
+					case ".lock":
+						icon = "🔒 " // Lock files
+					case ".key", ".pem", ".crt", ".cer":
+						icon = "🔑 " // Certificates/Keys
 					}
 				}
 
 				filename := filepath.Base(item.Path)
 				sizeStr := ""
-				if item.Size > 0 {
+				if item.Size >= 0 && !item.IsDir {
 					sizeStr = utils.FormatSize(item.Size)
-				} else if item.Size == 0 {
+				} else if item.Size == -1 {
+					sizeStr = "UP TO DIR"
+				} else if item.IsDir {
 					sizeStr = "DIR"
-				} else {
-					sizeStr = "UP DIR"
 				}
-
 				prefix := "  "
 				style := lipgloss.NewStyle()
 
 				if i == selectedIndex {
 					prefix = "> "
-					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0254cf")).Bold(true)
-				} else if item.Size == -1 || item.Size == 0 {
-					style = style.Foreground(lipgloss.Color("#4DC4FF"))
+					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066ff")).Bold(true)
+				} else if item.IsDir && item.Size != -1 { // for File
+					style = style.Foreground(lipgloss.Color("#ccc"))
+				} else if item.Size == -1 { //for UP DIR
+					style = style.Foreground(lipgloss.Color("#578cdb"))
 				}
 
+				// Use fixed widths for icon, filename, and size for alignment
+				const iconWidth = 3      // Fixed width for icon + space
+				const filenameWidth = 45 // Fixed width for filename
+				const sizeWidth = 10     // Fixed width for size string
+
+				// Ensure icon string has fixed width, padding with spaces if needed
+				iconDisplay := fmt.Sprintf("%-*s", iconWidth, icon)
+
+				// Truncate filename if too long
 				displayName := filename
-				if len(displayName) > 40 {
-					displayName = displayName[:37] + "..."
+				if len(displayName) > filenameWidth {
+					displayName = displayName[:filenameWidth-3] + "..."
 				}
 
-				padding := 60 - len(displayName)
-				if padding < 1 {
-					padding = 1
-				}
+				// Format the size string to be left-aligned in a fixed width
+				sizeDisplay := fmt.Sprintf("%-*s", sizeWidth, sizeStr) // Left-align size string
 
-				fileLine := fmt.Sprintf("%s%s%s%s%s",
+				// Construct the final line using fixed widths
+				line := fmt.Sprintf("%s%s%-*s%s",
 					prefix,
-					icon,
-					displayName,
-					strings.Repeat(" ", padding),
-					sizeStr)
+					iconDisplay,
+					filenameWidth, displayName, // Filename with its padding
+					sizeDisplay)
 
-				listContent.WriteString(style.Render(fileLine))
+				listContent.WriteString(style.Render(line))
 				listContent.WriteString("\n")
 			}
 
