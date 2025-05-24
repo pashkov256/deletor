@@ -90,7 +90,7 @@ func (l *Logger) Log(level LogLevel, message string) error {
 
 	return nil
 }
-
+ 
 func (l *Logger) UpdateStats(stats *ScanStatistics) {
 	l.mu.Lock()
 	l.currentScan = stats
