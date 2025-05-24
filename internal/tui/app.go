@@ -14,15 +14,17 @@ type page int
 const (
 	menuPage page = iota
 	cleanPage
+	cachePage
 	rulesPage
 	statsPage
 )
 
 type App struct {
+	page            page
 	menu            *views.MainMenu
 	cleanFilesModel *views.CleanFilesModel
 	rulesModel      *views.RulesModel
-	page            page
+	cacheModel      *views.CacheModel
 	filemanager     filemanager.FileManager
 	rules           rules.Rules
 }
@@ -34,6 +36,7 @@ func NewApp(
 	return &App{
 		menu:        views.NewMainMenu(),
 		rulesModel:  views.NewRulesModel(rules),
+		cacheModel:  views.NewCacheModel(),
 		page:        menuPage,
 		filemanager: filemanager,
 		rules:       rules,
@@ -66,10 +69,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if a.page == menuPage {
 				switch a.menu.List.SelectedItem().(views.Item).Title() {
-				case "🧹 Clean Files":
+				case "🧹 Clean files":
 					a.page = cleanPage
 					cmds = append(cmds, a.cleanFilesModel.LoadFiles())
-				case "⚙️ Manage Rules":
+				case "🗑️ Clear system cache":
+					a.page = cachePage
+				case "⚙️ Manage rules":
 					a.page = rulesPage
 				case "📊 Statistics":
 					a.page = statsPage
@@ -111,6 +116,8 @@ func (a *App) View() string {
 		content = a.menu.View()
 	case cleanPage:
 		content = a.cleanFilesModel.View()
+	case cachePage:
+		content = a.cacheModel.View()
 	case rulesPage:
 		content = a.rulesModel.View()
 	case statsPage:
