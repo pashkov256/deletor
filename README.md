@@ -4,6 +4,8 @@
 
 <p align="center">
         <a href="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"><img src="https://img.shields.io/github/stars/pashkov256/deletor?style=flat"></a>
+        <a><img src="https://codecov.io/gh/pashkov256/deletor/graph/badge.svg?token=AGOWZDF04Y" alt="codecov"></a>
+  <br/>
         <a href="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"/></a>
         <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
         <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
