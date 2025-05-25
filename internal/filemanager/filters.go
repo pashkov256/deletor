@@ -50,15 +50,27 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 		}
 	}
 
-	if !f.OlderThan.IsZero() {
-		if !f.OlderThanFilter(info) {
+	modTime := info.ModTime()
+	if !f.OlderThan.IsZero() && !f.NewerThan.IsZero() {
+		// Support 'between' range regardless of which is earlier
+		start := f.OlderThan
+		end := f.NewerThan
+		if end.Before(start) {
+			start, end = end, start
+		}
+		if !(modTime.After(start) && modTime.Before(end)) {
 			return false
 		}
-	}
-
-	if !f.NewerThan.IsZero() {
-		if !f.NewerThanFilter(info) {
-			return false
+	} else {
+		if !f.OlderThan.IsZero() {
+			if !f.OlderThanFilter(info) {
+				return false
+			}
+		}
+		if !f.NewerThan.IsZero() {
+			if !f.NewerThanFilter(info) {
+				return false
+			}
 		}
 	}
 
