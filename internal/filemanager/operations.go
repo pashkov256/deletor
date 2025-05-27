@@ -16,6 +16,7 @@ import (
 func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
 	filter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
 	taskCh := make(chan FileTask, runtime.NumCPU())
+	var wg sync.WaitGroup
 
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
@@ -26,18 +27,20 @@ func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, p
 			return nil
 		}
 
+		wg.Add(1)
 		go func(path string, info os.FileInfo) {
+			defer wg.Done()
 			// Acquire token from channel first
 			taskCh <- FileTask{info: info}
 			defer func() { <-taskCh }() // Release token when done
-
 			if filter.MatchesFilters(info, path) {
 				callback(info, path)
 			}
-
 		}(path, info)
 		return nil
 	})
+
+	wg.Wait()
 }
 
 // recursively traverse deletion
