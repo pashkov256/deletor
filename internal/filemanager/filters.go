@@ -28,7 +28,6 @@ func (d *defaultFileManager) NewFileFilter(minSize, maxSize int64, extensions ma
 }
 
 func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
-
 	if !f.ExcludeFilter(info, path) {
 		return false
 	}

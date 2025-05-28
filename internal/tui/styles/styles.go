@@ -132,12 +132,10 @@ var (
 				Foreground(lipgloss.Color("#5f5fd7")).
 				Background(lipgloss.Color("#333333"))
 
-	// Error style
 	ErrorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF0000")).
 			Bold(true)
 
-	// Path style
 	PathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
 			Italic(true)
@@ -145,4 +143,38 @@ var (
 	InfoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ebd700")).
 			Padding(0, 1)
+
+	ScanResultHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#666666")).
+				Bold(true).
+				Padding(0, 1)
+
+	ScanResultPathStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Padding(0, 1)
+
+	ScanResultSizeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Bold(true).
+				Padding(0, 1)
+
+	ScanResultFilesStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Bold(true).
+				Padding(0, 1)
+
+	ScanResultEmptyStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Italic(true).
+				Padding(0, 1)
+
+	ScanResultSizeCellStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Padding(0, 1).
+				Align(lipgloss.Right)
+
+	ScanResultFilesCellStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#fff")).
+					Padding(0, 1).
+					Align(lipgloss.Right)
 )

@@ -14,15 +14,17 @@ type page int
 const (
 	menuPage page = iota
 	cleanPage
+	cachePage
 	rulesPage
 	statsPage
 )
 
 type App struct {
+	page            page
 	menu            *views.MainMenu
 	cleanFilesModel *views.CleanFilesModel
 	rulesModel      *views.RulesModel
-	page            page
+	cacheModel      *views.CacheModel
 	filemanager     filemanager.FileManager
 	rules           rules.Rules
 }
@@ -42,6 +44,7 @@ func NewApp(
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+	a.cacheModel = views.InitialCacheModel(a.filemanager)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
@@ -66,10 +69,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if a.page == menuPage {
 				switch a.menu.List.SelectedItem().(views.Item).Title() {
-				case "🧹 Clean Files":
+				case "🧹 Clean files":
 					a.page = cleanPage
 					cmds = append(cmds, a.cleanFilesModel.LoadFiles())
-				case "⚙️ Manage Rules":
+				case "🗑️ Clear cache":
+					a.page = cachePage
+				case "⚙️ Manage rules":
 					a.page = rulesPage
 				case "📊 Statistics":
 					a.page = statsPage
@@ -93,6 +98,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.cleanFilesModel = m
 		}
 		cmd = cleanCmd
+	case cachePage:
+		cacheModel, cacheCmd := a.cacheModel.Update(msg)
+		if m, ok := cacheModel.(*views.CacheModel); ok {
+			a.cacheModel = m
+		}
+		cmd = cacheCmd
 	case rulesPage:
 		rulesModel, rulesCmd := a.rulesModel.Update(msg)
 		if r, ok := rulesModel.(*views.RulesModel); ok {
@@ -111,6 +122,8 @@ func (a *App) View() string {
 		content = a.menu.View()
 	case cleanPage:
 		content = a.cleanFilesModel.View()
+	case cachePage:
+		content = a.cacheModel.View()
 	case rulesPage:
 		content = a.rulesModel.View()
 	case statsPage:
