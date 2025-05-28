@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/pashkov256/deletor/internal/filemanager"
-	"golang.org/x/sys/windows"
 )
 
 type Manager struct {
@@ -83,25 +82,7 @@ func (m *Manager) ClearCache() {
 				err := os.Remove(path)
 				if err != nil {
 					if runtime.GOOS == "windows" {
-						// Convert path to Windows path format
-						pathPtr, err := windows.UTF16PtrFromString(path)
-						if err != nil {
-							return nil
-						}
-
-						// Try to get file attributes
-						attrs, err := windows.GetFileAttributes(pathPtr)
-						if err != nil {
-							return nil
-						}
-
-						// Remove read-only attribute if present
-						if attrs&windows.FILE_ATTRIBUTE_READONLY != 0 {
-							windows.SetFileAttributes(pathPtr, attrs&^windows.FILE_ATTRIBUTE_READONLY)
-						}
-
-						// Try to delete with Windows API
-						windows.DeleteFile(pathPtr)
+						deleteFileWithWindowsAPI(path)
 					}
 				}
 				return nil
