@@ -72,7 +72,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "🧹 Clean files":
 					a.page = cleanPage
 					cmds = append(cmds, a.cleanFilesModel.LoadFiles())
-				case "🗑️ Clear system cache":
+				case "🗑️ Clear cache":
 					a.page = cachePage
 				case "⚙️ Manage rules":
 					a.page = rulesPage

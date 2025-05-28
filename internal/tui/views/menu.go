@@ -31,7 +31,7 @@ type MainMenu struct {
 func NewMainMenu() *MainMenu {
 	items := []list.Item{
 		Item{title: "🧹 Clean files"},
-		Item{title: "🗑️ Clear system cache"},
+		Item{title: "🗑️ Clear cache"},
 		Item{title: "⚙️ Manage rules"},
 		Item{title: "📊 Statistics"},
 		Item{title: "🚪 Exit"},
