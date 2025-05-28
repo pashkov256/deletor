@@ -17,10 +17,9 @@ type Task struct {
 }
 
 func main() {
-	config := config.GetFlags()
 	var rules = rules.NewRules()
 	rules.SetupRulesConfig()
-
+	config := config.GetFlags()
 	var fm filemanager.FileManager = filemanager.NewFileManager()
 
 	if !config.IsCLIMode {

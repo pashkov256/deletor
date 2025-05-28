@@ -279,7 +279,7 @@ func (t *MainTab) View() string {
 		} else {
 			content.WriteString(styles.StandardButtonStyle.Render("➡️ Show directories"))
 		}
-		content.WriteString("\n\n")
+		content.WriteString("  ")
 
 		if t.model.GetFocusedElement() == "deleteButton" {
 			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))

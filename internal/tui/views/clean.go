@@ -19,6 +19,7 @@ import (
 	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/tabs"
 	"github.com/pashkov256/deletor/internal/utils"
@@ -166,7 +167,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		Extensions:      latestExtensions,
 		MinSize:         minSize,
 		Exclude:         latestExclude,
-		OptionState:     make(map[string]bool),
+		OptionState:     options.DefaultCleanOptionState,
 		FocusedElement:  "list",
 		ShowDirs:        false,
 		DirList:         dirList,
@@ -249,7 +250,7 @@ func (m *CleanFilesModel) View() string {
 		// For other tabs, show content with hot keys
 		ui = lipgloss.JoinVertical(lipgloss.Left,
 			content.String(),
-			"Arrow keys: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list\n",
+			"⬇/⬆: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list\n",
 			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+S: show dirs • Ctrl+O: open in explorer • Ctrl+C: quit",
 		)
 	}
@@ -394,7 +395,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			}
 
 			// Skip hidden files unless enabled
-			if !m.OptionState["Show hidden files"] && strings.HasPrefix(fileInfo.Name(), ".") {
+			if !m.OptionState[options.ShowHiddenFiles] && strings.HasPrefix(fileInfo.Name(), ".") {
 				continue
 			}
 
@@ -470,7 +471,7 @@ func (m *CleanFilesModel) LoadDirs() tea.Cmd {
 			for _, entry := range entries {
 				if entry.IsDir() {
 					// Skip hidden directories unless enabled
-					if !m.OptionState["Show hidden files"] && strings.HasPrefix(entry.Name(), ".") {
+					if !m.OptionState[options.ShowHiddenFiles] && strings.HasPrefix(entry.Name(), ".") {
 						continue
 					}
 					results <- models.CleanItem{
@@ -534,8 +535,42 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	stats.TrashedFiles = 0
 	stats.TrashedSize = 0
 
+	if m.OptionState[options.IncludeSubfolders] {
+		var olderDuration, newerDuration time.Time
+		var err error
+
+		if m.OlderInput.Value() != "" {
+			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid older than time: %v", err)
+				return m, nil
+			}
+		}
+
+		if m.NewerInput.Value() != "" {
+			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
+			if err != nil {
+				m.Err = fmt.Errorf("invalid newer than time: %v", err)
+				return m, nil
+			}
+		}
+
+		if m.OptionState[options.SendFilesToTrash] {
+			m.Filemanager.MoveFilesToTrash(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+		} else {
+			// Delete all files in the current directory and all subfolders
+			m.Filemanager.DeleteFiles(m.CurrentPath, m.Extensions, m.Exclude, utils.ToBytesOrDefault(m.MinSizeInput.Value()), utils.ToBytesOrDefault(m.MaxSizeInput.Value()), olderDuration, newerDuration)
+		}
+
+		if m.OptionState[options.DeleteEmptySubfolders] {
+			m.Filemanager.DeleteEmptySubfolders(m.CurrentPath)
+		}
+
+		return m, m.LoadFiles()
+	}
+
 	// Process files based on Confirm deletion option
-	if m.OptionState["Confirm deletion"] {
+	if m.OptionState[options.ConfirmDeletion] {
 		// Single file deletion mode
 		if selectedItem == nil {
 			if m.Logger != nil {
@@ -553,7 +588,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		stats.TotalFiles = 1
 		stats.TotalSize = item.Size
 
-		if m.OptionState["Send files to trash"] {
+		if m.OptionState[options.SendFilesToTrash] {
 			// Move to trash
 			m.Filemanager.MoveFileToTrash(item.Path)
 			stats.TrashedFiles = 1
@@ -598,7 +633,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 
 			stats.TotalSize += cleanItem.Size
 
-			if m.OptionState["Send files to trash"] {
+			if m.OptionState[options.SendFilesToTrash] {
 				// Move to trash
 				m.Filemanager.MoveFileToTrash(cleanItem.Path)
 				stats.TrashedFiles++
@@ -713,16 +748,16 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "alt+c":
 		return m.handleAltC()
 	case "alt+1": // Toggle hidden files
-		m.OptionState["Show hidden files"] = !m.OptionState["Show hidden files"]
+		m.OptionState[options.ShowHiddenFiles] = !m.OptionState[options.ShowHiddenFiles]
 		return m, m.LoadFiles()
 	case "alt+2": // Toggle confirm deletion
-		m.OptionState["Confirm deletion"] = !m.OptionState["Confirm deletion"]
+		m.OptionState[options.ConfirmDeletion] = !m.OptionState[options.ConfirmDeletion]
 		return m, nil
 	case "alt+3": // Toggle include subfolders
-		m.OptionState["Include subfolders"] = !m.OptionState["Include subfolders"]
+		m.OptionState[options.IncludeSubfolders] = !m.OptionState[options.IncludeSubfolders]
 		return m, nil
 	case "alt+4": // Toggle delete empty subfolders
-		m.OptionState["Delete empty subfolders"] = !m.OptionState["Delete empty subfolders"]
+		m.OptionState[options.DeleteEmptySubfolders] = !m.OptionState[options.DeleteEmptySubfolders]
 		return m, nil
 	case "enter":
 		return m.handleEnter()
@@ -886,13 +921,13 @@ func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 		if err != nil {
 			return m, nil
 		}
-		if idx < 1 || idx > len(tabs.DefaultOption) {
+		if idx < 1 || idx > len(options.DefaultCleanOption) {
 			return m, nil
 		}
 		idx-- // Convert to 0-based index
 
 		// Get the option name and toggle its state
-		optName := tabs.DefaultOption[idx]
+		optName := options.DefaultCleanOption[idx]
 		m.OptionState[optName] = !m.OptionState[optName]
 
 		// Debug log when option is toggled
@@ -903,8 +938,8 @@ func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 		// Keep focus on the current option
 		m.FocusedElement = "option" + optionNum
 
-		// If this is the "Show hidden files" option, reload files
-		if optName == "Show hidden files" {
+		// If this is the options.ShowHiddenFiles option, reload files
+		if optName == options.ShowHiddenFiles {
 			return m, m.LoadFiles()
 		}
 		return m, nil
@@ -1101,13 +1136,13 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				if err != nil {
 					return m, nil
 				}
-				if idx < 1 || idx > len(tabs.DefaultOption) {
+				if idx < 1 || idx > len(options.DefaultCleanOption) {
 					return m, nil
 				}
 				idx-- // Convert to 0-based index
 
 				// Get the option name and toggle its state
-				optName := tabs.DefaultOption[idx]
+				optName := options.DefaultCleanOption[idx]
 				m.OptionState[optName] = !m.OptionState[optName]
 
 				// Debug log when option is toggled
@@ -1118,8 +1153,8 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				// Keep focus on the current option
 				m.FocusedElement = "option" + optionNum
 
-				// If this is the "Show hidden files" option, reload files
-				if optName == "Show hidden files" {
+				// If this is the options.ShowHiddenFiles option, reload files
+				if optName == options.ShowHiddenFiles {
 					return m, m.LoadFiles()
 				}
 				return m, nil

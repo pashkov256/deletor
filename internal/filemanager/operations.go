@@ -13,9 +13,8 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
-func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
-	filter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
-	taskCh := make(chan FileTask, runtime.NumCPU())
+func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, filter *FileFilter) {
+	taskCh := make(chan struct{}, runtime.NumCPU())
 	var wg sync.WaitGroup
 
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -31,7 +30,7 @@ func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, p
 		go func(path string, info os.FileInfo) {
 			defer wg.Done()
 			// Acquire token from channel first
-			taskCh <- FileTask{info: info}
+			taskCh <- struct{}{}
 			defer func() { <-taskCh }() // Release token when done
 			if filter.MatchesFilters(info, path) {
 				callback(info, path)
@@ -48,8 +47,8 @@ func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclud
 	callback := func(fi os.FileInfo, path string) {
 		os.Remove(path)
 	}
-
-	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
+	fileFilter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
+	f.WalkFilesWithFilter(callback, dir, fileFilter)
 }
 
 func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
@@ -147,7 +146,9 @@ func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, e
 	callback := func(fi os.FileInfo, path string) {
 		f.MoveFileToTrash(path)
 	}
-	f.WalkFilesWithFilter(callback, dir, extensions, exclude, minSize, maxSize, olderThan, newerThan)
+
+	fileFilter := f.NewFileFilter(minSize, maxSize, utils.ParseExtToMap(extensions), exclude, olderThan, newerThan)
+	f.WalkFilesWithFilter(callback, dir, fileFilter)
 }
 
 // Recursively move files to recycle bin by path

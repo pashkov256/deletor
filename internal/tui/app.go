@@ -36,7 +36,6 @@ func NewApp(
 	return &App{
 		menu:        views.NewMainMenu(),
 		rulesModel:  views.NewRulesModel(rules),
-		cacheModel:  views.NewCacheModel(),
 		page:        menuPage,
 		filemanager: filemanager,
 		rules:       rules,
@@ -45,6 +44,7 @@ func NewApp(
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+	a.cacheModel = views.InitialCacheModel(a.filemanager)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
@@ -98,6 +98,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.cleanFilesModel = m
 		}
 		cmd = cleanCmd
+	case cachePage:
+		cacheModel, cacheCmd := a.cacheModel.Update(msg)
+		if m, ok := cacheModel.(*views.CacheModel); ok {
+			a.cacheModel = m
+		}
+		cmd = cacheCmd
 	case rulesPage:
 		rulesModel, rulesCmd := a.rulesModel.Update(msg)
 		if r, ok := rulesModel.(*views.RulesModel); ok {

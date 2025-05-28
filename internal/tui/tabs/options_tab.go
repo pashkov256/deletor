@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 )
 
@@ -15,32 +16,10 @@ type OptionsTab struct {
 	model interfaces.CleanModel
 }
 
-var DefaultOptionState = map[string]bool{
-	"Show hidden files":       false,
-	"Confirm deletion":        false,
-	"Include subfolders":      false,
-	"Delete empty subfolders": false,
-	"Send files to trash":     false,
-	"Log operations":          false,
-	"Log to file":             false,
-	"Show statistics":         true,
-}
-
-var DefaultOption = []string{
-	"Show hidden files",
-	"Confirm deletion",
-	"Include subfolders",
-	"Delete empty subfolders",
-	"Send files to trash",
-	"Log operations",
-	"Log to file",
-	"Show statistics",
-}
-
 func (t *OptionsTab) View() string {
 	var content strings.Builder
 
-	for optionIndex, name := range DefaultOption {
+	for optionIndex, name := range options.DefaultCleanOption {
 		style := styles.OptionStyle
 		if t.model.GetOptionState()[name] {
 			style = styles.SelectedOptionStyle
@@ -53,21 +32,21 @@ func (t *OptionsTab) View() string {
 		// Add emojis based on option name
 		emoji := ""
 		switch name {
-		case "Show hidden files":
+		case options.ShowHiddenFiles:
 			emoji = "👁️‎"
-		case "Confirm deletion":
+		case options.ConfirmDeletion:
 			emoji = "⚠️‎"
-		case "Include subfolders":
+		case options.IncludeSubfolders:
 			emoji = "📁‎"
-		case "Delete empty subfolders":
+		case options.DeleteEmptySubfolders:
 			emoji = "🗑️‎"
-		case "Send files to trash":
+		case options.SendFilesToTrash:
 			emoji = "♻️‎"
-		case "Log operations":
+		case options.LogOperations:
 			emoji = "📝‎"
-		case "Log to file":
+		case options.LogToFile:
 			emoji = "📄‎"
-		case "Show statistics":
+		case options.ShowStatistics:
 			emoji = "📊‎"
 		}
 

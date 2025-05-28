@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/utils"
 )
@@ -53,7 +54,7 @@ func (t *LogTab) View() string {
 	var content strings.Builder
 
 	// Check if statistics are enabled
-	if !t.model.GetOptionState()["Show statistics"] {
+	if !t.model.GetOptionState()[options.ShowStatistics] {
 		return styles.InfoStyle.Render("\n⚠️ Statistics display is disabled. Enable 'Show statistics' in Options tab (F3). ⚠️")
 	}
 
