@@ -5,6 +5,7 @@ import (
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
 
+	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/views"
 )
@@ -68,17 +69,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if a.page == menuPage {
-				switch a.menu.List.SelectedItem().(views.Item).Title() {
-				case "🧹 Clean files":
+				switch a.menu.List.SelectedItem().(menu.Item).Title() {
+				case menu.CleanFIlesTitle:
 					a.page = cleanPage
 					cmds = append(cmds, a.cleanFilesModel.LoadFiles())
-				case "🗑️ Clear cache":
+				case menu.CleanCacheTitle:
 					a.page = cachePage
-				case "⚙️ Manage rules":
+				case menu.ManageRulesTitle:
 					a.page = rulesPage
-				case "📊 Statistics":
+				case menu.StatisticsTitle:
 					a.page = statsPage
-				case "🚪 Exit":
+				case menu.ExitTitle:
 					return a, tea.Quit
 				}
 				return a, tea.Batch(cmds...)

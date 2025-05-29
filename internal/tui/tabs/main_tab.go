@@ -35,8 +35,9 @@ func (t *MainTab) View() string {
 		if t.model.GetFocusedElement() == "startButton" {
 			startButtonStyle = styles.LaunchButtonFocusedStyle
 		}
-		content.WriteString("\n")
+		content.WriteString("\n\n")
 		content.WriteString(startButtonStyle.Render("📂 Launch"))
+		content.WriteString("\n")
 	} else {
 		// Show full interface when path is set
 		extStyle := styles.StandardInputStyle

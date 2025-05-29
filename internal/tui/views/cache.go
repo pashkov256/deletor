@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/utils"
@@ -142,8 +143,8 @@ func (m *CacheModel) View() string {
 	content.WriteString(scanBtn)
 	content.WriteString("  ")
 	content.WriteString(deleteBtn)
-	content.WriteString("\n")
-
+	content.WriteString("\n\n")
+	content.WriteString("\n" + help.NavigateHelpText)
 	return content.String()
 }
 
