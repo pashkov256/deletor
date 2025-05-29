@@ -7,7 +7,7 @@
         <a><img src="https://codecov.io/gh/pashkov256/deletor/graph/badge.svg?token=AGOWZDF04Y" alt="codecov"></a>
   <br/>
         <a href="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/issues-raw/pashkov256/deletor?style=flat-square"/></a>
-        <a href="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"><img src="https://img.shields.io/github/commit-activity/w/pashkov256/deletor?style=flat-square"/></a>
+         <a href="https://goreportcard.com/report/github.com/pashkov256/deletor"> <img src="https://goreportcard.com/badge/github.com/pashkov256/deletor"/></a>
         <a><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 
 <p align="center">
@@ -23,12 +23,13 @@
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
-- ♻️ **Safe Deletion: Files**: are moved to the system trash/recycle bin instead of permanent deletion
+- ♻️ **Safe Deletion: Files**: Are moved to the system trash/recycle bin instead of permanent deletion
+- 🧹 **OS Cache Cleaner**: Free up space by deleting temporary system cache
 - ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
 - 🗑️ **Extensions Filter**: Deletes files with specified extensions (e.g., .mp4, .zip)
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
-- 📖 **Log Operations**: log the various fields and look at the tui table, or parse the file
+- 📖 **Log Operations**: Log the various fields and look at the tui table, or parse the file
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
 - ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
 - 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
