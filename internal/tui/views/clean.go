@@ -19,6 +19,7 @@ import (
 	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/tabs"
@@ -250,8 +251,8 @@ func (m *CleanFilesModel) View() string {
 		// For other tabs, show content with hot keys
 		ui = lipgloss.JoinVertical(lipgloss.Left,
 			content.String(),
-			"⬇/⬆: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list\n",
-			"Ctrl+R: refresh • Ctrl+D: delete files • Ctrl+S: show dirs • Ctrl+O: open in explorer • Ctrl+C: quit",
+			help.CleanHelpText,
+			help.NavigateHelpText,
 		)
 	}
 
@@ -720,7 +721,10 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
-
+	case "right":
+		return m.handleArrowRight()
+	case "left":
+		return m.handleArrowLeft()
 	case "f1":
 		return m.handleF1()
 	case "f2":
@@ -1024,6 +1028,32 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 		default:
 			m.FocusedElement = "option8"
 		}
+	}
+
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleArrowRight() (tea.Model, tea.Cmd) {
+	tabLength := len(m.TabManager.GetAllTabs())
+	activeTabIndex := m.TabManager.GetActiveTabIndex()
+
+	if tabLength-1 == activeTabIndex {
+		m.TabManager.SetActiveTabIndex(0)
+	} else {
+		m.TabManager.SetActiveTabIndex(activeTabIndex + 1)
+	}
+
+	return m, nil
+}
+
+func (m *CleanFilesModel) handleArrowLeft() (tea.Model, tea.Cmd) {
+	tabLength := len(m.TabManager.GetAllTabs())
+	activeTabIndex := m.TabManager.GetActiveTabIndex()
+
+	if activeTabIndex == 0 {
+		m.TabManager.SetActiveTabIndex(tabLength - 1)
+	} else {
+		m.TabManager.SetActiveTabIndex(activeTabIndex - 1)
 	}
 
 	return m, nil

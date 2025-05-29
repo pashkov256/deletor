@@ -6,51 +6,34 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/pashkov256/deletor/internal/tui/help"
+	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 )
 
 var (
 	docStyle = lipgloss.NewStyle().
-		// Margin(1).
 		Padding(1, 1).
 		Align(lipgloss.Center)
 )
-
-type Item struct {
-	title string
-}
-
-func (i Item) Title() string       { return i.title }
-func (i Item) Description() string { return "" }
-func (i Item) FilterValue() string { return i.title }
 
 type MainMenu struct {
 	List list.Model
 }
 
 func NewMainMenu() *MainMenu {
-	items := []list.Item{
-		Item{title: "🧹 Clean files"},
-		Item{title: "🗑️ Clear cache"},
-		Item{title: "⚙️ Manage rules"},
-		Item{title: "📊 Statistics"},
-		Item{title: "🚪 Exit"},
-	}
 
 	delegate := list.NewDefaultDelegate()
 	delegate.SetHeight(1)
 	delegate.SetSpacing(0)
 
-	l := list.New(items, delegate, 0, 0)
+	l := list.New(menu.MenuItems, delegate, 0, 0)
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowFilter(false)
-	l.Title = "🗑️ Deletor"
-	l.Styles.Title = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFFDF5")).
-		Background(lipgloss.Color("#1E90FF")).
-		Padding(0, 1).MarginTop(1)
+	l.Title = "🗑️  Deletor v1.3.0"
+	l.Styles.Title = styles.TitleStyle
 
 	return &MainMenu{
 		List: l,
@@ -89,7 +72,7 @@ func (m *MainMenu) View() string {
 
 	content.WriteString(styles.AppStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
 		content.String(),
-		"⬇/⬆: navigate in list • Tab: cycle focus • Shift+Tab: focus back • Enter: select/confirm • Esc: back to list",
+		help.NavigateHelpText,
 	)))
 
 	return content.String()

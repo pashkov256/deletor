@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 )
 
@@ -211,11 +212,8 @@ func (m *RulesModel) View() string {
 	s.WriteString(saveButtonStyle.Render("💾 Save rules"))
 	s.WriteString("\n\n")
 
-	// Help text
-	s.WriteString("Tab: cycle fields • Enter: save rule • Esc: return to menu\n\n")
-
 	// AppData path
 	s.WriteString(styles.PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
-
+	s.WriteString("\n\n\n" + help.NavigateHelpText)
 	return styles.AppStyle.Render(s.String())
 }
