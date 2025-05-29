@@ -22,7 +22,10 @@ func deleteFileWithWindowsAPI(path string) error {
 
 	// Remove read-only attribute if present
 	if attrs&windows.FILE_ATTRIBUTE_READONLY != 0 {
-		windows.SetFileAttributes(pathPtr, attrs&^windows.FILE_ATTRIBUTE_READONLY)
+		err := windows.SetFileAttributes(pathPtr, attrs&^windows.FILE_ATTRIBUTE_READONLY)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Try to delete with Windows API
