@@ -25,15 +25,15 @@
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
 - ♻️ **Safe Deletion: Files**: Are moved to the system trash/recycle bin instead of permanent deletion
 - 🧹 **OS Cache Cleaner**: Free up space by deleting temporary system cache
+- 🛠️ **Deep Customization** Shape the tool to behave exactly how you need
+- 🧠 **Rules System**: Create and manage deletion presets for repeated use
+- 📖 **Log Operations**: Log the various fields and look at the tui table, or parse the file  
 - ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
 - 🗑️ **Extensions Filter**: Deletes files with specified extensions (e.g., .mp4, .zip)
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
-- 📖 **Log Operations**: Log the various fields and look at the tui table, or parse the file
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
-- ⚙️ **Customizable Options**: Toggle hidden files and confirmation prompts
-- 🛠️ **Confirmation Prompt**: Optional confirmation before deleting files
-- 🧠 **Rules System**: Create and manage deletion presets for repeated use
+- ✅ **Confirmation Prompt**: Optional confirmation before deleting files
 
 ---
 <p align="center">
@@ -56,9 +56,13 @@ deletor
 ```
 ### CLI Mode (with filters):
 ```bash
-
 deletor -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,backup
 ```
+### Dev launch:
+```bash
+go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,backup
+```
+
 ### Arguments:
 `-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
 
