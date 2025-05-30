@@ -220,8 +220,8 @@ func (m *CacheModel) handleSpace() (tea.Model, tea.Cmd) {
 
 		return m, nil
 	} else if m.FocusedElement == "deleteButton" {
-		if runtime.GOOS != "windows" {
-			m.status = "Currently only Windows is supported for cache clearing\n"
+		if runtime.GOOS == "darwin" {
+			m.status = "Currently only Windows and linux is supported for cache clearing\n"
 		} else {
 			m.cacheManager.ClearCache()
 			m.scanResults = []cache.ScanResult{}
