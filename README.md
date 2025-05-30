@@ -70,6 +70,8 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 `--min-size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
+`--max-size` — maximum file size to delete (for example, 10kb, 1mb, 1gb).
+
 `--exclude` - exclude specific files/paths (e.g. data,backup)
 
 `-subdirs` - include subdirectories in scan, default false
