@@ -4,6 +4,7 @@ type Config struct {
 	Directory      string
 	Extensions     []string
 	MinSize        int64
+	MaxSize        int64
 	Exclude        []string
 	IncludeSubdirs bool
 	ShowProgress   bool

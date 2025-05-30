@@ -14,6 +14,7 @@ func GetFlags() *Config {
 	extensions := flag.String("e", "", "File extensions to delete (comma-separated)")
 	excludeFlag := flag.String("exclude", "", "Exclude specific files/paths (e.g. data,backup)")
 	minSize := flag.String("min-size", "", "Minimum file size to delete (e.g. 10kb, 10mb, 10b)")
+	maxSize := flag.String("max-size", "", "Maximum file size to delete (e.g. 10kb, 10mb, 10b)")
 	dir := flag.String("d", ".", "Directory to scan")
 	includeSubdirsScan := flag.Bool("subdirs", false, "Include subdirectories in scan")
 	isCLIMode := flag.Bool("cli", false, "CLI mode (default is TUI)")
@@ -42,6 +43,16 @@ func GetFlags() *Config {
 			os.Exit(1)
 		}
 		config.MinSize = sizeBytes
+	}
+
+	// Convert size to bytes
+	if *maxSize != "" {
+		sizeBytes, err := utils.ToBytes(*maxSize)
+		if err != nil {
+			fmt.Printf("Error parsing size: %v\n", err)
+			os.Exit(1)
+		}
+		config.MaxSize = sizeBytes
 	}
 
 	config.IsCLIMode = *isCLIMode
