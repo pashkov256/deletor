@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type Config struct {
 	Directory      string
 	Extensions     []string
@@ -11,6 +13,8 @@ type Config struct {
 	IsCLIMode      bool
 	HaveProgress   bool
 	ConfirmDelete  bool
+	OlderThan      time.Time
+	NewerThan      time.Time
 }
 
 func LoadConfig() *Config {
