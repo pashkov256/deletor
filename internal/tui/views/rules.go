@@ -10,8 +10,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 // RulesModel represents the rules management page
@@ -23,6 +25,7 @@ type RulesModel struct {
 	rules           rules.Rules
 	focusIndex      int
 	rulesPath       string
+	Error           *errors.Error
 }
 
 // NewRulesModel creates a new rules management model
@@ -109,6 +112,16 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Save button is focused
 			if m.focusIndex == 4 {
+				// Validate inputs before saving
+				if err := m.validateInputs(); err != nil {
+					return m, func() tea.Msg {
+						return err
+					}
+				}
+
+				// Clear error if validation passed
+				m.Error = nil
+
 				//save rules
 				m.rules.UpdateRules(
 					m.locationInput.Value(),
@@ -141,6 +154,9 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, nil
 		}
+	case *errors.Error:
+		m.Error = msg
+		return m, nil
 	}
 
 	// Handle input updates
@@ -163,6 +179,25 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m *RulesModel) validateInputs() *errors.Error {
+	// Validate size input
+	if m.sizeInput.Value() != "" {
+		if _, err := utils.ToBytes(m.sizeInput.Value()); err != nil {
+			return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid size format: %v", err))
+		}
+	}
+
+	// Validate location input
+	if m.locationInput.Value() != "" {
+		expandedPath := utils.ExpandTilde(m.locationInput.Value())
+		if _, err := os.Stat(expandedPath); err != nil {
+			return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Invalid path: %s", m.locationInput.Value()))
+		}
+	}
+
+	return nil
 }
 
 func (m *RulesModel) View() string {
@@ -214,6 +249,15 @@ func (m *RulesModel) View() string {
 
 	// AppData path
 	s.WriteString(styles.PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
-	s.WriteString("\n\n\n" + help.NavigateHelpText)
+	s.WriteString("\n\n")
+
+	// Add error message if there is one
+	if m.Error != nil && m.Error.IsVisible() {
+		errorStyle := errors.GetStyle(m.Error.GetType())
+		s.WriteString("\n")
+		s.WriteString(errorStyle.Render(m.Error.GetMessage()))
+	}
+
+	s.WriteString("\n\n" + help.NavigateHelpText)
 	return styles.AppStyle.Render(s.String())
 }

@@ -130,5 +130,6 @@ func (a *App) View() string {
 	case statsPage:
 		content = "Statistics page coming soon..."
 	}
+
 	return styles.AppStyle.Render(content)
 }

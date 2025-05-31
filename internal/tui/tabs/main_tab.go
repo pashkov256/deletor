@@ -276,16 +276,16 @@ func (t *MainTab) View() string {
 		// Buttons section
 		content.WriteString("\n\n")
 		if t.model.GetFocusedElement() == "dirButton" {
-			content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️ Show directories"))
+			content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️  Show directories"))
 		} else {
-			content.WriteString(styles.StandardButtonStyle.Render("➡️ Show directories"))
+			content.WriteString(styles.StandardButtonStyle.Render("➡️  Show directories"))
 		}
 		content.WriteString("  ")
 
 		if t.model.GetFocusedElement() == "deleteButton" {
-			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
+			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning"))
 		} else {
-			content.WriteString(styles.DeleteButtonStyle.Render("🗑️ Start cleaning"))
+			content.WriteString(styles.DeleteButtonStyle.Render("🗑️  Start cleaning"))
 		}
 		content.WriteString("\n")
 	}
