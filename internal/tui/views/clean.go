@@ -19,6 +19,7 @@ import (
 	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -42,7 +43,6 @@ type CleanFilesModel struct {
 	Exclude         []string
 	Options         []string
 	OptionState     map[string]bool
-	Err             error
 	FocusedElement  string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "option1", "option2", "option3"
 	FileToDelete    *models.CleanItem
 	ShowDirs        bool
@@ -55,6 +55,8 @@ type CleanFilesModel struct {
 	Filemanager     filemanager.FileManager
 	TabManager      *tabs.CleanTabManager
 	Logger          *logging.Logger
+	Error           *errors.Error
+	IsLaunched      bool // Track if the app has been launched
 }
 
 // Message for directory size updates
@@ -242,22 +244,23 @@ func (m *CleanFilesModel) View() string {
 	//Render active tab
 	content.WriteString(m.TabManager.GetActiveTab().View())
 
+	// Add error message if there is one
+	if m.Error != nil && m.Error.IsVisible() {
+		errorStyle := errors.GetStyle(m.Error.GetType())
+		content.WriteString("\n")
+		content.WriteString(errorStyle.Render(m.Error.GetMessage()))
+	}
+
 	// Combine everything
 	var ui string
 	if activeTab != 0 {
-		// For Main tab, show only the content
 		ui = content.String()
 	} else {
-		// For other tabs, show content with hot keys
 		ui = lipgloss.JoinVertical(lipgloss.Left,
 			content.String(),
 			help.CleanHelpText,
 			help.NavigateHelpText,
 		)
-	}
-
-	if m.Err != nil {
-		ui += "\n" + styles.ErrorStyle.Render(fmt.Sprintf("Error: %v", m.Err))
 	}
 
 	return styles.AppStyle.Render(ui)
@@ -275,21 +278,18 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		// Properly set both width and height
 		h, v := styles.AppStyle.GetFrameSize()
-		// Further reduce listHeight by another 10% (now at 65% of original)
-		listHeight := (msg.Height - v - 15) * 65 / 100 // Reserve space for other UI elements and reduce by 35%
+		listHeight := (msg.Height - v - 15) * 65 / 100
 		if listHeight < 5 {
-			listHeight = 5 // Minimum height to show something
+			listHeight = 5
 		}
 		m.List.SetSize(msg.Width-h, listHeight)
 		m.DirList.SetSize(msg.Width-h, listHeight)
 
 		cmds = append(cmds, m.LoadFiles())
-		// Trigger directory size calculation when changing directory
 		cmds = append(cmds, m.CalculateDirSizeAsync())
 		return m, tea.Batch(cmds...)
 
 	case dirSizeMsg:
-		// Update the directory size
 		m.DirSize = msg.size
 		return m, nil
 
@@ -297,7 +297,6 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.ShowDirs {
 			m.DirList.SetItems(msg)
 		} else {
-			// Preserve selection when updating items
 			selectedIdx := m.List.Index()
 			m.List.SetItems(msg)
 			if selectedIdx < len(msg) {
@@ -306,9 +305,38 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case error:
-		m.Err = msg
+	case *errors.Error:
+		m.Error = msg
 		return m, nil
+
+	case error:
+		return m, func() tea.Msg {
+			return errors.New(errors.ErrorTypeValidation, msg.Error())
+		}
+	}
+
+	switch m.FocusedElement {
+	case "pathInput":
+		m.PathInput, cmd = m.PathInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "extInput":
+		m.ExtInput, cmd = m.ExtInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "minSizeInput":
+		m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "maxSizeInput":
+		m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "excludeInput":
+		m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "olderInput":
+		m.OlderInput, cmd = m.OlderInput.Update(msg)
+		cmds = append(cmds, cmd)
+	case "newerInput":
+		m.NewerInput, cmd = m.NewerInput.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmd, tea.Batch(cmds...))
@@ -331,16 +359,14 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 		if m.OlderInput.Value() != "" {
 			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
 			if err != nil {
-				m.Err = fmt.Errorf("invalid older than time: %v", err)
-				return nil
+				return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid older than time: %v", err))
 			}
 		}
 
 		if m.NewerInput.Value() != "" {
 			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
 			if err != nil {
-				m.Err = fmt.Errorf("invalid newer than time: %v", err)
-				return nil
+				return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid newer than time: %v", err))
 			}
 		}
 
@@ -350,11 +376,9 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			if err == nil {
 				m.MinSize = minSize
 			} else {
-				// If invalid size, reset to 0
-				m.MinSize = 0
+				return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid minimum size: %v", err))
 			}
 		} else {
-			// If no size specified, show all files regardless of size
 			m.MinSize = 0
 		}
 
@@ -364,68 +388,69 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 			if err == nil {
 				m.MaxSize = maxSize
 			} else {
-				// If invalid size, reset to 0
-				m.MaxSize = 0
+				return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid maximum size: %v", err))
 			}
 		} else {
-			// If no size specified, show all files regardless of size
 			m.MaxSize = 0
 		}
 
-		fileInfos, err := os.ReadDir(currentDir)
-		if err != nil {
-			return nil
-		}
-
-		// Add to parent directory
-		parentDir := filepath.Dir(currentDir)
-		if parentDir != currentDir {
-			items = append(items, models.CleanItem{
-				Path:  parentDir,
-				Size:  -1, // Special value for parent directory
-				IsDir: true,
-			})
-		}
-
-		filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude, olderDuration, newerDuration)
-
-		// Then collect files
-		for _, fileInfo := range fileInfos {
-			if fileInfo.IsDir() {
-				continue
-			}
-
-			// Skip hidden files unless enabled
-			if !m.OptionState[options.ShowHiddenFiles] && strings.HasPrefix(fileInfo.Name(), ".") {
-				continue
-			}
-
-			path := filepath.Join(currentDir, fileInfo.Name())
-			info, err := fileInfo.Info()
+		// Only show directory error if app has been launched
+		if m.IsLaunched {
+			fileInfos, err := os.ReadDir(currentDir)
 			if err != nil {
-				continue
+				return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Failed to read directory: %v", err))
 			}
 
-			size := info.Size()
-
-			fi, err := fileInfo.Info()
-			if err != nil {
-				continue
+			// Add to parent directory
+			parentDir := filepath.Dir(currentDir)
+			if parentDir != currentDir {
+				items = append(items, models.CleanItem{
+					Path:  parentDir,
+					Size:  -1, // Special value for parent directory
+					IsDir: true,
+				})
 			}
 
-			if !filter.MatchesFilters(fi, currentDir) {
-				continue
+			filter := m.Filemanager.NewFileFilter(m.MinSize, m.MaxSize, utils.ParseExtToMap(m.Extensions), m.Exclude, olderDuration, newerDuration)
+
+			// Then collect files
+			for _, fileInfo := range fileInfos {
+				if fileInfo.IsDir() {
+					continue
+				}
+
+				// Skip hidden files unless enabled
+				if !m.OptionState[options.ShowHiddenFiles] && strings.HasPrefix(fileInfo.Name(), ".") {
+					continue
+				}
+
+				path := filepath.Join(currentDir, fileInfo.Name())
+				info, err := fileInfo.Info()
+				if err != nil {
+					continue
+				}
+
+				size := info.Size()
+
+				fi, err := fileInfo.Info()
+				if err != nil {
+					continue
+				}
+
+				if !filter.MatchesFilters(fi, currentDir) {
+					continue
+				}
+
+				// Add to filtered size and count
+				totalFilteredSize += size
+				filteredCount++
+
+				items = append(items, models.CleanItem{
+					Path:  path,
+					Size:  size,
+					IsDir: false,
+				})
 			}
-
-			// Add to filtered size and count
-			totalFilteredSize += size
-			filteredCount++
-
-			items = append(items, models.CleanItem{
-				Path:  path,
-				Size:  size,
-				IsDir: false,
-			})
 		}
 
 		// Return both the items and the size info
@@ -543,16 +568,18 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		if m.OlderInput.Value() != "" {
 			olderDuration, err = utils.ParseTimeDuration(m.OlderInput.Value())
 			if err != nil {
-				m.Err = fmt.Errorf("invalid older than time: %v", err)
-				return m, nil
+				return m, func() tea.Msg {
+					return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid older than time: %v", err))
+				}
 			}
 		}
 
 		if m.NewerInput.Value() != "" {
 			newerDuration, err = utils.ParseTimeDuration(m.NewerInput.Value())
 			if err != nil {
-				m.Err = fmt.Errorf("invalid newer than time: %v", err)
-				return m, nil
+				return m, func() tea.Msg {
+					return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid newer than time: %v", err))
+				}
 			}
 		}
 
@@ -604,7 +631,9 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 				if m.Logger != nil {
 					m.Logger.Log(logging.ERROR, fmt.Sprintf("Failed to delete file: %v", err))
 				}
-				return m, nil
+				return m, func() tea.Msg {
+					return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Failed to delete file: %v", err))
+				}
 			}
 			stats.DeletedFiles = 1
 			stats.DeletedSize = item.Size
@@ -649,7 +678,9 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 					if m.Logger != nil {
 						m.Logger.Log(logging.ERROR, fmt.Sprintf("Failed to delete file: %v", err))
 					}
-					continue
+					return m, func() tea.Msg {
+						return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Failed to delete file: %v", err))
+					}
 				}
 				stats.DeletedFiles++
 				stats.DeletedSize += cleanItem.Size
@@ -831,7 +862,6 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	}
-
 }
 
 func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
@@ -1106,19 +1136,53 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 					m.CurrentPath = expandedPath
 					m.FocusedElement = "pathInput"
 					m.PathInput.Focus()
+					m.IsLaunched = true // Mark as launched when path is set
+					m.Error = nil       // Clear error when valid path is entered
 					return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
 				} else {
-					m.SetErr(fmt.Errorf("invalid path: %s", path))
+					return m, func() tea.Msg {
+						return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Invalid path: %s", path))
+					}
 				}
 			}
 		}
 	} else {
 		switch m.FocusedElement {
 		case "extInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput":
+			// Validate input values before updating
+			var err error
+			switch m.FocusedElement {
+			case "minSizeInput":
+				if m.MinSizeInput.Value() != "" {
+					_, err = utils.ToBytes(m.MinSizeInput.Value())
+				}
+			case "maxSizeInput":
+				if m.MaxSizeInput.Value() != "" {
+					_, err = utils.ToBytes(m.MaxSizeInput.Value())
+				}
+			case "olderInput":
+				if m.OlderInput.Value() != "" {
+					_, err = utils.ParseTimeDuration(m.OlderInput.Value())
+				}
+			case "newerInput":
+				if m.NewerInput.Value() != "" {
+					_, err = utils.ParseTimeDuration(m.NewerInput.Value())
+				}
+
+			}
+
+			if err != nil {
+				return m, func() tea.Msg {
+					return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid %s value: %v", m.FocusedElement, err))
+				}
+			}
+
+			// Clear error if validation passed
+			m.Error = nil
 			// Update the list of files when pressing Enter in the input fields
 			return m, m.LoadFiles()
 		case "dirButton":
-			if m.ShowDirs { //Toggle switch
+			if m.ShowDirs {
 				m.ShowDirs = false
 				return m, m.LoadFiles()
 			} else {
@@ -1132,19 +1196,15 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 			if !m.ShowDirs && m.List.SelectedItem() != nil {
 				selectedItem := m.List.SelectedItem().(models.CleanItem)
 				if selectedItem.Size == -1 {
-					// Handle parent directory selection
 					m.CurrentPath = selectedItem.Path
 					m.PathInput.SetValue(selectedItem.Path)
-					// Recalculate directory size when changing directory
 					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
 					return m, tea.Batch(cmds...)
 				}
-				// If it's a directory, navigate into it
 				info, err := os.Stat(selectedItem.Path)
 				if err == nil && info.IsDir() {
 					m.CurrentPath = selectedItem.Path
 					m.PathInput.SetValue(selectedItem.Path)
-					// Recalculate directory size when changing directory
 					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
 					return m, tea.Batch(cmds...)
 				}
@@ -1153,14 +1213,11 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.CurrentPath = selectedDir.Path
 				m.PathInput.SetValue(selectedDir.Path)
 				m.ShowDirs = false
-				// Recalculate directory size when changing directory
 				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
 				return m, tea.Batch(cmds...)
 			}
 		default:
-			// Handle space or enter key for options
 			if strings.HasPrefix(m.FocusedElement, "option") {
-				// Extract option number from the focused element (e.g. "option1" -> "1")
 				optionNum := strings.TrimPrefix(m.FocusedElement, "option")
 				idx, err := strconv.Atoi(optionNum)
 				if err != nil {
@@ -1169,21 +1226,17 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				if idx < 1 || idx > len(options.DefaultCleanOption) {
 					return m, nil
 				}
-				idx-- // Convert to 0-based index
+				idx--
 
-				// Get the option name and toggle its state
 				optName := options.DefaultCleanOption[idx]
 				m.OptionState[optName] = !m.OptionState[optName]
 
-				// Debug log when option is toggled
 				if m.Logger != nil {
 					m.Logger.Log(logging.DEBUG, fmt.Sprintf("Option '%s' toggled to: %v", optName, m.OptionState[optName]))
 				}
 
-				// Keep focus on the current option
 				m.FocusedElement = "option" + optionNum
 
-				// If this is the options.ShowHiddenFiles option, reload files
 				if optName == options.ShowHiddenFiles {
 					return m, m.LoadFiles()
 				}
@@ -1335,12 +1388,4 @@ func (m *CleanFilesModel) SetExcludeInput(input textinput.Model) {
 
 func (m *CleanFilesModel) SetSizeInput(input textinput.Model) {
 	m.MinSizeInput = input
-}
-
-func (m *CleanFilesModel) GetErr() error {
-	return m.Err
-}
-
-func (m *CleanFilesModel) SetErr(err error) {
-	m.Err = err
 }
