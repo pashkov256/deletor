@@ -1,4 +1,4 @@
-package tabs
+package base
 
 // TabManager - base tab manager
 type TabManager[m any] struct {

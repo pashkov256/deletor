@@ -1,4 +1,4 @@
-package tabs
+package clean
 
 import (
 	"fmt"

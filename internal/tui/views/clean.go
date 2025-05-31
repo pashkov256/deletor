@@ -18,12 +18,12 @@ import (
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
-	"github.com/pashkov256/deletor/internal/rules"
+	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
-	"github.com/pashkov256/deletor/internal/tui/tabs"
+	"github.com/pashkov256/deletor/internal/tui/tabs/clean"
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
@@ -53,7 +53,7 @@ type CleanFilesModel struct {
 	FilteredCount   int   // Count of filtered files
 	Rules           rules.Rules
 	Filemanager     filemanager.FileManager
-	TabManager      *tabs.CleanTabManager
+	TabManager      *clean.CleanTabManager
 	Logger          *logging.Logger
 	Error           *errors.Error
 	IsLaunched      bool // Track if the app has been launched
@@ -136,7 +136,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	l.SetShowStatusBar(true)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
-	l.Styles.Title = styles.TitleStyle
+	l.Styles.Title = styles.ListTitleStyle
 
 	// Create directory list with same delegate
 	dirList := list.New([]list.Item{}, delegate, 30, 10)
@@ -145,7 +145,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	dirList.SetShowStatusBar(true)
 	dirList.SetFilteringEnabled(false)
 	dirList.SetShowHelp(false)
-	dirList.Styles.Title = styles.TitleStyle
+	dirList.Styles.Title = styles.ListTitleStyle
 
 	// Initialize logger
 	userConfigDir, err := os.UserConfigDir()
@@ -183,12 +183,12 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	}
 
 	// Initialize tab manager
-	model.TabManager = tabs.NewCleanTabManager(model, tabs.NewCleanTabFactory())
+	model.TabManager = clean.NewCleanTabManager(model, clean.NewCleanTabFactory())
 
 	// Initialize logger with callback
 	logger, err := logging.NewLogger(logPath, func(stats *logging.ScanStatistics) {
 		if model.TabManager != nil {
-			if logTab, ok := model.TabManager.GetActiveTab().(*tabs.LogTab); ok {
+			if logTab, ok := model.TabManager.GetActiveTab().(*clean.LogTab); ok {
 				logTab.UpdateStats(stats)
 			}
 		}
@@ -211,7 +211,7 @@ func (m *CleanFilesModel) Init() tea.Cmd {
 	// Set initial focus to path input
 	m.FocusedElement = "pathInput"
 	m.PathInput.Focus()
-	m.TabManager = tabs.NewCleanTabManager(m, tabs.NewCleanTabFactory())
+	m.TabManager = clean.NewCleanTabManager(m, clean.NewCleanTabFactory())
 
 	// If we have a path, load files and calculate size
 	if m.CurrentPath != "" {
@@ -704,7 +704,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	// Update all LogTabs
 	if m.TabManager != nil {
 		for _, tab := range m.TabManager.GetAllTabs() {
-			if logTab, ok := tab.(*tabs.LogTab); ok {
+			if logTab, ok := tab.(*clean.LogTab); ok {
 				logTab.UpdateStats(stats)
 			}
 		}
