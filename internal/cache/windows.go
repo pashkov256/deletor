@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// deleteFileWithWindowsAPI deletes a file using Windows API calls
 func deleteFileWithWindowsAPI(path string) error {
 	// Convert path to Windows path format
 	pathPtr, err := windows.UTF16PtrFromString(path)
@@ -30,4 +31,9 @@ func deleteFileWithWindowsAPI(path string) error {
 
 	// Try to delete with Windows API
 	return windows.DeleteFile(pathPtr)
+}
+
+// deleteFileWithUnixAPI is a stub for Windows platforms
+func deleteFileWithUnixAPI(path string) error {
+	return nil
 }

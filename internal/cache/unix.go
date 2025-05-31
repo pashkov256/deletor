@@ -7,9 +7,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func deleteFileWithLinuxAPI(path string) error {
-	// This is a stub for non-Windows platforms
-
+// deleteFileWithUnixAPI deletes a file using Unix system calls
+func deleteFileWithUnixAPI(path string) error {
 	var stat unix.Stat_t
 	err := unix.Stat(path, &stat)
 	if err != nil {
@@ -23,6 +22,10 @@ func deleteFileWithLinuxAPI(path string) error {
 		}
 	}
 
-	return unix.Rmdir(path)
+	return unix.Unlink(path)
+}
 
+// deleteFileWithWindowsAPI is a stub for Unix platforms
+func deleteFileWithWindowsAPI(path string) error {
+	return nil
 }
