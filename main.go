@@ -37,6 +37,8 @@ func main() {
 			MaxSize:    config.MaxSize,
 			Extensions: extMap,
 			Exclude:    config.Exclude,
+			OlderThan:  config.OlderThan,
+			NewerThan:  config.NewerThan,
 		}, config.ShowProgress)
 
 		printer := output.NewPrinter()

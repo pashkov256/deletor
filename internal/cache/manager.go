@@ -87,8 +87,8 @@ func (m *Manager) ClearCache() {
 						fmt.Println(err)
 					}
 
-					if runtime.GOOS == "Unix" || runtime.GOOS == "Linux" {
-						err := deleteFileWithLinuxAPI(path)
+					if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+						err := deleteFileWithUnixAPI(path)
 						if err != nil {
 							return err
 						}
@@ -100,8 +100,4 @@ func (m *Manager) ClearCache() {
 			return nil
 		})
 	}
-}
-
-func deleteFileWithWindowsAPI(path string) interface{} {
-	return deleteFileWithWindowsAPI(path)
 }

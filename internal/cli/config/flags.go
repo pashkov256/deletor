@@ -20,6 +20,8 @@ func GetFlags() *Config {
 	isCLIMode := flag.Bool("cli", false, "CLI mode (default is TUI)")
 	progress := flag.Bool("progress", false, "Display a progress bar during file scanning")
 	confirmDelete := flag.Bool("confirm-delete", false, "Confirm that files are to be deleted?")
+	older := flag.String("older", "", "Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
+	newer := flag.String("newer", "", "Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 
 	flag.Parse()
 
@@ -53,6 +55,26 @@ func GetFlags() *Config {
 			os.Exit(1)
 		}
 		config.MaxSize = sizeBytes
+	}
+
+	// Convert older to time.Time
+	if *older != "" {
+		olderThan, err := utils.ParseTimeDuration(*older)
+		if err != nil {
+			fmt.Printf("Error parsing older: %v\n", err)
+			os.Exit(1)
+		}
+		config.OlderThan = olderThan
+	}
+
+	// Convert newer to time.Time
+	if *newer != "" {
+		newerThan, err := utils.ParseTimeDuration(*newer)
+		if err != nil {
+			fmt.Printf("Error parsing newer: %v\n", err)
+			os.Exit(1)
+		}
+		config.NewerThan = newerThan
 	}
 
 	config.IsCLIMode = *isCLIMode
