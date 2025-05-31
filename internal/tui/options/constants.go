@@ -11,6 +11,7 @@ const (
 	LogOperations         = "Log operations"
 	LogToFile             = "Log to file"
 	ShowStatistics        = "Show statistics"
+	ExitAfterDeletion     = "Exit after deletion"
 	//options for cache view
 	SystemCache = "System cache"
 )
@@ -24,6 +25,7 @@ var DefaultCleanOptionState = map[string]bool{
 	LogOperations:         false,
 	LogToFile:             false,
 	ShowStatistics:        true,
+	ExitAfterDeletion:     false,
 }
 
 var DefaultCleanOption = []string{
@@ -35,6 +37,7 @@ var DefaultCleanOption = []string{
 	LogOperations,
 	LogToFile,
 	ShowStatistics,
+	ExitAfterDeletion,
 }
 
 var DefaultCacheOptionState = map[string]bool{

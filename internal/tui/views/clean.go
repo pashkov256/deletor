@@ -710,6 +710,10 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.OptionState[options.ExitAfterDeletion] {
+		return m, tea.Quit
+	}
+
 	return m, m.LoadFiles()
 }
 
@@ -793,6 +797,9 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "alt+4": // Toggle delete empty subfolders
 		m.OptionState[options.DeleteEmptySubfolders] = !m.OptionState[options.DeleteEmptySubfolders]
+		return m, nil
+	case "alt+9": // Toggle exit after deletion
+		m.OptionState[options.ExitAfterDeletion] = !m.OptionState[options.ExitAfterDeletion]
 		return m, nil
 	case "enter":
 		return m.handleEnter()
@@ -937,6 +944,8 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 		case "option7":
 			m.FocusedElement = "option8"
 		case "option8":
+			m.FocusedElement = "option9"
+		case "option9":
 			m.FocusedElement = "option1"
 		default:
 			m.FocusedElement = "option1"
@@ -1040,7 +1049,7 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 	case 2: // Tab navigation for Options tab
 		switch m.FocusedElement {
 		case "option1":
-			m.FocusedElement = "option8"
+			m.FocusedElement = "option9"
 		case "option2":
 			m.FocusedElement = "option1"
 		case "option3":
@@ -1055,8 +1064,10 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.FocusedElement = "option6"
 		case "option8":
 			m.FocusedElement = "option7"
-		default:
+		case "option9":
 			m.FocusedElement = "option8"
+		default:
+			m.FocusedElement = "option1"
 		}
 	}
 
