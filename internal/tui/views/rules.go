@@ -19,7 +19,7 @@ import (
 // RulesModel represents the rules management page
 type RulesModel struct {
 	extensionsInput textinput.Model
-	sizeInput       textinput.Model
+	minSizeInput    textinput.Model
 	locationInput   textinput.Model
 	excludeInput    textinput.Model
 	rules           rules.Rules
@@ -39,12 +39,12 @@ func NewRulesModel(rules rules.Rules) *RulesModel {
 	extensionsInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
 	extensionsInput.SetValue(strings.Join(currentRules.Extensions, ","))
 
-	sizeInput := textinput.New()
-	sizeInput.Placeholder = "Minimum file size (e.g. 10kb)"
-	sizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
-	sizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	sizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	sizeInput.SetValue(currentRules.MinSize)
+	minSizeInput := textinput.New()
+	minSizeInput.Placeholder = "Minimum file size (e.g. 10kb)"
+	minSizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
+	minSizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	minSizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
+	minSizeInput.SetValue(currentRules.MinSize)
 
 	locationInput := textinput.New()
 	locationInput.Placeholder = "Target location (e.g.rules C:\\Users\\Downloads)"
@@ -65,7 +65,7 @@ func NewRulesModel(rules rules.Rules) *RulesModel {
 
 	return &RulesModel{
 		extensionsInput: extensionsInput,
-		sizeInput:       sizeInput,
+		minSizeInput:    minSizeInput,
 		locationInput:   locationInput,
 		excludeInput:    excludeInput,
 		focusIndex:      0,
@@ -97,7 +97,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Update input focus
 			for i, input := range []*textinput.Model{
 				&m.extensionsInput,
-				&m.sizeInput,
+				&m.minSizeInput,
 				&m.locationInput,
 				&m.excludeInput,
 			} {
@@ -124,10 +124,24 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				//save rules
 				m.rules.UpdateRules(
-					m.locationInput.Value(),
-					m.sizeInput.Value(),
-					strings.Split(m.extensionsInput.Value(), ","),
-					strings.Split(m.excludeInput.Value(), ","),
+					rules.WithPath(m.locationInput.Value()),
+					rules.WithMinSize(m.minSizeInput.Value()),
+					rules.WithMaxSize(""),
+					rules.WithExtensions(utils.ParseExtToSlice(m.extensionsInput.Value())),
+					rules.WithExclude(utils.ParseExcludeToSlice(m.excludeInput.Value())),
+					rules.WithOlderThan(""),
+					rules.WithNewerThan(""),
+					rules.WithOptions(
+						false, // showHidden
+						false, // confirmDeletion
+						false, // includeSubfolders
+						false, // deleteEmptySubfolders
+						false, // sendToTrash
+						false, // logOps
+						false, // logToFile
+						false, // showStats
+						false, // exitAfterDeletion
+					),
 				)
 
 				m.rules.GetRulesPath()
@@ -140,7 +154,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Update input focus
 				for i, input := range []*textinput.Model{
 					&m.extensionsInput,
-					&m.sizeInput,
+					&m.minSizeInput,
 					&m.locationInput,
 					&m.excludeInput,
 				} {
@@ -168,7 +182,7 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.extensionsInput, cmd = m.extensionsInput.Update(msg)
 		cmds = append(cmds, cmd)
 	case 1:
-		m.sizeInput, cmd = m.sizeInput.Update(msg)
+		m.minSizeInput, cmd = m.minSizeInput.Update(msg)
 		cmds = append(cmds, cmd)
 	case 2:
 		m.locationInput, cmd = m.locationInput.Update(msg)
@@ -183,8 +197,8 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *RulesModel) validateInputs() *errors.Error {
 	// Validate size input
-	if m.sizeInput.Value() != "" {
-		if _, err := utils.ToBytes(m.sizeInput.Value()); err != nil {
+	if m.minSizeInput.Value() != "" {
+		if _, err := utils.ToBytes(m.minSizeInput.Value()); err != nil {
 			return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid size format: %v", err))
 		}
 	}
@@ -220,7 +234,7 @@ func (m *RulesModel) View() string {
 	if m.focusIndex == 1 {
 		sizeStyle = styles.StandardInputFocusedStyle
 	}
-	s.WriteString(sizeStyle.Render("Min Size: " + m.sizeInput.View()))
+	s.WriteString(sizeStyle.Render("Min Size: " + m.minSizeInput.View()))
 	s.WriteString("\n")
 
 	// Location input
