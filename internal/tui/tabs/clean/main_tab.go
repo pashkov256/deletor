@@ -1,4 +1,4 @@
-package tabs
+package clean
 
 import (
 	"fmt"
@@ -57,10 +57,10 @@ func (t *MainTab) View() string {
 		filteredSizeText := utils.FormatSize(t.model.GetFilteredSize())
 		content.WriteString("\n")
 		if !t.model.GetShowDirs() {
-			content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
 				t.model.GetFilteredCount(), filteredSizeText)))
 		} else {
-			content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
 				filepath.Base(t.model.GetCurrentPath()), fileCount)))
 		}
 		content.WriteString("\n")

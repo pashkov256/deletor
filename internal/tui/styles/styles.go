@@ -17,6 +17,11 @@ var (
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1).MarginTop(2).Bold(true).Italic(true).Underline(true)
 
+	ListTitleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#1E90FF")).
+			Padding(0, 1).Bold(true)
+
 	// Input styles
 	StandardInputStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).

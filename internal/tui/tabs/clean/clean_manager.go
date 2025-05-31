@@ -1,15 +1,16 @@
-package tabs
+package clean
 
 import (
 	"fmt"
 
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/tabs/base"
 )
 
 // CleanTabManager manages the tabs for the clean view
 type CleanTabManager struct {
 	model     interfaces.CleanModel
-	tabs      []Tab
+	tabs      []base.Tab
 	activeTab int
 }
 
@@ -33,7 +34,7 @@ func NewCleanTabManager(model interfaces.CleanModel, factory *CleanTabFactory) *
 }
 
 // GetActiveTab returns the currently active tab
-func (m *CleanTabManager) GetActiveTab() Tab {
+func (m *CleanTabManager) GetActiveTab() base.Tab {
 	return m.tabs[m.activeTab]
 }
 
@@ -50,6 +51,6 @@ func (m *CleanTabManager) SetActiveTabIndex(index int) {
 }
 
 // GetAllTabs returns all tabs
-func (m *CleanTabManager) GetAllTabs() []Tab {
+func (m *CleanTabManager) GetAllTabs() []base.Tab {
 	return m.tabs
 }

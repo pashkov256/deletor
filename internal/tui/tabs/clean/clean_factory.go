@@ -1,9 +1,10 @@
-package tabs
+package clean
 
 import (
 	"fmt"
 
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/tabs/base"
 )
 
 type CleanTabFactory struct{}
@@ -12,9 +13,9 @@ func NewCleanTabFactory() *CleanTabFactory {
 	return &CleanTabFactory{}
 }
 
-func (f *CleanTabFactory) CreateTabs(model interfaces.CleanModel) []Tab {
+func (f *CleanTabFactory) CreateTabs(model interfaces.CleanModel) []base.Tab {
 	// Create tabs
-	tabs := []Tab{
+	tabs := []base.Tab{
 		&MainTab{model: model},
 		&FiltersTab{model: model},
 		&OptionsTab{model: model},
