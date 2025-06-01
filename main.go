@@ -34,6 +34,7 @@ func main() {
 
 		fileScanner := filemanager.NewFileScanner(fm, &filemanager.FileFilter{
 			MinSize:    config.MinSize,
+			MaxSize:    config.MaxSize,
 			Extensions: extMap,
 			Exclude:    config.Exclude,
 		}, config.ShowProgress)
