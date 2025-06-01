@@ -19,14 +19,14 @@
 
 
 
-<a href="https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). It allows you to quickly find and delete files by extension and size, both interactively and through scripts.
+<a href="https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). With it, you can quickly find and delete files by filters, send them to the trash or completely erase them, as well as clear the cache, both interactively and through scripts.
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
 - ♻️ **Safe Deletion: Files**: Are moved to the system trash/recycle bin instead of permanent deletion
 - 🧹 **OS Cache Cleaner**: Free up space by deleting temporary system cache
 - 🛠️ **Deep Customization** Shape the tool to behave exactly how you need
-- 🧠 **Rules System**: Create and manage deletion presets for repeated use
+- 🧠 **Rules System**: Save your filter settings and preferences for quick access
 - 📖 **Log Operations**: Log the various fields and look at the tui table, or parse the file  
 - ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
 - 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
@@ -95,30 +95,6 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 Unlike many traditional disk usage tools that focus only on visualizing disk space (like *ncdu*, *gdu*, *dua-cli*), Deletor is optimized specifically for fast and targeted file removal.
 It offers advanced filtering options by file extension, size, and custom exclusions, making it a powerful tool for real-world file management — not just analysis.
-
-
-## 📋 Rules System
-Deletor supports rule-based file operations through JSON configuration:
-
-1. **Rule Location**:
-Automatically stored in `~/.config/deletor/rule.json` (Linux/macOS) or `%APPDATA%\deletor\rule.json` (Windows)
-
-2. **Rule Format** (rule.json example):
-```json
-{
-  "path": "C:\Users\pashkov\Downloads\gws",
-  "extensions": [".log", ".tmp"],
-  "exclude": ["backup", "important"],
-  "min_size": "10mb"
-}
-```
-3.  **Key Features**:
-- Create/edit rules via TUI or manual JSON editing
-
-- Combine multiple filters (extension + size + exclusions)
-
-- Share rules between machines
-
 
 
 ## 🛠 Contributing
