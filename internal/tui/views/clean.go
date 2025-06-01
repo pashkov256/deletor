@@ -196,6 +196,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		FilteredCount:   0,
 		Rules:           rules,
 		Filemanager:     fileManager,
+		IsLaunched:      latestDir != "", // Set IsLaunched to true if path is already set
 	}
 
 	// Initialize tab manager
