@@ -70,8 +70,11 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	latestDir := lastestRules.Path
 	latestExtensions := lastestRules.Extensions
 	latestMinSize := lastestRules.MinSize
-
+	latestMaxSize := lastestRules.MaxSize
 	latestExclude := lastestRules.Exclude
+	latestOlderThan := lastestRules.OlderThan
+	latestNewerThan := lastestRules.NewerThan
+
 	// Initialize inputs
 	extInput := textinput.New()
 	extInput.Placeholder = "e.g. js,png,zip"
@@ -90,6 +93,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 
 	maxSizeInput := textinput.New()
 	maxSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
+	maxSizeInput.SetValue(latestMaxSize)
 	maxSizeInput.PromptStyle = styles.TextInputPromptStyle
 	maxSizeInput.TextStyle = styles.TextInputTextStyle
 	maxSizeInput.Cursor.Style = styles.TextInputCursorStyle
@@ -107,11 +111,13 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 	excludeInput.Cursor.Style = styles.TextInputCursorStyle
 
 	olderInput := textinput.New()
+	olderInput.SetValue(latestOlderThan)
 	olderInput.PromptStyle = styles.TextInputPromptStyle
 	olderInput.TextStyle = styles.TextInputTextStyle
 	olderInput.Cursor.Style = styles.TextInputCursorStyle
 
 	newerInput := textinput.New()
+	newerInput.SetValue(latestNewerThan)
 	newerInput.PromptStyle = styles.TextInputPromptStyle
 	newerInput.TextStyle = styles.TextInputTextStyle
 	newerInput.Cursor.Style = styles.TextInputCursorStyle
@@ -158,19 +164,29 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 
 	// Create model first
 	model := &CleanFilesModel{
-		List:            l,
-		ExtInput:        extInput,
-		MinSizeInput:    minSizeInput,
-		MaxSizeInput:    maxSizeInput,
-		PathInput:       pathInput,
-		ExcludeInput:    excludeInput,
-		OlderInput:      olderInput,
-		NewerInput:      newerInput,
-		CurrentPath:     latestDir,
-		Extensions:      latestExtensions,
-		MinSize:         minSize,
-		Exclude:         latestExclude,
-		OptionState:     options.DefaultCleanOptionState,
+		List:         l,
+		ExtInput:     extInput,
+		MinSizeInput: minSizeInput,
+		MaxSizeInput: maxSizeInput,
+		PathInput:    pathInput,
+		ExcludeInput: excludeInput,
+		OlderInput:   olderInput,
+		NewerInput:   newerInput,
+		CurrentPath:  latestDir,
+		Extensions:   latestExtensions,
+		MinSize:      minSize,
+		Exclude:      latestExclude,
+		OptionState: map[string]bool{
+			options.ShowHiddenFiles:       lastestRules.ShowHiddenFiles,
+			options.ConfirmDeletion:       lastestRules.ConfirmDeletion,
+			options.IncludeSubfolders:     lastestRules.IncludeSubfolders,
+			options.DeleteEmptySubfolders: lastestRules.DeleteEmptySubfolders,
+			options.SendFilesToTrash:      lastestRules.SendFilesToTrash,
+			options.LogOperations:         lastestRules.LogOperations,
+			options.LogToFile:             lastestRules.LogToFile,
+			options.ShowStatistics:        lastestRules.ShowStatistics,
+			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
+		},
 		FocusedElement:  "list",
 		ShowDirs:        false,
 		DirList:         dirList,
@@ -198,7 +214,6 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		return nil
 	}
 
-	// Set logger in model
 	model.Logger = logger
 
 	// Log initial message

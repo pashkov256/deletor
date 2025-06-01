@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/errors"
+	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	rulesTab "github.com/pashkov256/deletor/internal/tui/tabs/rules"
@@ -204,7 +205,9 @@ func (m *RulesModel) View() string {
 			saveButtonStyle = styles.StandardButtonFocusedStyle
 		}
 		content.WriteString(saveButtonStyle.Render("💾 Save rules"))
-
+		content.WriteString("\n\n\n")
+		content.WriteString(styles.PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
+		content.WriteString("\n\n" + help.NavigateHelpText)
 	case 1: // Filters tab
 		inputs := []struct {
 			name  string
