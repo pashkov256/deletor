@@ -60,6 +60,15 @@ func (p *Printer) PrintFilesTable(files map[string]string) {
 	}
 }
 
+func (p *Printer) PrintEmptyDirs(files []string) {
+	yellow := color.New(color.FgYellow).SprintFunc()
+	white := color.New(color.FgWhite).SprintFunc()
+
+	for _, path := range files {
+		fmt.Printf("%s  %s\n", yellow("DIR"), white(path))
+	}
+}
+
 func (p *Printer) AskForConfirmation(s string) bool {
 	bold := color.New(color.Bold).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
