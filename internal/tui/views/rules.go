@@ -237,27 +237,7 @@ func (m *RulesModel) View() string {
 				style = styles.OptionFocusedStyle
 			}
 
-			emoji := ""
-			switch name {
-			case options.ShowHiddenFiles:
-				emoji = "👁️"
-			case options.ConfirmDeletion:
-				emoji = "⚠️"
-			case options.IncludeSubfolders:
-				emoji = "📁"
-			case options.DeleteEmptySubfolders:
-				emoji = "🗑️"
-			case options.SendFilesToTrash:
-				emoji = "♻️"
-			case options.LogOperations:
-				emoji = "📝"
-			case options.LogToFile:
-				emoji = "📄"
-			case options.ShowStatistics:
-				emoji = "📊"
-			case options.ExitAfterDeletion:
-				emoji = "🚪"
-			}
+			emoji := options.GetEmojiByCleanOption(name)
 
 			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
 			content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s",
