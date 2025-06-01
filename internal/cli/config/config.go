@@ -12,7 +12,7 @@ type Config struct {
 	ShowProgress       bool
 	IsCLIMode          bool
 	HaveProgress       bool
-	ConfirmDelete      bool
+	SkipConfirm        bool
 	DeleteEmptyFolders bool
 	OlderThan          time.Time
 	NewerThan          time.Time

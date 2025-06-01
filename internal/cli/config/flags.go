@@ -20,7 +20,7 @@ func GetFlags() *Config {
 	isCLIMode := flag.Bool("cli", false, "CLI mode (default is TUI)")
 	progress := flag.Bool("progress", false, "Display a progress bar during file scanning")
 	deleteEmptyFolders := flag.Bool("prune-empty", false, "Delete empty folders after scan")
-	confirmDelete := flag.Bool("confirm-delete", false, "Confirm that files are to be deleted?")
+	skipConfirm := flag.Bool("skip-confirm", false, "Skip the confirmation of deletion?")
 	older := flag.String("older", "", "Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 	newer := flag.String("newer", "", "Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 
@@ -82,7 +82,7 @@ func GetFlags() *Config {
 	config.HaveProgress = *progress
 	config.IncludeSubdirs = *includeSubdirsScan
 	config.Directory = *dir
-	config.ConfirmDelete = *confirmDelete
+	config.SkipConfirm = *skipConfirm
 	config.DeleteEmptyFolders = *deleteEmptyFolders
 
 	return config

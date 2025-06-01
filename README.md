@@ -82,7 +82,7 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 `-progress` - display a progress bar during file scanning
 
-`-confirm-delete` - confirmation before deleting files
+`-skip-confirm` - skip the confirmation of deletion
 
 
 ## ✨ The Power of Dual Modes: TUI and CLI
