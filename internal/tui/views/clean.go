@@ -1167,13 +1167,28 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 					return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
 				} else {
 					return m, func() tea.Msg {
-						return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Invalid path: %s", path))
+						return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid path: %s", path))
 					}
 				}
 			}
 		}
 	} else {
 		switch m.FocusedElement {
+		case "pathInput":
+			path := m.PathInput.Value()
+			if path != "" {
+				expandedPath := utils.ExpandTilde(path)
+				if _, err := os.Stat(expandedPath); err == nil {
+					m.CurrentPath = expandedPath
+					m.IsLaunched = true
+					m.Error = nil
+					return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
+				} else {
+					return m, func() tea.Msg {
+						return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid path: %s", path))
+					}
+				}
+			}
 		case "extInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput":
 			// Validate input values before updating
 			var err error
