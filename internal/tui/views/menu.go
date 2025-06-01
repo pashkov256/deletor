@@ -32,7 +32,7 @@ func NewMainMenu() *MainMenu {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowFilter(false)
-	l.Title = "🗑️  Deletor v1.3.0"
+	l.Title = "🗑️  Deletor v1.4.0"
 	l.Styles.Title = styles.TitleStyle
 
 	return &MainMenu{
