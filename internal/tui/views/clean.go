@@ -772,9 +772,19 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case "right":
-		return m.handleArrowRight()
+		if !strings.HasSuffix(m.FocusedElement, "Input") {
+			return m.handleArrowRight()
+		} else {
+			m.UpdateInputs(msg)
+		}
+		return m, nil
 	case "left":
-		return m.handleArrowLeft()
+		if !strings.HasSuffix(m.FocusedElement, "Input") {
+			return m.handleArrowRight()
+		} else {
+			m.UpdateInputs(msg)
+		}
+		return m, nil
 	case "f1":
 		return m.handleF1()
 	case "f2":
@@ -832,56 +842,62 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	default:
-		switch m.FocusedElement {
-		case "pathInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.PathInput, cmd = m.PathInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "extInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.ExtInput, cmd = m.ExtInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "minSizeInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "maxSizeInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "excludeInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "olderInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.OlderInput, cmd = m.OlderInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		case "newerInput":
-			var cmd tea.Cmd
-			var cmds []tea.Cmd
-			m.NewerInput, cmd = m.NewerInput.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
-		}
+		m.UpdateInputs(msg)
 
 		//If you put the space handling above, then you will not be able to write a space in input.
 		if msg.String() == " " {
 			return m.handleSpace()
 		}
 
+		return m, nil
+	}
+}
+
+func (m *CleanFilesModel) UpdateInputs(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.FocusedElement {
+	case "pathInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.PathInput, cmd = m.PathInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "extInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.ExtInput, cmd = m.ExtInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "minSizeInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "maxSizeInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "excludeInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "olderInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.OlderInput, cmd = m.OlderInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	case "newerInput":
+		var cmd tea.Cmd
+		var cmds []tea.Cmd
+		m.NewerInput, cmd = m.NewerInput.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+	default:
 		return m, nil
 	}
 }
