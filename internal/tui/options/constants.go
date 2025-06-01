@@ -16,6 +16,7 @@ const (
 	SystemCache = "System cache"
 )
 
+//If you change the bool in these options, you must also change the values in the default rules json (rules/manager.gos).
 var DefaultCleanOptionState = map[string]bool{
 	ShowHiddenFiles:       false,
 	ConfirmDeletion:       false,

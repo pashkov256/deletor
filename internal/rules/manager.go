@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/pashkov256/deletor/internal/path"
+	"github.com/pashkov256/deletor/internal/tui/options"
 )
 
 func (d *defaultRules) UpdateRules(options ...RuleOption) error {
@@ -51,27 +52,33 @@ func (d *defaultRules) SetupRulesConfig() error {
 	_, err := os.Stat(filePathRuleConfig)
 
 	if err != nil {
-		baseRules := `{
-		       "Path": "",
-            "Extensions": [],
-            "Exclude": [],
-            "MinSize": null,
-            "MaxSize": null,
-            "OlderThan": null,
-            "NewerThan": null,
-            "ShowHiddenFiles": false,
-            "ConfirmDeletion": false,
-            "IncludeSubfolders": false,
-            "DeleteEmptySubfolders": false,
-            "SendFilesToTrash": false,
-            "LogOperations": false,
-            "LogToFile": false,
-            "ShowStatistics": false,
-            "ExitAfterDeletion": false
-		}`
+		// Create a new defaultRules instance with values from DefaultCleanOptionState
+		rules := &defaultRules{
+			Path:                  "",
+			Extensions:            []string{},
+			Exclude:               []string{},
+			MinSize:               "",
+			MaxSize:               "",
+			OlderThan:             "",
+			NewerThan:             "",
+			ShowHiddenFiles:       options.DefaultCleanOptionState[options.ShowHiddenFiles],
+			ConfirmDeletion:       options.DefaultCleanOptionState[options.ConfirmDeletion],
+			IncludeSubfolders:     options.DefaultCleanOptionState[options.IncludeSubfolders],
+			DeleteEmptySubfolders: options.DefaultCleanOptionState[options.DeleteEmptySubfolders],
+			SendFilesToTrash:      options.DefaultCleanOptionState[options.SendFilesToTrash],
+			LogOperations:         options.DefaultCleanOptionState[options.LogOperations],
+			LogToFile:             options.DefaultCleanOptionState[options.LogToFile],
+			ShowStatistics:        options.DefaultCleanOptionState[options.ShowStatistics],
+			ExitAfterDeletion:     options.DefaultCleanOptionState[options.ExitAfterDeletion],
+		}
 
-		err := os.WriteFile(filePathRuleConfig, []byte(baseRules), 0644)
+		// Marshal the rules to JSON
+		rulesJSON, err := json.Marshal(rules)
+		if err != nil {
+			return err
+		}
 
+		err = os.WriteFile(filePathRuleConfig, rulesJSON, 0644)
 		if err != nil {
 			return err
 		}
