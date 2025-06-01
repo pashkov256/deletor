@@ -58,7 +58,7 @@ func NewRulesModel(rules rules.Rules) *RulesModel {
 	excludeInput.SetValue(strings.Join(currentRules.Exclude, ","))
 
 	// Get AppData path
-	rulesPath := filepath.Join(os.Getenv("APPDATA"), "deletor")
+	rulesPath := filepath.Join(os.Getenv("APPDATA"), rules.GetRulesPath())
 
 	return &RulesModel{
 		extensionsInput: extensionsInput,
