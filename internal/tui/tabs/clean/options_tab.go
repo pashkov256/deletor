@@ -30,27 +30,7 @@ func (t *OptionsTab) View() string {
 		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", optionIndex+1)))
 
 		// Add emojis based on option name
-		emoji := ""
-		switch name {
-		case options.ShowHiddenFiles:
-			emoji = "👁️‎"
-		case options.ConfirmDeletion:
-			emoji = "⚠️‎"
-		case options.IncludeSubfolders:
-			emoji = "📁‎"
-		case options.DeleteEmptySubfolders:
-			emoji = "🗑️‎"
-		case options.SendFilesToTrash:
-			emoji = "♻️‎"
-		case options.LogOperations:
-			emoji = "📝‎"
-		case options.LogToFile:
-			emoji = "📄‎"
-		case options.ShowStatistics:
-			emoji = "📊‎"
-		case options.ExitAfterDeletion:
-			emoji = "🚪‎"
-		}
+		emoji := options.GetEmojiByCleanOption(name)
 
 		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]], emoji, name)))
 		content.WriteString("\n")
