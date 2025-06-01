@@ -68,7 +68,7 @@ func main() {
 			actionIsDelete := true
 
 			fmt.Println() // This is required for formatting
-			if config.ConfirmDelete {
+			if !config.SkipConfirm {
 				fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 				actionIsDelete = printer.AskForConfirmation("Delete these files?")
 			}
@@ -85,15 +85,15 @@ func main() {
 		} else {
 			printer.PrintWarning("File not found")
 		}
-
 		if config.DeleteEmptyFolders {
+			printer.PrintInfo("Scan empty subfolders")
 			toDeleteEmptyFolders := fileScanner.ScanEmptySubFolders(config.Directory)
 			if len(toDeleteEmptyFolders) != 0 {
 				printer.PrintEmptyDirs(toDeleteEmptyFolders)
 
 				actionIsEmptyDeleteFolders := true
 
-				if config.ConfirmDelete {
+				if !config.SkipConfirm {
 					actionIsEmptyDeleteFolders = printer.AskForConfirmation("Delete these empty folders?")
 				}
 
@@ -101,7 +101,7 @@ func main() {
 					for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
 						os.Remove(toDeleteEmptyFolders[i])
 					}
-
+					fmt.Println()
 					printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
 				}
 			} else {

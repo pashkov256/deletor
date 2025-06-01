@@ -23,7 +23,7 @@ func NewPrinter() *Printer {
 		successColor: color.New(color.FgGreen),
 		errorColor:   color.New(color.FgRed),
 		warningColor: color.New(color.FgYellow),
-		infoColor:    color.New(color.FgBlue),
+		infoColor:    color.New(color.FgCyan),
 		progress:     make(chan int64),
 	}
 }
@@ -94,20 +94,3 @@ func (p *Printer) AskForConfirmation(s string) bool {
 		}
 	}
 }
-
-// func (p *Printer) PrintStats(stats *Stats) {
-// 	fmt.Printf("\nStatistics:\n")
-// 	fmt.Printf("  Total files scanned: %d\n", stats.FilesScanned)
-// 	fmt.Printf("  Total directories scanned: %d\n", stats.DirsScanned)
-// 	fmt.Printf("  Total size: %s\n", utils.FormatSize(stats.TotalSize))
-// 	fmt.Printf("  Files to delete: %d\n", stats.FilesToDelete)
-// 	fmt.Printf("  Size to clear: %s\n", utils.FormatSize(stats.SizeToClear))
-// }
-
-// type Stats struct {
-// 	FilesScanned  int
-// 	DirsScanned   int
-// 	TotalSize     int64
-// 	FilesToDelete int
-// 	SizeToClear   int64
-// }
