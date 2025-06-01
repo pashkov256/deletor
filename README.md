@@ -64,9 +64,9 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 ```
 
 ### Arguments:
-`-e, --extensions` — comma-separated list of extensions (for example, mp4,zip,jpg).
+`-e` — comma-separated list of extensions (for example, mp4,zip,jpg).
 
-`-d, --directory` — the path to the file search directory.
+`-d` — the path to the file search directory.
 
 `--min-size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
 
