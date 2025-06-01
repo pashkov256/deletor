@@ -72,13 +72,17 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 `--max-size` — maximum file size to delete (for example, 10kb, 1mb, 1gb).
 
+`--older` — Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)
+
+`--newer` — Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)
+
 `--exclude` - exclude specific files/paths (e.g. data,backup)
 
 `-subdirs` - include subdirectories in scan, default false
 
 `-progress` - display a progress bar during file scanning
 
-`-confirm-delete` - confirmation before deleting files
+`-skip-confirm` - skip the confirmation of deletion
 
 
 ## ✨ The Power of Dual Modes: TUI and CLI

@@ -1,4 +1,4 @@
-package tabs
+package clean
 
 import (
 	"fmt"
@@ -57,10 +57,10 @@ func (t *MainTab) View() string {
 		filteredSizeText := utils.FormatSize(t.model.GetFilteredSize())
 		content.WriteString("\n")
 		if !t.model.GetShowDirs() {
-			content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
 				t.model.GetFilteredCount(), filteredSizeText)))
 		} else {
-			content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
 				filepath.Base(t.model.GetCurrentPath()), fileCount)))
 		}
 		content.WriteString("\n")
@@ -276,16 +276,16 @@ func (t *MainTab) View() string {
 		// Buttons section
 		content.WriteString("\n\n")
 		if t.model.GetFocusedElement() == "dirButton" {
-			content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️ Show directories"))
+			content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️  Show directories"))
 		} else {
-			content.WriteString(styles.StandardButtonStyle.Render("➡️ Show directories"))
+			content.WriteString(styles.StandardButtonStyle.Render("➡️  Show directories"))
 		}
 		content.WriteString("  ")
 
 		if t.model.GetFocusedElement() == "deleteButton" {
-			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️ Start cleaning"))
+			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning"))
 		} else {
-			content.WriteString(styles.DeleteButtonStyle.Render("🗑️ Start cleaning"))
+			content.WriteString(styles.DeleteButtonStyle.Render("🗑️  Start cleaning"))
 		}
 		content.WriteString("\n")
 	}

@@ -8,12 +8,11 @@ import (
 	"github.com/pashkov256/deletor/internal/path"
 )
 
-func (d *defaultRules) UpdateRules(path, minSize string, extensions []string, exclude []string) error {
+func (d *defaultRules) UpdateRules(options ...RuleOption) error {
 	// Update the struct fields
-	d.Path = path
-	d.MinSize = minSize
-	d.Extensions = extensions
-	d.Exclude = exclude
+	for _, option := range options {
+		option(d)
+	}
 
 	// Marshal and save to file
 	rulesJSON, err := json.Marshal(d)
@@ -52,12 +51,23 @@ func (d *defaultRules) SetupRulesConfig() error {
 	_, err := os.Stat(filePathRuleConfig)
 
 	if err != nil {
-		baseRules := `
-		{
-			"path":"",
-			"extensions":[],
-			"exclude":[],
-			"min_size":null
+		baseRules := `{
+		       "Path": "",
+            "Extensions": [],
+            "Exclude": [],
+            "MinSize": null,
+            "MaxSize": null,
+            "OlderThan": null,
+            "NewerThan": null,
+            "ShowHiddenFiles": false,
+            "ConfirmDeletion": false,
+            "IncludeSubfolders": false,
+            "DeleteEmptySubfolders": false,
+            "SendFilesToTrash": false,
+            "LogOperations": false,
+            "LogToFile": false,
+            "ShowStatistics": false,
+            "ExitAfterDeletion": false
 		}`
 
 		err := os.WriteFile(filePathRuleConfig, []byte(baseRules), 0644)

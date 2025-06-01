@@ -1,4 +1,4 @@
-package tabs
+package clean
 
 import (
 	"fmt"
@@ -48,6 +48,8 @@ func (t *OptionsTab) View() string {
 			emoji = "📄‎"
 		case options.ShowStatistics:
 			emoji = "📊‎"
+		case options.ExitAfterDeletion:
+			emoji = "🚪‎"
 		}
 
 		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]], emoji, name)))

@@ -1,16 +1,21 @@
 package config
 
+import "time"
+
 type Config struct {
-	Directory      string
-	Extensions     []string
-	MinSize        int64
-	MaxSize        int64
-	Exclude        []string
-	IncludeSubdirs bool
-	ShowProgress   bool
-	IsCLIMode      bool
-	HaveProgress   bool
-	ConfirmDelete  bool
+	Directory          string
+	Extensions         []string
+	MinSize            int64
+	MaxSize            int64
+	Exclude            []string
+	IncludeSubdirs     bool
+	ShowProgress       bool
+	IsCLIMode          bool
+	HaveProgress       bool
+	SkipConfirm        bool
+	DeleteEmptyFolders bool
+	OlderThan          time.Time
+	NewerThan          time.Time
 }
 
 func LoadConfig() *Config {

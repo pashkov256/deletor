@@ -37,6 +37,8 @@ func main() {
 			MaxSize:    config.MaxSize,
 			Extensions: extMap,
 			Exclude:    config.Exclude,
+			OlderThan:  config.OlderThan,
+			NewerThan:  config.NewerThan,
 		}, config.ShowProgress)
 
 		printer := output.NewPrinter()
@@ -66,22 +68,45 @@ func main() {
 			actionIsDelete := true
 
 			fmt.Println() // This is required for formatting
-			if config.ConfirmDelete {
+			if !config.SkipConfirm {
 				fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 				actionIsDelete = printer.AskForConfirmation("Delete these files?")
 			}
 
 			if actionIsDelete {
-				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
-
 				for path := range toDeleteMap {
 					os.Remove(path)
 				}
+				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 
 				utils.LogDeletionToFile(toDeleteMap)
 			}
+
 		} else {
 			printer.PrintWarning("File not found")
+		}
+		if config.DeleteEmptyFolders {
+			printer.PrintInfo("Scan empty subfolders")
+			toDeleteEmptyFolders := fileScanner.ScanEmptySubFolders(config.Directory)
+			if len(toDeleteEmptyFolders) != 0 {
+				printer.PrintEmptyDirs(toDeleteEmptyFolders)
+
+				actionIsEmptyDeleteFolders := true
+
+				if !config.SkipConfirm {
+					actionIsEmptyDeleteFolders = printer.AskForConfirmation("Delete these empty folders?")
+				}
+
+				if actionIsEmptyDeleteFolders {
+					for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
+						os.Remove(toDeleteEmptyFolders[i])
+					}
+					fmt.Println()
+					printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
+				}
+			} else {
+				printer.PrintWarning("Empty folders not found")
+			}
 		}
 	}
 }
