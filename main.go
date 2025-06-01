@@ -74,16 +74,39 @@ func main() {
 			}
 
 			if actionIsDelete {
-				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
-
 				for path := range toDeleteMap {
 					os.Remove(path)
 				}
+				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 
 				utils.LogDeletionToFile(toDeleteMap)
 			}
+
 		} else {
 			printer.PrintWarning("File not found")
+		}
+
+		if config.DeleteEmptyFolders {
+			toDeleteEmptyFolders := fileScanner.ScanEmptySubFolders(config.Directory)
+			if len(toDeleteEmptyFolders) != 0 {
+				printer.PrintEmptyDirs(toDeleteEmptyFolders)
+
+				actionIsEmptyDeleteFolders := true
+
+				if config.ConfirmDelete {
+					actionIsEmptyDeleteFolders = printer.AskForConfirmation("Delete these empty folders?")
+				}
+
+				if actionIsEmptyDeleteFolders {
+					for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
+						os.Remove(toDeleteEmptyFolders[i])
+					}
+
+					printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
+				}
+			} else {
+				printer.PrintWarning("Empty folders not found")
+			}
 		}
 	}
 }

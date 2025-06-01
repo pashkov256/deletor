@@ -143,3 +143,20 @@ func (s *FileScanner) ScanFilesRecursively(dir string) (toDeleteMap map[string]s
 
 	return toDeleteMap, totalClearSize
 }
+
+func (s *FileScanner) ScanEmptySubFolders(dir string) []string {
+	emptyDirs := make([]string, 0)
+
+	filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
+		if info == nil && !info.IsDir() {
+			return nil
+		}
+		if s.fileManager.IsEmptyDir(path) {
+			emptyDirs = append(emptyDirs, path)
+		}
+
+		return nil
+	})
+
+	return emptyDirs
+}
