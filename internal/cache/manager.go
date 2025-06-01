@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -84,6 +83,9 @@ func (m *Manager) ClearCache() {
 				if err != nil {
 					if runtime.GOOS == "windows" {
 						err := deleteFileWithWindowsAPI(path)
+						if err != nil {
+							return err
+						}
 					}
 
 					if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
