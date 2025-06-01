@@ -106,7 +106,7 @@ func NewRulesModel(rules rules.Rules) *RulesModel {
 	}
 
 	// Get AppData path
-	rulesPath := filepath.Join(os.Getenv("APPDATA"), "deletor")
+	rulesPath := filepath.Join(os.Getenv("APPDATA"), rules.GetRulesPath())
 
 	return &RulesModel{
 		locationInput:    locationInput,
