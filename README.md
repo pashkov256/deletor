@@ -29,8 +29,8 @@
 - 🧠 **Rules System**: Save your filter settings and preferences for quick access
 - 📖 **Log Operations**: Log the various fields and look at the tui table, or parse the file  
 - ⏳ **Modification Time Filter**: Delete files older,newer than X days/hours/minutes
-- 📏 **Size Filter**: Deletes only files larger than the specified size (e.g., 10mb, 1gb)
-- 🗑️ **Extensions Filter**: Deletes files with specified extensions (e.g., .mp4, .zip)
+- 📏 **Size Filter**: Deletes only files larger than the specified size
+- 🗑️ **Extensions Filter**: Deletes files with specified extensions
 - 📂 **Directory Navigation**: Easy navigation through directories with arrow keys
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
 - ✅ **Confirmation Prompt**: Optional confirmation before deleting files
