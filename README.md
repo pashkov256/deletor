@@ -80,6 +80,8 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 `-subdirs` - include subdirectories in scan, default false
 
+`-prune-empty` - delete empty folders after scan
+
 `-progress` - display a progress bar during file scanning
 
 `-skip-confirm` - skip the confirmation of deletion
