@@ -7,13 +7,14 @@ import (
 	"time"
 )
 
+// FileFilter defines criteria for filtering files
 type FileFilter struct {
-	MinSize    int64
-	MaxSize    int64
-	Extensions map[string]struct{}
-	Exclude    []string
-	OlderThan  time.Time
-	NewerThan  time.Time
+	MinSize    int64               // Minimum file size in bytes
+	MaxSize    int64               // Maximum file size in bytes
+	Extensions map[string]struct{} // Set of allowed file extensions
+	Exclude    []string            // Patterns to exclude from results
+	OlderThan  time.Time           // Only include files older than this time
+	NewerThan  time.Time           // Only include files newer than this time
 }
 
 func (d *defaultFileManager) NewFileFilter(minSize, maxSize int64, extensions map[string]struct{}, exclude []string, olderThan, newerThan time.Time) *FileFilter {
@@ -27,6 +28,7 @@ func (d *defaultFileManager) NewFileFilter(minSize, maxSize int64, extensions ma
 	}
 }
 
+// MatchesFilters checks if a file matches all filter criteria
 func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 	if !f.ExcludeFilter(info, path) {
 		return false
@@ -76,6 +78,7 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 	return true
 }
 
+// ExcludeFilter checks if a file should be excluded based on path patterns
 func (f *FileFilter) ExcludeFilter(info os.FileInfo, path string) bool {
 	if len(f.Exclude) != 0 {
 		for _, excludePattern := range f.Exclude {
@@ -90,14 +93,12 @@ func (f *FileFilter) ExcludeFilter(info os.FileInfo, path string) bool {
 	return true
 }
 
-// If we want to find files older than a certain time
+// OlderThanFilter checks if a file is older than the specified time
 func (f *FileFilter) OlderThanFilter(info os.FileInfo) bool {
-	// For older than, we want files that were modified before the specified time
 	return info.ModTime().Before(f.OlderThan)
 }
 
-// If we want to find files newer than a certain time
+// NewerThanFilter checks if a file is newer than the specified time
 func (f *FileFilter) NewerThanFilter(info os.FileInfo) bool {
-	// For newer than, we want files that were modified after the specified time
 	return info.ModTime().After(f.NewerThan)
 }

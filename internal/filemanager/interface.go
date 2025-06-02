@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// FileManager defines the interface for file system operations
 type FileManager interface {
 	NewFileFilter(minSize, maxSize int64, extensions map[string]struct{}, exclude []string, olderThan, newerThan time.Time) *FileFilter
 	WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, filter *FileFilter)
@@ -17,13 +18,16 @@ type FileManager interface {
 	MoveFileToTrash(filePath string)
 }
 
+// FileTask represents a file operation task
 type FileTask struct {
 	info os.FileInfo
 }
 
+// defaultFileManager implements the FileManager interface
 type defaultFileManager struct {
 }
 
+// NewFileManager creates a new instance of the default file manager
 func NewFileManager() FileManager {
 	return &defaultFileManager{}
 }

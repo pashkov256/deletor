@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-// Check if a directory is empty,true if directory have subfolders
+// IsEmptyDir checks if a directory is empty, including recursive check of subdirectories.
+// Returns true if the directory is empty or contains only empty subdirectories.
 func (f *defaultFileManager) IsEmptyDir(dirPath string) bool {
 	dir, err := os.Open(dirPath)
 	if err != nil {
@@ -36,7 +37,8 @@ func (f *defaultFileManager) IsEmptyDir(dirPath string) bool {
 	return true
 }
 
-// Helper function to expand tilde in path
+// ExpandTilde expands the tilde (~) in a path to the user's home directory.
+// Returns the original path if it doesn't start with tilde or if home directory cannot be determined.
 func (f *defaultFileManager) ExpandTilde(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path

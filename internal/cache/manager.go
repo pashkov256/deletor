@@ -9,12 +9,14 @@ import (
 	"github.com/pashkov256/deletor/internal/filemanager"
 )
 
+// Manager handles cache operations for different operating systems
 type Manager struct {
 	os          OS
 	locations   []CacheLocation
 	filemanager filemanager.FileManager
 }
 
+// NewCacheManager creates a new cache manager instance for the current OS
 func NewCacheManager(fm filemanager.FileManager) *Manager {
 	return &Manager{
 		os:          OS(runtime.GOOS),
@@ -23,6 +25,7 @@ func NewCacheManager(fm filemanager.FileManager) *Manager {
 	}
 }
 
+// ScanAllLocations concurrently scans all cache locations and returns their statistics
 func (m *Manager) ScanAllLocations() []ScanResult {
 	var resultsScan []ScanResult
 
@@ -47,6 +50,7 @@ func (m *Manager) ScanAllLocations() []ScanResult {
 	return resultsScan
 }
 
+// scan analyzes a single cache location and returns its statistics
 func (m *Manager) scan(path string) ScanResult {
 	result := ScanResult{Path: path, FileCount: 0, Size: 0}
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -66,6 +70,7 @@ func (m *Manager) scan(path string) ScanResult {
 	return result
 }
 
+// ClearCache removes all files from cache locations using OS-specific deletion methods
 func (m *Manager) ClearCache() {
 	for _, location := range m.locations {
 		filepath.Walk(location.Path, func(path string, info os.FileInfo, err error) error {
@@ -97,7 +102,6 @@ func (m *Manager) ClearCache() {
 				}
 				return nil
 			}
-
 			return nil
 		})
 	}

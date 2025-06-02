@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 )
 
+// getLocationsForOS returns a list of cache locations specific to the given operating system.
+// Returns nil for unsupported operating systems.
 func getLocationsForOS(osName OS) []CacheLocation {
 	switch osName {
 	case Windows:

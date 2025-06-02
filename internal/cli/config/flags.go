@@ -8,6 +8,7 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
+// GetFlags parses command-line flags and returns a Config instance with the parsed values.
 func GetFlags() *Config {
 	config := &Config{}
 

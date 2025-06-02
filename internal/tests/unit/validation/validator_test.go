@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pashkov256/deletor/internal/validation"
 )
 
 func setupTestDir(t *testing.T) string {
@@ -21,7 +23,7 @@ func cleanupTestDir(t *testing.T, dir string) {
 }
 
 func TestValidator_ValidateSize(t *testing.T) {
-	validator := new(Validator).NewValidator()
+	validator := new(validation.Validator).NewValidator()
 
 	tests := []struct {
 		name    string
@@ -56,7 +58,7 @@ func TestValidator_ValidateSize(t *testing.T) {
 }
 
 func TestValidator_ValidatePath(t *testing.T) {
-	validator := new(Validator).NewValidator()
+	validator := new(validation.Validator).NewValidator()
 	testDir := setupTestDir(t)
 	defer cleanupTestDir(t, testDir)
 
@@ -88,7 +90,7 @@ func TestValidator_ValidatePath(t *testing.T) {
 }
 
 func TestValidator_ValidateExtension(t *testing.T) {
-	validator := new(Validator).NewValidator()
+	validator := new(validation.Validator).NewValidator()
 
 	tests := []struct {
 		name    string

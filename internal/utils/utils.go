@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// FormatSize converts a byte count into a human-readable string with appropriate unit
+// Example: 1024 -> "1.00 KB", 1024*1024 -> "1.00 MB"
 func FormatSize(bytes int64) string {
 	const (
 		KB = 1 << 10 // 1024
@@ -34,6 +36,8 @@ func FormatSize(bytes int64) string {
 	}
 }
 
+// ExpandTilde expands the tilde (~) in a path to the user's home directory
+// Example: "~/Documents" -> "/home/user/Documents"
 func ExpandTilde(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path
@@ -47,6 +51,8 @@ func ExpandTilde(path string) string {
 	return filepath.Join(home, path[1:])
 }
 
+// ToBytes converts a human-readable size string to bytes
+// Example: "1.5MB" -> 1572864, "2GB" -> 2147483648
 func ToBytes(sizeStr string) (int64, error) {
 	sizeStr = strings.TrimSpace(strings.ToLower(sizeStr))
 
@@ -87,6 +93,7 @@ func ToBytes(sizeStr string) (int64, error) {
 	return int64(bytes), nil
 }
 
+// ToBytesOrDefault converts a size string to bytes, returning 0 if conversion fails
 func ToBytesOrDefault(sizeStr string) int64 {
 	size, err := ToBytes(sizeStr)
 	if err != nil {
@@ -95,6 +102,8 @@ func ToBytesOrDefault(sizeStr string) int64 {
 	return size
 }
 
+// LogDeletionToFile writes deletion records to a log file
+// Each record includes timestamp, file path, and file size
 func LogDeletionToFile(files map[string]string) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	const (
@@ -119,6 +128,7 @@ func LogDeletionToFile(files map[string]string) {
 	defer file.Close()
 }
 
+// ParseExtToSlice converts a comma-separated string of extensions into a slice
 func ParseExtToSlice(extensions string) []string {
 	extSlice := make([]string, 0)
 	if extensions != "" {
@@ -137,6 +147,7 @@ func ParseExtToSlice(extensions string) []string {
 	return extSlice
 }
 
+// ParseExcludeToSlice converts a comma-separated string of patterns into a slice
 func ParseExcludeToSlice(exclude string) []string {
 	excludeSlice := make([]string, 0)
 
@@ -152,6 +163,7 @@ func ParseExcludeToSlice(exclude string) []string {
 	return excludeSlice
 }
 
+// ParseExtToMap converts a slice of extensions into a map for O(1) lookups
 func ParseExtToMap(extSlice []string) map[string]struct{} {
 	extMap := make(map[string]struct{})
 
@@ -165,6 +177,7 @@ func ParseExtToMap(extSlice []string) map[string]struct{} {
 	return extMap
 }
 
+// ParseTimeDuration converts a time duration string to a time.Time
 func ParseTimeDuration(timeStr string) (time.Time, error) {
 	timeStr = strings.TrimSpace(strings.ToLower(timeStr))
 
