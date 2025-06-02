@@ -9,6 +9,7 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/options"
 )
 
+// UpdateRules applies the provided options and saves the updated rules to file
 func (d *defaultRules) UpdateRules(options ...RuleOption) error {
 	// Update the struct fields
 	for _, option := range options {
@@ -29,6 +30,7 @@ func (d *defaultRules) UpdateRules(options ...RuleOption) error {
 	return nil
 }
 
+// GetRules loads and returns the current rules from the configuration file
 func (d *defaultRules) GetRules() (*defaultRules, error) {
 	jsonRules, err := os.ReadFile(d.GetRulesPath())
 	if err != nil {
@@ -45,6 +47,7 @@ func (d *defaultRules) GetRules() (*defaultRules, error) {
 	return rules, nil
 }
 
+// SetupRulesConfig initializes the rules configuration file with default values
 func (d *defaultRules) SetupRulesConfig() error {
 	filePathRuleConfig := d.GetRulesPath()
 	os.MkdirAll(filepath.Dir(filePathRuleConfig), 0755)
@@ -72,7 +75,6 @@ func (d *defaultRules) SetupRulesConfig() error {
 			ExitAfterDeletion:     options.DefaultCleanOptionState[options.ExitAfterDeletion],
 		}
 
-		// Marshal the rules to JSON
 		rulesJSON, err := json.Marshal(rules)
 		if err != nil {
 			return err
@@ -87,46 +89,10 @@ func (d *defaultRules) SetupRulesConfig() error {
 	return nil
 }
 
+// GetRulesPath returns the path to the rules configuration file
 func (d *defaultRules) GetRulesPath() string {
 	userConfigDir, _ := os.UserConfigDir()
 	filePathRuleConfig := filepath.Join(userConfigDir, path.AppDirName, path.RuleFileName)
 
 	return filePathRuleConfig
-}
-
-func (d *defaultRules) Equals(other Rules) bool {
-	if other == nil {
-		return false
-	}
-
-	otherRules, err := other.GetRules()
-	if err != nil {
-		return false
-	}
-
-	if d.Path != otherRules.Path || d.MinSize != otherRules.MinSize {
-		return false
-	}
-
-	if len(d.Extensions) != len(otherRules.Extensions) {
-		return false
-	}
-
-	if len(d.Exclude) != len(otherRules.Exclude) {
-		return false
-	}
-
-	for i := range d.Extensions {
-		if d.Extensions[i] != otherRules.Extensions[i] {
-			return false
-		}
-	}
-
-	for i := range d.Exclude {
-		if d.Exclude[i] != otherRules.Exclude[i] {
-			return false
-		}
-	}
-
-	return true
 }

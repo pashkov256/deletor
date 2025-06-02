@@ -13,6 +13,8 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
+// WalkFilesWithFilter traverses files in a directory with concurrent processing
+// and applies the given filter to each file
 func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, path string), dir string, filter *FileFilter) {
 	taskCh := make(chan struct{}, runtime.NumCPU())
 	var wg sync.WaitGroup
@@ -42,7 +44,7 @@ func (f *defaultFileManager) WalkFilesWithFilter(callback func(fi os.FileInfo, p
 	wg.Wait()
 }
 
-// recursively traverse deletion
+// DeleteFiles removes files matching the specified criteria from the given directory
 func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
 	callback := func(fi os.FileInfo, path string) {
 		os.Remove(path)
@@ -51,6 +53,7 @@ func (f *defaultFileManager) DeleteFiles(dir string, extensions []string, exclud
 	f.WalkFilesWithFilter(callback, dir, fileFilter)
 }
 
+// DeleteEmptySubfolders removes all empty directories in the given path
 func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
 	emptyDirs := make([]string, 0)
 
@@ -71,7 +74,8 @@ func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
 	}
 }
 
-// Function to calculate directory size recursively with option to cancel
+// CalculateDirSize computes the total size of all files in a directory
+// Uses concurrent processing with limits to handle large directories efficiently
 func (f *defaultFileManager) CalculateDirSize(path string) int64 {
 	// For very large directories, return a placeholder value immediately
 	// to avoid blocking the UI
@@ -141,7 +145,7 @@ func (f *defaultFileManager) CalculateDirSize(path string) int64 {
 	return totalSize
 }
 
-// Recursively move file to recycle bin
+// MoveFilesToTrash moves files matching the criteria to the system's recycle bin
 func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, exclude []string, minSize, maxSize int64, olderThan, newerThan time.Time) {
 	callback := func(fi os.FileInfo, path string) {
 		f.MoveFileToTrash(path)
@@ -151,7 +155,7 @@ func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, e
 	f.WalkFilesWithFilter(callback, dir, fileFilter)
 }
 
-// Recursively move files to recycle bin by path
+// MoveFileToTrash moves a single file to the system's recycle bin
 func (f *defaultFileManager) MoveFileToTrash(filePath string) {
 	wastebasket.Trash(filePath)
 }

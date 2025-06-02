@@ -1,32 +1,34 @@
 package rules
 
+// Rules defines the interface for managing file operation rules
 type Rules interface {
-	UpdateRules(options ...RuleOption) error
-	GetRules() (*defaultRules, error)
-	SetupRulesConfig() error
-	GetRulesPath() string
-	Equals(other Rules) bool
+	UpdateRules(options ...RuleOption) error // Updates rules with provided options
+	GetRules() (*defaultRules, error)        // Returns current file rules configuration
+	SetupRulesConfig() error                 // Initializes rules configuration
+	GetRulesPath() string                    // Returns path to rules configuration file
 }
 
+// defaultRules holds the configuration for file operations
 type defaultRules struct {
-	Path                  string   `json:",omitempty"`
-	Extensions            []string `json:",omitempty"`
-	Exclude               []string `json:",omitempty"`
-	MinSize               string   `json:",omitempty"`
-	MaxSize               string   `json:",omitempty"`
-	OlderThan             string   `json:",omitempty"`
-	NewerThan             string   `json:",omitempty"`
-	ShowHiddenFiles       bool     `json:",omitempty"`
-	ConfirmDeletion       bool     `json:",omitempty"`
-	IncludeSubfolders     bool     `json:",omitempty"`
-	DeleteEmptySubfolders bool     `json:",omitempty"`
-	SendFilesToTrash      bool     `json:",omitempty"`
-	LogOperations         bool     `json:",omitempty"`
-	LogToFile             bool     `json:",omitempty"`
-	ShowStatistics        bool     `json:",omitempty"`
-	ExitAfterDeletion     bool     `json:",omitempty"`
+	Path                  string   `json:",omitempty"` // Target directory path
+	Extensions            []string `json:",omitempty"` // File extensions to process
+	Exclude               []string `json:",omitempty"` // Patterns to exclude
+	MinSize               string   `json:",omitempty"` // Minimum file size
+	MaxSize               string   `json:",omitempty"` // Maximum file size
+	OlderThan             string   `json:",omitempty"` // Only process files older than
+	NewerThan             string   `json:",omitempty"` // Only process files newer than
+	ShowHiddenFiles       bool     `json:",omitempty"` // Whether to show hidden files
+	ConfirmDeletion       bool     `json:",omitempty"` // Whether to confirm deletions
+	IncludeSubfolders     bool     `json:",omitempty"` // Whether to process subfolders
+	DeleteEmptySubfolders bool     `json:",omitempty"` // Whether to remove empty folders
+	SendFilesToTrash      bool     `json:",omitempty"` // Whether to use trash instead of delete
+	LogOperations         bool     `json:",omitempty"` // Whether to log operations
+	LogToFile             bool     `json:",omitempty"` // Whether to write logs to file
+	ShowStatistics        bool     `json:",omitempty"` // Whether to display statistics
+	ExitAfterDeletion     bool     `json:",omitempty"` // Whether to exit after deletion
 }
 
+// NewRules creates a new instance of the default rules
 func NewRules() Rules {
 	return &defaultRules{}
 }

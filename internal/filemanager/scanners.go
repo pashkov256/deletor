@@ -12,15 +12,17 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+// FileScanner handles file system scanning operations with progress tracking
 type FileScanner struct {
-	fileManager  FileManager
-	filter       *FileFilter
-	ProgressChan chan int64
-	haveProgress bool
+	fileManager  FileManager // File manager instance for operations
+	filter       *FileFilter // Filter criteria for files
+	ProgressChan chan int64  // Channel for progress updates
+	haveProgress bool        // Whether progress tracking is enabled
 	mutex        *sync.Mutex
 	wg           *sync.WaitGroup
 }
 
+// NewFileScanner creates a new file scanner with the specified configuration
 func NewFileScanner(fileManager FileManager, filter *FileFilter, haveProgress bool) *FileScanner {
 	return &FileScanner{
 		fileManager:  fileManager,
@@ -32,6 +34,7 @@ func NewFileScanner(fileManager FileManager, filter *FileFilter, haveProgress bo
 	}
 }
 
+// ProgressBarScanner initializes and displays a progress bar for file scanning
 func (s *FileScanner) ProgressBarScanner(dir string) {
 	var totalScanSize int64
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -68,6 +71,7 @@ func (s *FileScanner) ProgressBarScanner(dir string) {
 	}()
 }
 
+// ScanFilesCurrentLevel scans files in the current directory level only
 func (s *FileScanner) ScanFilesCurrentLevel(dir string) (toDeleteMap map[string]string, totalClearSize int64) {
 	toDeleteMap = make(map[string]string)
 	entries, err := os.ReadDir(dir)
@@ -98,6 +102,7 @@ func (s *FileScanner) ScanFilesCurrentLevel(dir string) (toDeleteMap map[string]
 	return toDeleteMap, totalClearSize
 }
 
+// ScanFilesRecursively scans files in the directory and all subdirectories
 func (s *FileScanner) ScanFilesRecursively(dir string) (toDeleteMap map[string]string, totalClearSize int64) {
 	toDeleteMap = make(map[string]string)
 	taskCh := make(chan os.FileInfo, runtime.NumCPU())
@@ -144,6 +149,7 @@ func (s *FileScanner) ScanFilesRecursively(dir string) (toDeleteMap map[string]s
 	return toDeleteMap, totalClearSize
 }
 
+// ScanEmptySubFolders finds all empty subdirectories in the given path
 func (s *FileScanner) ScanEmptySubFolders(dir string) []string {
 	emptyDirs := make([]string, 0)
 
