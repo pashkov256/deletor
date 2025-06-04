@@ -50,9 +50,13 @@ func (d *defaultRules) GetRules() (*defaultRules, error) {
 // SetupRulesConfig initializes the rules configuration file with default values
 func (d *defaultRules) SetupRulesConfig() error {
 	filePathRuleConfig := d.GetRulesPath()
-	os.MkdirAll(filepath.Dir(filePathRuleConfig), 0755)
 
-	_, err := os.Stat(filePathRuleConfig)
+	err := os.MkdirAll(filepath.Dir(filePathRuleConfig), 0755)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(filePathRuleConfig)
 
 	if err != nil {
 		// Create a new defaultRules instance with values from DefaultCleanOptionState
