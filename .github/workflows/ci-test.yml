@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Run tests and collect coverage
+  test-and-lint:
+    name: Test and Lint
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
@@ -22,6 +22,10 @@ jobs:
       - name: Get dependencies
         run: go mod download
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
 
       - name: Run tests with coverage
         run: go test -v -coverprofile=coverage.txt ./...
