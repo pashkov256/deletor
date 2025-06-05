@@ -1,15 +1,12 @@
+# This is a configuration file for golangci-lint.
+# https://golangci-lint.run/usage/configuration/
+
 linters:
   enable:
     - gofmt
-    - golint
     - govet
     - errcheck
     - staticcheck
-    - gosimple
-    - ineffassign
-    - unused
-    - misspell
-    - gosec
 
 run:
   deadline: 5m

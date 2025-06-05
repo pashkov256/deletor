@@ -10,6 +10,7 @@ jobs:
   test-and-lint:
     name: Test and Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -23,9 +24,9 @@ jobs:
         run: go mod download
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          version: v1.55.2
 
       - name: Run tests with coverage
         run: go test -v -coverprofile=coverage.txt ./...
