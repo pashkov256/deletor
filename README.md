@@ -19,7 +19,7 @@
 
 
 
-<a href="https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). With it, you can quickly find and delete files by filters, send them to the trash or completely erase them, as well as clear the cache, both interactively and through scripts.
+<a href="https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). With it, you can quickly find and delete files by filters, send them to the trash or completely erase them, as well as clear the cache, both interactively and through scripts.
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
@@ -113,7 +113,7 @@ Together, we can make Deletor even better! 🚀
 
 
 ## AI docs
-<a href="https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md">https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md</a>
+<a href="https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md">https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md</a>
 
 
 
