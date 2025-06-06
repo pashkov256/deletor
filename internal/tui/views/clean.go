@@ -362,7 +362,7 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 	return func() tea.Msg {
 		var items []list.Item
 		var totalFilteredSize int64 = 0
-		var filteredCount int = 0
+		var filteredCount = 0
 
 		currentDir := m.CurrentPath
 
@@ -781,7 +781,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "left":
 		if !strings.HasSuffix(m.FocusedElement, "Input") {
-			return m.handleArrowRight()
+			return m.handleArrowLeft()
 		} else {
 			m.UpdateInputs(msg)
 		}

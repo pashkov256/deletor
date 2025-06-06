@@ -18,11 +18,6 @@ type FileManager interface {
 	MoveFileToTrash(filePath string)
 }
 
-// FileTask represents a file operation task
-type FileTask struct {
-	info os.FileInfo
-}
-
 // defaultFileManager implements the FileManager interface
 type defaultFileManager struct {
 }

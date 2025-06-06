@@ -41,12 +41,12 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 		}
 	}
 	if f.MaxSize > 0 {
-		if !(info.Size() <= f.MaxSize) {
+		if info.Size() > f.MaxSize {
 			return false
 		}
 	}
 	if f.MinSize > 0 {
-		if !(info.Size() >= f.MinSize) {
+		if info.Size() <= f.MinSize {
 			return false
 		}
 	}
@@ -59,7 +59,7 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 		if end.Before(start) {
 			start, end = end, start
 		}
-		if !(modTime.After(start) && modTime.Before(end)) {
+		if modTime.Before(start) || modTime.After(end) {
 			return false
 		}
 	} else {

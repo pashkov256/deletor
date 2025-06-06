@@ -1,0 +1,49 @@
+{
+  "formatters": {
+    "enable": [
+      "gofmt"
+    ],
+    "exclusions": {
+      "generated": "lax",
+      "paths": [
+        "third_party$",
+        "builtin$",
+        "examples$"
+      ]
+    }
+  },
+  "linters": {
+    "enable": [
+      "staticcheck","govet"
+    ],
+    "disable": [
+      "errcheck"
+    ],
+    "exclusions": {
+      "generated": "lax",
+      "paths": [
+        "third_party$",
+        "builtin$",
+        "examples$"
+      ],
+      "presets": [
+        "comments",
+        "common-false-positives",
+        "legacy",
+        "std-error-handling"
+      ],
+      "rules": [
+        {
+          "linters": [
+            "errcheck"
+          ],
+          "path": "_test\\.go"
+        }
+      ]
+    }
+  },
+  "run": {
+    "tests": true
+  },
+  "version": "2"
+}

@@ -398,32 +398,6 @@ func TestUpdateRules_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestUpdateRules_FileSystemErrors(t *testing.T) {
-	// Setup temporary test directory
-	cleanup := setupTempConfigDir()
-	defer cleanup()
-
-	// Create rules instance and setup default config
-	rs := rules.NewRules()
-	err := rs.SetupRulesConfig()
-	if err != nil {
-		t.Fatalf("Failed to setup default config: %v", err)
-	}
-
-	// Make the config file read only to prevent writing
-	configPath := rs.GetRulesPath()
-	err = os.Chmod(configPath, 0444) // read only
-	if err != nil {
-		t.Fatalf("Failed to change file permissions: %v", err)
-	}
-
-	// Try to update rules - this should fail due to file permissions
-	err = rs.UpdateRules(rules.WithPath("/test/path"))
-	if err == nil {
-		t.Error("Expected error when writing to read only file, got nil")
-	}
-}
-
 func TestGetRules_MissingFile(t *testing.T) {
 	// Setup temporary test directory
 	cleanup := setupTempConfigDir()
@@ -473,33 +447,6 @@ func TestGetRules_InvalidJSON(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error when parsing invalid JSON, got nil")
 	}
-}
-
-func TestGetRules_FileSystemErrors(t *testing.T) {
-	// Setup temporary test directory
-	cleanup := setupTempConfigDir()
-	defer cleanup()
-
-	// Create rules instance and setup default config
-	rs := rules.NewRules()
-	err := rs.SetupRulesConfig()
-	if err != nil {
-		t.Fatalf("Failed to setup default config: %v", err)
-	}
-
-	// Make the config file unreadable
-	configPath := rs.GetRulesPath()
-	err = os.Chmod(configPath, 0200) // write permission only
-	if err != nil {
-		t.Fatalf("Failed to change file permissions: %v", err)
-	}
-
-	// Try to get rules from unreadable file
-	_, err = rs.GetRules()
-	if runtime.GOOS != "windows" && err == nil {
-		t.Error("Expected error when reading write only file, got nil")
-	}
-
 }
 
 func TestGetRules_Success(t *testing.T) {

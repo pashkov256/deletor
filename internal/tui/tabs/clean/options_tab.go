@@ -34,7 +34,6 @@ func (t *OptionsTab) View() string {
 
 		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]], emoji, name)))
 		content.WriteString("\n")
-		optionIndex++
 	}
 	return content.String()
 }
