@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"regexp"
+	"strings"
 )
 
 // Validator provides methods for validating various input parameters
@@ -54,5 +55,17 @@ func (v *Validator) ValidateSize(size string) error {
 	if !re.MatchString(size) {
 		return errors.New("invalid size format")
 	}
+	return nil
+}
+
+// ValidateTimeDuration checks if a time duration string is in a valid format
+// Valid format: number (optional space) followed by time unit (sec, min, hour, day, week, month, year)
+// Examples: "7days", "24 hours", "1min", "2 weeks"
+func (v *Validator) ValidateTimeDuration(timeStr string) error {
+	re := regexp.MustCompile(`^\d+\s*(sec|min|hour|day|week|month|year)s?$`)
+	if !re.MatchString(strings.ToLower(timeStr)) {
+		return errors.New("invalid time duration format. Expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
+	}
+
 	return nil
 }
