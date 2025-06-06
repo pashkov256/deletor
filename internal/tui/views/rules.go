@@ -34,8 +34,7 @@ type RulesModel struct {
 	newerInput      textinput.Model
 
 	// Options tab fields
-	optionState      map[string]bool
-	optionFocusIndex int
+	optionState map[string]bool
 
 	// Common fields
 	rules          rules.Rules
@@ -49,7 +48,7 @@ type RulesModel struct {
 // NewRulesModel creates a new rules management model
 func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesModel {
 	// Initialize inputs
-	currentRules, _ := rules.GetRules()
+	lastestRules, _ := rules.GetRules()
 
 	// Main tab inputs
 	locationInput := textinput.New()
@@ -57,7 +56,7 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 	locationInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	locationInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	locationInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	locationInput.SetValue(currentRules.Path)
+	locationInput.SetValue(lastestRules.Path)
 
 	// Filters tab inputs
 	extensionsInput := textinput.New()
@@ -65,66 +64,69 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 	extensionsInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	extensionsInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	extensionsInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	extensionsInput.SetValue(strings.Join(currentRules.Extensions, ","))
+	extensionsInput.SetValue(strings.Join(lastestRules.Extensions, ","))
 
 	minSizeInput := textinput.New()
 	minSizeInput.Placeholder = "Minimum file size (e.g. 10kb)"
 	minSizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	minSizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	minSizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	minSizeInput.SetValue(currentRules.MinSize)
+	minSizeInput.SetValue(lastestRules.MinSize)
 
 	maxSizeInput := textinput.New()
 	maxSizeInput.Placeholder = "Maximum file size (e.g. 1gb)"
 	maxSizeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	maxSizeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	maxSizeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	maxSizeInput.SetValue(currentRules.MaxSize)
+	maxSizeInput.SetValue(lastestRules.MaxSize)
 
 	excludeInput := textinput.New()
 	excludeInput.Placeholder = "Exclude specific files/paths (e.g. data,backup)"
 	excludeInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	excludeInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	excludeInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	excludeInput.SetValue(strings.Join(currentRules.Exclude, ","))
+	excludeInput.SetValue(strings.Join(lastestRules.Exclude, ","))
 	olderInput := textinput.New()
 	olderInput.Placeholder = "Older than (e.g. 60 min, 1 hour, 7 days, 1 month)"
 
 	olderInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	olderInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	olderInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	olderInput.SetValue(currentRules.OlderThan)
+	olderInput.SetValue(lastestRules.OlderThan)
 
 	newerInput := textinput.New()
 	newerInput.Placeholder = "Newer than (e.g. 60 min, 1 hour, 7 days, 1 month)"
 	newerInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#1E90FF"))
 	newerInput.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	newerInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6666"))
-	newerInput.SetValue(currentRules.NewerThan)
-
-	// Initialize options state
-	optionState := make(map[string]bool)
-	for _, name := range options.DefaultCleanOption {
-		optionState[name] = false
-	}
+	newerInput.SetValue(lastestRules.NewerThan)
 
 	// Get AppData path
 	rulesPath := filepath.Join(os.Getenv("APPDATA"), rules.GetRulesPath())
 
 	return &RulesModel{
-		locationInput:    locationInput,
-		extensionsInput:  extensionsInput,
-		minSizeInput:     minSizeInput,
-		maxSizeInput:     maxSizeInput,
-		excludeInput:     excludeInput,
-		olderInput:       olderInput,
-		newerInput:       newerInput,
-		optionState:      optionState,
-		optionFocusIndex: 0,
-		rules:            rules,
-		rulesPath:        rulesPath,
-		FocusedElement:   "locationInput",
-		Validator:        validator,
+		locationInput:   locationInput,
+		extensionsInput: extensionsInput,
+		minSizeInput:    minSizeInput,
+		maxSizeInput:    maxSizeInput,
+		excludeInput:    excludeInput,
+		olderInput:      olderInput,
+		newerInput:      newerInput,
+		optionState: map[string]bool{
+			options.ShowHiddenFiles:       lastestRules.ShowHiddenFiles,
+			options.ConfirmDeletion:       lastestRules.ConfirmDeletion,
+			options.IncludeSubfolders:     lastestRules.IncludeSubfolders,
+			options.DeleteEmptySubfolders: lastestRules.DeleteEmptySubfolders,
+			options.SendFilesToTrash:      lastestRules.SendFilesToTrash,
+			options.LogOperations:         lastestRules.LogOperations,
+			options.LogToFile:             lastestRules.LogToFile,
+			options.ShowStatistics:        lastestRules.ShowStatistics,
+			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
+		},
+		rules:          rules,
+		rulesPath:      rulesPath,
+		FocusedElement: "locationInput",
+		Validator:      validator,
 	}
 }
 
@@ -374,13 +376,7 @@ func (m *RulesModel) handleTab() (tea.Model, tea.Cmd) {
 			m.extensionsInput.Focus()
 		}
 	case 2: // Options tab
-		if m.optionFocusIndex < len(options.DefaultCleanOption)-1 {
-			m.optionFocusIndex++
-			m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-		} else {
-			m.optionFocusIndex = 0
-			m.FocusedElement = "option1"
-		}
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
 	}
 
 	return m, nil
@@ -427,13 +423,7 @@ func (m *RulesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.olderInput.Focus()
 		}
 	case 2: // Options tab
-		if m.optionFocusIndex > 0 {
-			m.optionFocusIndex--
-			m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-		} else {
-			m.optionFocusIndex = len(options.DefaultCleanOption) - 1
-			m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-		}
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
 	}
 
 	return m, nil
@@ -444,21 +434,9 @@ func (m *RulesModel) handleUpDown(key string) (tea.Model, tea.Cmd) {
 
 	if activeTab == 2 { // Options tab
 		if key == "up" {
-			if m.optionFocusIndex > 0 {
-				m.optionFocusIndex--
-				m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-			} else {
-				m.optionFocusIndex = len(options.DefaultCleanOption) - 1
-				m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-			}
+			m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
 		} else {
-			if m.optionFocusIndex < len(options.DefaultCleanOption)-1 {
-				m.optionFocusIndex++
-				m.FocusedElement = fmt.Sprintf("option%d", m.optionFocusIndex+1)
-			} else {
-				m.optionFocusIndex = 0
-				m.FocusedElement = "option1"
-			}
+			m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
 		}
 		return m, nil
 	}
@@ -511,7 +489,6 @@ func (m *RulesModel) handleF2() (tea.Model, tea.Cmd) {
 
 func (m *RulesModel) handleF3() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(2)
-	m.optionFocusIndex = 0
 	m.FocusedElement = "option1"
 	return m, nil
 }
@@ -634,11 +611,7 @@ func (m *RulesModel) GetFocusedElement() string {
 
 func (m *RulesModel) SetFocusedElement(element string) {
 	m.FocusedElement = element
-	if strings.HasPrefix(element, "option") {
-		if num, err := strconv.Atoi(element[6:]); err == nil {
-			m.optionFocusIndex = num - 1
-		}
-	}
+
 }
 
 func (m *RulesModel) GetOptionState() map[string]bool {
