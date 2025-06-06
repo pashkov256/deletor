@@ -11,7 +11,7 @@ import (
 type Validator struct{}
 
 // NewValidator creates a new instance of the Validator
-func (v *Validator) NewValidator() *Validator {
+func NewValidator() *Validator {
 	return &Validator{}
 }
 
@@ -64,7 +64,7 @@ func (v *Validator) ValidateSize(size string) error {
 func (v *Validator) ValidateTimeDuration(timeStr string) error {
 	re := regexp.MustCompile(`^\d+\s*(sec|min|hour|day|week|month|year)s?$`)
 	if !re.MatchString(strings.ToLower(timeStr)) {
-		return errors.New("invalid time duration format. Expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
+		return errors.New("expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
 	}
 
 	return nil

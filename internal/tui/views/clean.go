@@ -25,6 +25,7 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/tui/tabs/clean"
 	"github.com/pashkov256/deletor/internal/utils"
+	"github.com/pashkov256/deletor/internal/validation"
 )
 
 type CleanFilesModel struct {
@@ -54,6 +55,7 @@ type CleanFilesModel struct {
 	Rules           rules.Rules
 	Filemanager     filemanager.FileManager
 	TabManager      *clean.CleanTabManager
+	Validator       *validation.Validator
 	Logger          *logging.Logger
 	Error           *errors.Error
 	IsLaunched      bool // Track if the app has been launched
@@ -64,7 +66,7 @@ type dirSizeMsg struct {
 	size int64
 }
 
-func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *CleanFilesModel {
+func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, validator *validation.Validator) *CleanFilesModel {
 	// Create a temporary model to get rules
 	lastestRules, _ := rules.GetRules()
 	latestDir := lastestRules.Path
@@ -196,6 +198,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager) *
 		FilteredCount:   0,
 		Rules:           rules,
 		Filemanager:     fileManager,
+		Validator:       validator,
 		IsLaunched:      latestDir != "", // Set IsLaunched to true if path is already set
 	}
 
@@ -1212,19 +1215,19 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 			switch m.FocusedElement {
 			case "minSizeInput":
 				if m.MinSizeInput.Value() != "" {
-					_, err = utils.ToBytes(m.MinSizeInput.Value())
+					err = m.Validator.ValidateSize(m.MinSizeInput.Value())
 				}
 			case "maxSizeInput":
 				if m.MaxSizeInput.Value() != "" {
-					_, err = utils.ToBytes(m.MaxSizeInput.Value())
+					err = m.Validator.ValidateSize(m.MaxSizeInput.Value())
 				}
 			case "olderInput":
 				if m.OlderInput.Value() != "" {
-					_, err = utils.ParseTimeDuration(m.OlderInput.Value())
+					err = m.Validator.ValidateTimeDuration(m.OlderInput.Value())
 				}
 			case "newerInput":
 				if m.NewerInput.Value() != "" {
-					_, err = utils.ParseTimeDuration(m.NewerInput.Value())
+					err = m.Validator.ValidateTimeDuration(m.NewerInput.Value())
 				}
 
 			}

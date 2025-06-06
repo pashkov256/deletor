@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/validation"
 
 	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -28,23 +29,26 @@ type App struct {
 	cacheModel      *views.CacheModel
 	filemanager     filemanager.FileManager
 	rules           rules.Rules
+	validator       *validation.Validator
 }
 
 func NewApp(
 	filemanager filemanager.FileManager,
 	rules rules.Rules,
+	validator *validation.Validator,
 ) *App {
 	return &App{
 		menu:        views.NewMainMenu(),
-		rulesModel:  views.NewRulesModel(rules),
+		rulesModel:  views.NewRulesModel(rules, validator),
 		page:        menuPage,
 		filemanager: filemanager,
 		rules:       rules,
+		validator:   validator,
 	}
 }
 
 func (a *App) Init() tea.Cmd {
-	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
 	a.cacheModel = views.InitialCacheModel(a.filemanager)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
@@ -61,7 +65,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if a.page != menuPage {
 				if a.page == rulesPage {
-					a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager)
+					a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
 					cmds = append(cmds, a.cleanFilesModel.Init())
 				}
 				a.page = menuPage

@@ -17,6 +17,7 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	rulesTab "github.com/pashkov256/deletor/internal/tui/tabs/rules"
 	"github.com/pashkov256/deletor/internal/utils"
+	"github.com/pashkov256/deletor/internal/validation"
 )
 
 // RulesModel represents the rules management page
@@ -42,10 +43,11 @@ type RulesModel struct {
 	rulesPath      string
 	Error          *errors.Error
 	TabManager     *rulesTab.RulesTabManager
+	Validator      *validation.Validator
 }
 
 // NewRulesModel creates a new rules management model
-func NewRulesModel(rules rules.Rules) *RulesModel {
+func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesModel {
 	// Initialize inputs
 	currentRules, _ := rules.GetRules()
 
@@ -122,6 +124,7 @@ func NewRulesModel(rules rules.Rules) *RulesModel {
 		rules:            rules,
 		rulesPath:        rulesPath,
 		FocusedElement:   "locationInput",
+		Validator:        validator,
 	}
 }
 
@@ -589,14 +592,28 @@ func (m *RulesModel) handleAltC() (tea.Model, tea.Cmd) {
 
 func (m *RulesModel) validateInputs() *errors.Error {
 	// Validate size inputs
+
 	if m.minSizeInput.Value() != "" {
-		if _, err := utils.ToBytes(m.minSizeInput.Value()); err != nil {
-			return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid min size format: %v", err))
+		if m.Validator.ValidateSize(m.minSizeInput.Value()) != nil {
+			return errors.New(errors.ErrorTypeValidation, "Invalid (min size input) format")
 		}
 	}
+
 	if m.maxSizeInput.Value() != "" {
-		if _, err := utils.ToBytes(m.maxSizeInput.Value()); err != nil {
-			return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid max size format: %v", err))
+		if m.Validator.ValidateSize(m.maxSizeInput.Value()) != nil {
+			return errors.New(errors.ErrorTypeValidation, "Invalid (max size input) format")
+		}
+	}
+
+	if m.newerInput.Value() != "" {
+		if m.Validator.ValidateTimeDuration(m.newerInput.Value()) != nil {
+			return errors.New(errors.ErrorTypeValidation, "Invalid (newer input) time format")
+		}
+	}
+
+	if m.olderInput.Value() != "" {
+		if m.Validator.ValidateTimeDuration(m.olderInput.Value()) != nil {
+			return errors.New(errors.ErrorTypeValidation, "Invalid (older input) time format")
 		}
 	}
 
