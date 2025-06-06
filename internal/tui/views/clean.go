@@ -827,6 +827,18 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "alt+4": // Toggle delete empty subfolders
 		m.OptionState[options.DeleteEmptySubfolders] = !m.OptionState[options.DeleteEmptySubfolders]
 		return m, nil
+	case "alt+5": // Toggle send files to trash
+		m.OptionState[options.SendFilesToTrash] = !m.OptionState[options.SendFilesToTrash]
+		return m, nil
+	case "alt+6": // Toggle log operations
+		m.OptionState[options.LogOperations] = !m.OptionState[options.LogOperations]
+		return m, nil
+	case "alt+7": // Toggle log to file
+		m.OptionState[options.LogToFile] = !m.OptionState[options.LogToFile]
+		return m, nil
+	case "alt+8": // Toggle show statistics
+		m.OptionState[options.ShowStatistics] = !m.OptionState[options.ShowStatistics]
+		return m, nil
 	case "alt+9": // Toggle exit after deletion
 		m.OptionState[options.ExitAfterDeletion] = !m.OptionState[options.ExitAfterDeletion]
 		return m, nil
@@ -963,28 +975,7 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 			m.ExcludeInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
-		switch m.FocusedElement {
-		case "option1":
-			m.FocusedElement = "option2"
-		case "option2":
-			m.FocusedElement = "option3"
-		case "option3":
-			m.FocusedElement = "option4"
-		case "option4":
-			m.FocusedElement = "option5"
-		case "option5":
-			m.FocusedElement = "option6"
-		case "option6":
-			m.FocusedElement = "option7"
-		case "option7":
-			m.FocusedElement = "option8"
-		case "option8":
-			m.FocusedElement = "option9"
-		case "option9":
-			m.FocusedElement = "option1"
-		default:
-			m.FocusedElement = "option1"
-		}
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
 	}
 
 	return m, nil
@@ -1082,28 +1073,7 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.OlderInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
-		switch m.FocusedElement {
-		case "option1":
-			m.FocusedElement = "option9"
-		case "option2":
-			m.FocusedElement = "option1"
-		case "option3":
-			m.FocusedElement = "option2"
-		case "option4":
-			m.FocusedElement = "option3"
-		case "option5":
-			m.FocusedElement = "option4"
-		case "option6":
-			m.FocusedElement = "option5"
-		case "option7":
-			m.FocusedElement = "option6"
-		case "option8":
-			m.FocusedElement = "option7"
-		case "option9":
-			m.FocusedElement = "option8"
-		default:
-			m.FocusedElement = "option1"
-		}
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
 	}
 
 	return m, nil
