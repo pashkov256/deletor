@@ -23,7 +23,7 @@ func cleanupTestDir(t *testing.T, dir string) {
 }
 
 func TestValidator_ValidateSize(t *testing.T) {
-	validator := new(validation.Validator).NewValidator()
+	validator := validation.NewValidator()
 
 	tests := []struct {
 		name    string
@@ -58,7 +58,7 @@ func TestValidator_ValidateSize(t *testing.T) {
 }
 
 func TestValidator_ValidatePath(t *testing.T) {
-	validator := new(validation.Validator).NewValidator()
+	validator := validation.NewValidator()
 	testDir := setupTestDir(t)
 	defer cleanupTestDir(t, testDir)
 
@@ -90,7 +90,7 @@ func TestValidator_ValidatePath(t *testing.T) {
 }
 
 func TestValidator_ValidateExtension(t *testing.T) {
-	validator := new(validation.Validator).NewValidator()
+	validator := validation.NewValidator()
 
 	tests := []struct {
 		name    string
