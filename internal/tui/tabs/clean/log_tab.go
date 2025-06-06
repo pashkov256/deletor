@@ -97,13 +97,13 @@ func (t *LogTab) View() string {
 		{"⏰ Start Time", timeStr},
 		{"⏱️ Program lifetime", durationStr},
 		{"📝 Total Files", fmt.Sprintf("%d", t.totalStats.TotalFiles)},
-		{"💾 Total Size", fmt.Sprintf("%s", utils.FormatSize(t.totalStats.TotalSize))},
+		{"💾 Total Size", utils.FormatSize(t.totalStats.TotalSize)},
 		{"🗑️ Deleted Files", fmt.Sprintf("%d", t.totalStats.DeletedFiles)},
-		{"📈 Deleted Size", fmt.Sprintf("%s", utils.FormatSize(t.totalStats.DeletedSize))},
+		{"📈 Deleted Size", utils.FormatSize(t.totalStats.DeletedSize)},
 		{"♻️ Trashed Files", fmt.Sprintf("%d", t.totalStats.TrashedFiles)},
-		{"📈 Trashed Size", fmt.Sprintf("%s", utils.FormatSize(t.totalStats.TrashedSize))},
+		{"📈 Trashed Size", utils.FormatSize(t.totalStats.TrashedSize)},
 		{"🚫 Ignored Files", fmt.Sprintf("%d", t.totalStats.IgnoredFiles)},
-		{"📈 Ignored Size", fmt.Sprintf("%s", utils.FormatSize(t.totalStats.IgnoredSize))},
+		{"📈 Ignored Size", utils.FormatSize(t.totalStats.IgnoredSize)},
 	}
 
 	// Create table content

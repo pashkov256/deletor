@@ -12,15 +12,11 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
-type Task struct {
-	info os.FileInfo
-}
-
 func main() {
 	var rules = rules.NewRules()
 	rules.SetupRulesConfig()
 	config := config.GetFlags()
-	var fm filemanager.FileManager = filemanager.NewFileManager()
+	fm := filemanager.NewFileManager()
 
 	if !config.IsCLIMode {
 		// Start TUI

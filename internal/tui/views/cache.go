@@ -134,9 +134,10 @@ func (m *CacheModel) View() string {
 	scanBtn := styles.LaunchButtonStyle.Render("🔍 Scan now")
 	deleteBtn := styles.DeleteButtonStyle.Render("🗑️ Delete selected")
 
-	if m.FocusedElement == "scanButton" {
+	switch m.FocusedElement {
+	case "scanButton":
 		scanBtn = styles.LaunchButtonFocusedStyle.Render("🔍 Scan now")
-	} else if m.FocusedElement == "deleteButton" {
+	case "deleteButton":
 		deleteBtn = styles.DeleteButtonFocusedStyle.Render("🗑️ Delete selected")
 	}
 

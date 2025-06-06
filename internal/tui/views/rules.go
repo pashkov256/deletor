@@ -278,7 +278,7 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "left":
 		if !strings.HasSuffix(m.FocusedElement, "Input") {
-			return m.handleArrowRight()
+			return m.handleArrowLeft()
 		}
 	case "f1":
 		return m.handleF1()
