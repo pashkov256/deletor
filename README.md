@@ -113,7 +113,7 @@ Together, we can make Deletor even better! 🚀
 
 
 ## AI docs
-<a href="https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md">https://code2tutorial.com/tutorial/dcba8e56-33cd-4d67-b9ee-0c9f3c276b6e/index.md</a>
+<a href="https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md">https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md</a>
 
 
 
