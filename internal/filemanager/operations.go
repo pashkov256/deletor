@@ -58,7 +58,7 @@ func (f *defaultFileManager) DeleteEmptySubfolders(dir string) {
 	emptyDirs := make([]string, 0)
 
 	filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
-		if info == nil && !info.IsDir() {
+		if info == nil || !info.IsDir() {
 			return nil
 		}
 

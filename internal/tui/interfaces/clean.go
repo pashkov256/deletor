@@ -43,6 +43,7 @@ type CleanModel interface {
 	SetMinSize(size int64)
 	SetExclude(exclude []string)
 	SetExtensions(extensions []string)
+	SetMaxSize(size int64)
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
 	CalculateDirSizeAsync() tea.Cmd
 	LoadFiles() tea.Cmd

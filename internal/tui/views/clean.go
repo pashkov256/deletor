@@ -62,8 +62,8 @@ type CleanFilesModel struct {
 }
 
 // Message for directory size updates
-type dirSizeMsg struct {
-	size int64
+type DirSizeMsg struct {
+	Size int64
 }
 
 func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, validator *validation.Validator) *CleanFilesModel {
@@ -308,8 +308,8 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.CalculateDirSizeAsync())
 		return m, tea.Batch(cmds...)
 
-	case dirSizeMsg:
-		m.DirSize = msg.size
+	case DirSizeMsg:
+		m.DirSize = msg.Size
 		return m, nil
 
 	case []list.Item:
@@ -550,7 +550,7 @@ func (m *CleanFilesModel) CalculateDirSizeAsync() tea.Cmd {
 		m.CalculatingSize = true
 		size := m.Filemanager.CalculateDirSize(m.CurrentPath)
 		m.CalculatingSize = false
-		return dirSizeMsg{size: size}
+		return DirSizeMsg{Size: size}
 	}
 }
 
@@ -1391,6 +1391,10 @@ func (m *CleanFilesModel) SetOptionState(option string, state bool) {
 
 func (m *CleanFilesModel) SetMinSize(size int64) {
 	m.MinSize = size
+}
+
+func (m *CleanFilesModel) SetMaxSize(size int64) {
+	m.MaxSize = size
 }
 
 func (m *CleanFilesModel) SetExclude(exclude []string) {
