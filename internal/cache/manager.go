@@ -106,3 +106,7 @@ func (m *Manager) ClearCache() {
 		})
 	}
 }
+
+func (m *Manager) GetOS() string {
+	return string(m.os)
+}
