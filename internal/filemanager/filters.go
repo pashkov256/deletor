@@ -46,7 +46,7 @@ func (f *FileFilter) MatchesFilters(info os.FileInfo, path string) bool {
 		}
 	}
 	if f.MinSize > 0 {
-		if info.Size() <= f.MinSize {
+		if info.Size() < f.MinSize {
 			return false
 		}
 	}
