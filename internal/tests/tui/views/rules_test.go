@@ -15,7 +15,6 @@ import (
 // setupTestModel creates a new RulesModel with test configuration
 func setupTestModel() *views.RulesModel {
 	rulesInstance := rules.NewRules()
-	// Setup rules config first
 	if err := rulesInstance.SetupRulesConfig(); err != nil {
 		panic(err)
 	}
