@@ -15,6 +15,23 @@ import (
 // setupTestModel creates a new RulesModel with test configuration
 func setupTestModel() *views.RulesModel {
 	rulesInstance := rules.NewRules()
+	// Setup rules config first
+	if err := rulesInstance.SetupRulesConfig(); err != nil {
+		panic(err)
+	}
+	// Set default values for rules
+	if err := rulesInstance.UpdateRules(
+		rules.WithPath(""),
+		rules.WithMinSize(""),
+		rules.WithMaxSize(""),
+		rules.WithExtensions([]string{}),
+		rules.WithExclude([]string{}),
+		rules.WithOlderThan(""),
+		rules.WithNewerThan(""),
+		rules.WithOptions(false, false, false, false, false, false, false, false, false),
+	); err != nil {
+		panic(err)
+	}
 	validator := validation.NewValidator()
 	return views.NewRulesModel(rulesInstance, validator)
 }
