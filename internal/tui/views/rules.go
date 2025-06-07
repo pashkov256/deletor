@@ -23,18 +23,18 @@ import (
 // RulesModel represents the rules management page
 type RulesModel struct {
 	// Main tab fields
-	LocationInput textinput.Model
+	locationInput textinput.Model
 
 	// Filters tab fields
-	ExtensionsInput textinput.Model
-	MinSizeInput    textinput.Model
-	MaxSizeInput    textinput.Model
-	ExcludeInput    textinput.Model
-	OlderInput      textinput.Model
-	NewerInput      textinput.Model
+	extensionsInput textinput.Model
+	minSizeInput    textinput.Model
+	maxSizeInput    textinput.Model
+	excludeInput    textinput.Model
+	olderInput      textinput.Model
+	newerInput      textinput.Model
 
 	// Options tab fields
-	OptionState map[string]bool
+	optionState map[string]bool
 
 	// Common fields
 	rules          rules.Rules
@@ -105,14 +105,14 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 	rulesPath := filepath.Join(os.Getenv("APPDATA"), rules.GetRulesPath())
 
 	return &RulesModel{
-		LocationInput:   locationInput,
-		ExtensionsInput: extensionsInput,
-		MinSizeInput:    minSizeInput,
-		MaxSizeInput:    maxSizeInput,
-		ExcludeInput:    excludeInput,
-		OlderInput:      olderInput,
-		NewerInput:      newerInput,
-		OptionState: map[string]bool{
+		locationInput:   locationInput,
+		extensionsInput: extensionsInput,
+		minSizeInput:    minSizeInput,
+		maxSizeInput:    maxSizeInput,
+		excludeInput:    excludeInput,
+		olderInput:      olderInput,
+		newerInput:      newerInput,
+		optionState: map[string]bool{
 			options.ShowHiddenFiles:       lastestRules.ShowHiddenFiles,
 			options.ConfirmDeletion:       lastestRules.ConfirmDeletion,
 			options.IncludeSubfolders:     lastestRules.IncludeSubfolders,
@@ -154,22 +154,22 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch activeTab {
 	case 0: // Main tab
-		m.LocationInput, cmd = m.LocationInput.Update(msg)
+		m.locationInput, cmd = m.locationInput.Update(msg)
 		cmds = append(cmds, cmd)
 	case 1: // Filters tab
 		switch m.FocusedElement {
 		case "extensionsInput":
-			m.ExtensionsInput, cmd = m.ExtensionsInput.Update(msg)
+			m.extensionsInput, cmd = m.extensionsInput.Update(msg)
 		case "minSizeInput":
-			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
+			m.minSizeInput, cmd = m.minSizeInput.Update(msg)
 		case "maxSizeInput":
-			m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
+			m.maxSizeInput, cmd = m.maxSizeInput.Update(msg)
 		case "excludeInput":
-			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
+			m.excludeInput, cmd = m.excludeInput.Update(msg)
 		case "olderInput":
-			m.OlderInput, cmd = m.OlderInput.Update(msg)
+			m.olderInput, cmd = m.olderInput.Update(msg)
 		case "newerInput":
-			m.NewerInput, cmd = m.NewerInput.Update(msg)
+			m.newerInput, cmd = m.newerInput.Update(msg)
 		}
 		cmds = append(cmds, cmd)
 	}
@@ -202,7 +202,7 @@ func (m *RulesModel) View() string {
 		if m.FocusedElement == "locationInput" {
 			pathStyle = styles.StandardInputFocusedStyle
 		}
-		content.WriteString(pathStyle.Render("Path: " + m.LocationInput.View()))
+		content.WriteString(pathStyle.Render("Path: " + m.locationInput.View()))
 		content.WriteString("\n\n")
 
 		saveButtonStyle := styles.StandardButtonStyle
@@ -219,12 +219,12 @@ func (m *RulesModel) View() string {
 			input textinput.Model
 			key   string
 		}{
-			{"Extensions", m.ExtensionsInput, "extensionsInput"},
-			{"Min Size", m.MinSizeInput, "minSizeInput"},
-			{"Max Size", m.MaxSizeInput, "maxSizeInput"},
-			{"Exclude", m.ExcludeInput, "excludeInput"},
-			{"Older Than", m.OlderInput, "olderInput"},
-			{"Newer Than", m.NewerInput, "newerInput"},
+			{"Extensions", m.extensionsInput, "extensionsInput"},
+			{"Min Size", m.minSizeInput, "minSizeInput"},
+			{"Max Size", m.maxSizeInput, "maxSizeInput"},
+			{"Exclude", m.excludeInput, "excludeInput"},
+			{"Older Than", m.olderInput, "olderInput"},
+			{"Newer Than", m.newerInput, "newerInput"},
 		}
 
 		for _, input := range inputs {
@@ -239,7 +239,7 @@ func (m *RulesModel) View() string {
 	case 2: // Options tab
 		for i, name := range options.DefaultCleanOption {
 			style := styles.OptionStyle
-			if m.OptionState[name] {
+			if m.optionState[name] {
 				style = styles.SelectedOptionStyle
 			}
 			if m.FocusedElement == fmt.Sprintf("option%d", i+1) {
@@ -250,7 +250,7 @@ func (m *RulesModel) View() string {
 
 			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
 			content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s",
-				map[bool]string{true: "✓", false: "○"}[m.OptionState[name]],
+				map[bool]string{true: "✓", false: "○"}[m.optionState[name]],
 				emoji, name)))
 			content.WriteString("\n")
 		}
@@ -278,9 +278,13 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up", "down":
 		return m.handleUpDown(msg.String())
 	case "right":
-		return m.handleArrowRight()
+		if !strings.HasSuffix(m.FocusedElement, "Input") {
+			return m.handleArrowRight()
+		}
 	case "left":
-		return m.handleArrowLeft()
+		if !strings.HasSuffix(m.FocusedElement, "Input") {
+			return m.handleArrowLeft()
+		}
 	case "f1":
 		return m.handleF1()
 	case "f2":
@@ -300,7 +304,7 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				idx, err := strconv.Atoi(optionNum)
 				if err == nil && idx > 0 && idx <= len(options.DefaultCleanOption) {
 					name := options.DefaultCleanOption[idx-1]
-					m.OptionState[name] = !m.OptionState[name]
+					m.optionState[name] = !m.optionState[name]
 				}
 			}
 		}
@@ -310,21 +314,21 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch activeTab {
 	case 0: // Main tab
-		m.LocationInput, cmd = m.LocationInput.Update(msg)
+		m.locationInput, cmd = m.locationInput.Update(msg)
 	case 1: // Filters tab
 		switch m.FocusedElement {
 		case "extensionsInput":
-			m.ExtensionsInput, cmd = m.ExtensionsInput.Update(msg)
+			m.extensionsInput, cmd = m.extensionsInput.Update(msg)
 		case "minSizeInput":
-			m.MinSizeInput, cmd = m.MinSizeInput.Update(msg)
+			m.minSizeInput, cmd = m.minSizeInput.Update(msg)
 		case "maxSizeInput":
-			m.MaxSizeInput, cmd = m.MaxSizeInput.Update(msg)
+			m.maxSizeInput, cmd = m.maxSizeInput.Update(msg)
 		case "excludeInput":
-			m.ExcludeInput, cmd = m.ExcludeInput.Update(msg)
+			m.excludeInput, cmd = m.excludeInput.Update(msg)
 		case "olderInput":
-			m.OlderInput, cmd = m.OlderInput.Update(msg)
+			m.olderInput, cmd = m.olderInput.Update(msg)
 		case "newerInput":
-			m.NewerInput, cmd = m.NewerInput.Update(msg)
+			m.newerInput, cmd = m.newerInput.Update(msg)
 		}
 	}
 
@@ -338,38 +342,38 @@ func (m *RulesModel) handleTab() (tea.Model, tea.Cmd) {
 	case 0: // Main tab
 		switch m.FocusedElement {
 		case "locationInput":
-			m.LocationInput.Blur()
+			m.locationInput.Blur()
 			m.FocusedElement = "saveButton"
 		case "saveButton":
 			m.FocusedElement = "locationInput"
-			m.LocationInput.Focus()
+			m.locationInput.Focus()
 		}
 	case 1: // Filters tab
 		switch m.FocusedElement {
 		case "extensionsInput":
-			m.ExtensionsInput.Blur()
+			m.extensionsInput.Blur()
 			m.FocusedElement = "minSizeInput"
-			m.MinSizeInput.Focus()
+			m.minSizeInput.Focus()
 		case "minSizeInput":
-			m.MinSizeInput.Blur()
+			m.minSizeInput.Blur()
 			m.FocusedElement = "maxSizeInput"
-			m.MaxSizeInput.Focus()
+			m.maxSizeInput.Focus()
 		case "maxSizeInput":
-			m.MaxSizeInput.Blur()
+			m.maxSizeInput.Blur()
 			m.FocusedElement = "excludeInput"
-			m.ExcludeInput.Focus()
+			m.excludeInput.Focus()
 		case "excludeInput":
-			m.ExcludeInput.Blur()
+			m.excludeInput.Blur()
 			m.FocusedElement = "olderInput"
-			m.OlderInput.Focus()
+			m.olderInput.Focus()
 		case "olderInput":
-			m.OlderInput.Blur()
+			m.olderInput.Blur()
 			m.FocusedElement = "newerInput"
-			m.NewerInput.Focus()
+			m.newerInput.Focus()
 		case "newerInput":
-			m.NewerInput.Blur()
+			m.newerInput.Blur()
 			m.FocusedElement = "extensionsInput"
-			m.ExtensionsInput.Focus()
+			m.extensionsInput.Focus()
 		}
 	case 2: // Options tab
 		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
@@ -385,38 +389,38 @@ func (m *RulesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 	case 0: // Main tab
 		switch m.FocusedElement {
 		case "locationInput":
-			m.LocationInput.Blur()
+			m.locationInput.Blur()
 			m.FocusedElement = "saveButton"
 		case "saveButton":
 			m.FocusedElement = "locationInput"
-			m.LocationInput.Focus()
+			m.locationInput.Focus()
 		}
 	case 1: // Filters tab
 		switch m.FocusedElement {
 		case "extensionsInput":
-			m.ExtensionsInput.Blur()
+			m.extensionsInput.Blur()
 			m.FocusedElement = "newerInput"
-			m.NewerInput.Focus()
+			m.newerInput.Focus()
 		case "minSizeInput":
-			m.MinSizeInput.Blur()
+			m.minSizeInput.Blur()
 			m.FocusedElement = "extensionsInput"
-			m.ExtensionsInput.Focus()
+			m.extensionsInput.Focus()
 		case "maxSizeInput":
-			m.MaxSizeInput.Blur()
+			m.maxSizeInput.Blur()
 			m.FocusedElement = "minSizeInput"
-			m.MinSizeInput.Focus()
+			m.minSizeInput.Focus()
 		case "excludeInput":
-			m.ExcludeInput.Blur()
+			m.excludeInput.Blur()
 			m.FocusedElement = "maxSizeInput"
-			m.MaxSizeInput.Focus()
+			m.maxSizeInput.Focus()
 		case "olderInput":
-			m.OlderInput.Blur()
+			m.olderInput.Blur()
 			m.FocusedElement = "excludeInput"
-			m.ExcludeInput.Focus()
+			m.excludeInput.Focus()
 		case "newerInput":
-			m.NewerInput.Blur()
+			m.newerInput.Blur()
 			m.FocusedElement = "olderInput"
-			m.OlderInput.Focus()
+			m.olderInput.Focus()
 		}
 	case 2: // Options tab
 		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
@@ -449,17 +453,8 @@ func (m *RulesModel) handleArrowRight() (tea.Model, tea.Cmd) {
 
 	if tabLength-1 == activeTabIndex {
 		m.TabManager.SetActiveTabIndex(0)
-		m.FocusedElement = "locationInput"
-		m.LocationInput.Focus()
 	} else {
 		m.TabManager.SetActiveTabIndex(activeTabIndex + 1)
-		switch activeTabIndex + 1 {
-		case 1:
-			m.FocusedElement = "extensionsInput"
-			m.ExtensionsInput.Focus()
-		case 2:
-			m.FocusedElement = "option1"
-		}
 	}
 
 	return m, nil
@@ -471,17 +466,8 @@ func (m *RulesModel) handleArrowLeft() (tea.Model, tea.Cmd) {
 
 	if activeTabIndex == 0 {
 		m.TabManager.SetActiveTabIndex(tabLength - 1)
-		m.FocusedElement = "option1"
 	} else {
 		m.TabManager.SetActiveTabIndex(activeTabIndex - 1)
-		switch activeTabIndex - 1 {
-		case 0:
-			m.FocusedElement = "locationInput"
-			m.LocationInput.Focus()
-		case 1:
-			m.FocusedElement = "extensionsInput"
-			m.ExtensionsInput.Focus()
-		}
 	}
 
 	return m, nil
@@ -490,14 +476,14 @@ func (m *RulesModel) handleArrowLeft() (tea.Model, tea.Cmd) {
 func (m *RulesModel) handleF1() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(0)
 	m.FocusedElement = "locationInput"
-	m.LocationInput.Focus()
+	m.locationInput.Focus()
 	return m, nil
 }
 
 func (m *RulesModel) handleF2() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(1)
 	m.FocusedElement = "extensionsInput"
-	m.ExtensionsInput.Focus()
+	m.extensionsInput.Focus()
 	return m, nil
 }
 
@@ -511,7 +497,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 	activeTab := m.TabManager.GetActiveTabIndex()
 
 	if activeTab == 0 && m.FocusedElement == "saveButton" { // Save button in Main tab
-		if err := m.ValidateInputs(); err != nil {
+		if err := m.validateInputs(); err != nil {
 			return m, func() tea.Msg {
 				return err
 			}
@@ -522,23 +508,23 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 
 		// Save rules
 		m.rules.UpdateRules(
-			rules.WithPath(m.LocationInput.Value()),
-			rules.WithMinSize(m.MinSizeInput.Value()),
-			rules.WithMaxSize(m.MaxSizeInput.Value()),
-			rules.WithExtensions(utils.ParseExtToSlice(m.ExtensionsInput.Value())),
-			rules.WithExclude(utils.ParseExcludeToSlice(m.ExcludeInput.Value())),
-			rules.WithOlderThan(m.OlderInput.Value()),
-			rules.WithNewerThan(m.NewerInput.Value()),
+			rules.WithPath(m.locationInput.Value()),
+			rules.WithMinSize(m.minSizeInput.Value()),
+			rules.WithMaxSize(m.maxSizeInput.Value()),
+			rules.WithExtensions(utils.ParseExtToSlice(m.extensionsInput.Value())),
+			rules.WithExclude(utils.ParseExcludeToSlice(m.excludeInput.Value())),
+			rules.WithOlderThan(m.olderInput.Value()),
+			rules.WithNewerThan(m.newerInput.Value()),
 			rules.WithOptions(
-				m.OptionState[options.ShowHiddenFiles],
-				m.OptionState[options.ConfirmDeletion],
-				m.OptionState[options.IncludeSubfolders],
-				m.OptionState[options.DeleteEmptySubfolders],
-				m.OptionState[options.SendFilesToTrash],
-				m.OptionState[options.LogOperations],
-				m.OptionState[options.LogToFile],
-				m.OptionState[options.ShowStatistics],
-				m.OptionState[options.ExitAfterDeletion],
+				m.optionState[options.ShowHiddenFiles],
+				m.optionState[options.ConfirmDeletion],
+				m.optionState[options.IncludeSubfolders],
+				m.optionState[options.DeleteEmptySubfolders],
+				m.optionState[options.SendFilesToTrash],
+				m.optionState[options.LogOperations],
+				m.optionState[options.LogToFile],
+				m.optionState[options.ShowStatistics],
+				m.optionState[options.ExitAfterDeletion],
 			),
 		)
 	} else if activeTab == 2 { // Options tab
@@ -547,7 +533,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 			idx, err := strconv.Atoi(optionNum)
 			if err == nil && idx > 0 && idx <= len(options.DefaultCleanOption) {
 				name := options.DefaultCleanOption[idx-1]
-				m.OptionState[name] = !m.OptionState[name]
+				m.optionState[name] = !m.optionState[name]
 			}
 		}
 	}
@@ -564,56 +550,55 @@ func (m *RulesModel) handleAltC() (tea.Model, tea.Cmd) {
 
 	switch activeTab {
 	case 0: // Main tab
-		m.LocationInput.SetValue("")
+		m.locationInput.SetValue("")
 	case 1: // Filters tab
-		m.ExtensionsInput.SetValue("")
-		m.MinSizeInput.SetValue("")
-		m.MaxSizeInput.SetValue("")
-		m.ExcludeInput.SetValue("")
-		m.OlderInput.SetValue("")
-		m.NewerInput.SetValue("")
+		m.extensionsInput.SetValue("")
+		m.minSizeInput.SetValue("")
+		m.maxSizeInput.SetValue("")
+		m.excludeInput.SetValue("")
+		m.olderInput.SetValue("")
+		m.newerInput.SetValue("")
 	case 2: // Options tab
-		for name := range m.OptionState {
-			m.OptionState[name] = false
+		for name := range m.optionState {
+			m.optionState[name] = false
 		}
 	}
 
 	return m, nil
 }
 
-// ValidateInputs validates all input fields in the model
-func (m *RulesModel) ValidateInputs() *errors.Error {
+func (m *RulesModel) validateInputs() *errors.Error {
 	// Validate size inputs
 
-	if m.MinSizeInput.Value() != "" {
-		if m.Validator.ValidateSize(m.MinSizeInput.Value()) != nil {
+	if m.minSizeInput.Value() != "" {
+		if m.Validator.ValidateSize(m.minSizeInput.Value()) != nil {
 			return errors.New(errors.ErrorTypeValidation, "Invalid (min size input) format")
 		}
 	}
 
-	if m.MaxSizeInput.Value() != "" {
-		if m.Validator.ValidateSize(m.MaxSizeInput.Value()) != nil {
+	if m.maxSizeInput.Value() != "" {
+		if m.Validator.ValidateSize(m.maxSizeInput.Value()) != nil {
 			return errors.New(errors.ErrorTypeValidation, "Invalid (max size input) format")
 		}
 	}
 
-	if m.NewerInput.Value() != "" {
-		if m.Validator.ValidateTimeDuration(m.NewerInput.Value()) != nil {
+	if m.newerInput.Value() != "" {
+		if m.Validator.ValidateTimeDuration(m.newerInput.Value()) != nil {
 			return errors.New(errors.ErrorTypeValidation, "Invalid (newer input) time format")
 		}
 	}
 
-	if m.OlderInput.Value() != "" {
-		if m.Validator.ValidateTimeDuration(m.OlderInput.Value()) != nil {
+	if m.olderInput.Value() != "" {
+		if m.Validator.ValidateTimeDuration(m.olderInput.Value()) != nil {
 			return errors.New(errors.ErrorTypeValidation, "Invalid (older input) time format")
 		}
 	}
 
 	// Validate location input
-	if m.LocationInput.Value() != "" {
-		expandedPath := utils.ExpandTilde(m.LocationInput.Value())
+	if m.locationInput.Value() != "" {
+		expandedPath := utils.ExpandTilde(m.locationInput.Value())
 		if _, err := os.Stat(expandedPath); err != nil {
-			return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Invalid path: %s", m.LocationInput.Value()))
+			return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Invalid path: %s", m.locationInput.Value()))
 		}
 	}
 
@@ -630,37 +615,37 @@ func (m *RulesModel) SetFocusedElement(element string) {
 }
 
 func (m *RulesModel) GetOptionState() map[string]bool {
-	return m.OptionState
+	return m.optionState
 }
 
 func (m *RulesModel) SetOptionState(option string, state bool) {
-	m.OptionState[option] = state
+	m.optionState[option] = state
 }
 
 func (m *RulesModel) GetPathInput() textinput.Model {
-	return m.LocationInput
+	return m.locationInput
 }
 
 func (m *RulesModel) GetExtInput() textinput.Model {
-	return m.ExtensionsInput
+	return m.extensionsInput
 }
 
 func (m *RulesModel) GetMinSizeInput() textinput.Model {
-	return m.MinSizeInput
+	return m.minSizeInput
 }
 
 func (m *RulesModel) GetMaxSizeInput() textinput.Model {
-	return m.MaxSizeInput
+	return m.maxSizeInput
 }
 
 func (m *RulesModel) GetExcludeInput() textinput.Model {
-	return m.ExcludeInput
+	return m.excludeInput
 }
 
 func (m *RulesModel) GetOlderInput() textinput.Model {
-	return m.OlderInput
+	return m.olderInput
 }
 
 func (m *RulesModel) GetNewerInput() textinput.Model {
-	return m.NewerInput
+	return m.newerInput
 }
