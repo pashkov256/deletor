@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/fatih/color v1.16.0
 	github.com/schollz/progressbar/v3 v3.14.2
+
 )
 
 require (
