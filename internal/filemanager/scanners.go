@@ -85,6 +85,10 @@ func (s *FileScanner) ScanFilesCurrentLevel(dir string) (toDeleteMap map[string]
 			panic(err)
 		}
 
+		if info.IsDir() {
+			continue
+		}
+
 		if s.filter.MatchesFilters(info, filepath.Join(dir, entry.Name())) {
 			s.mutex.Lock()
 
@@ -108,14 +112,11 @@ func (s *FileScanner) ScanFilesRecursively(dir string) (toDeleteMap map[string]s
 	taskCh := make(chan os.FileInfo, runtime.NumCPU())
 
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info == nil {
-			fmt.Printf("Warning: Nil FileInfo for path: %s (err: %v)\n", path, err)
-
+		if info == nil || info.IsDir() {
 			return nil
 		}
 
 		if err != nil {
-			fmt.Printf("Warning: Error accessing path %s: %v\n", path, err)
 			return nil
 		}
 
