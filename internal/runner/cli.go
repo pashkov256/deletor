@@ -30,13 +30,6 @@ func RunCLI(
 	fileScanner := filemanager.NewFileScanner(fm, filter, config.ShowProgress)
 	printer := output.NewPrinter()
 
-	// If no extensions specified, print usage
-	if len(extMap) == 0 {
-		fmt.Println("Error: No file extensions specified. Use -e flag or EXTENSIONS environment variable")
-		fmt.Println("Example: -e \"jpg,png,mp4\" or EXTENSIONS=jpg,png,mp4")
-		os.Exit(1)
-	}
-
 	if config.ShowProgress {
 		fileScanner.ProgressBarScanner(config.Directory)
 	}
