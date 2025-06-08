@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 
 	"github.com/pashkov256/deletor/internal/cache"
@@ -43,19 +44,22 @@ func TestNewCacheManager_InitializesCorrectLocations(t *testing.T) {
 		expectedLocations = nil
 	}
 
-	// Verify locations
-	if expectedLocations == nil {
-		if cm.ScanAllLocations() != nil {
-			t.Error("Expected nil locations for unsupported OS")
-		}
-	} else {
-		if len(expectedLocations) != len(cm.ScanAllLocations()) {
-			t.Error("Wrong number of locations initialized")
-		}
-		for i, expected := range expectedLocations {
-			if expected.Path != cm.ScanAllLocations()[i].Path {
-				t.Errorf("Path mismatch for location %d", i)
-			}
+	actualLocations := cm.ScanAllLocations()
+	if len(expectedLocations) != len(actualLocations) {
+		t.Error("Wrong number of locations initialized")
+	}
+
+	// Sort both slices by path to ensure consistent comparison
+	sort.Slice(expectedLocations, func(i, j int) bool {
+		return expectedLocations[i].Path < expectedLocations[j].Path
+	})
+	sort.Slice(actualLocations, func(i, j int) bool {
+		return actualLocations[i].Path < actualLocations[j].Path
+	})
+
+	for i, expected := range expectedLocations {
+		if expected.Path != actualLocations[i].Path {
+			t.Errorf("Path mismatch for location %d", i)
 		}
 	}
 }
