@@ -46,27 +46,27 @@ type LogEntry struct {
 type Logger struct {
 	mu            sync.Mutex
 	logFile       *os.File
-	configPath    string
+	ConfigPath    string
 	currentScan   *ScanStatistics
 	StatsCallback func(*ScanStatistics) // Callback for stats updates
 }
 
 // NewLogger creates a new logger instance with the specified configuration
-func NewLogger(configPath string, statsCallback func(*ScanStatistics)) (*Logger, error) {
+func NewLogger(ConfigPath string, statsCallback func(*ScanStatistics)) (*Logger, error) {
 	// Ensure config directory exists
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(ConfigPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Open or create log file
-	logFile, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(ConfigPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file: %w", err)
 	}
 
 	return &Logger{
 		logFile:       logFile,
-		configPath:    configPath,
+		ConfigPath:    ConfigPath,
 		StatsCallback: statsCallback,
 	}, nil
 }
