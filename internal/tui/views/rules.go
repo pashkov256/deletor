@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/errors"
-	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	rulesTab "github.com/pashkov256/deletor/internal/tui/tabs/rules"
@@ -37,12 +37,13 @@ type RulesModel struct {
 	OptionState map[string]bool
 
 	// Common fields
-	rules          rules.Rules
-	FocusedElement string // "locationInput", "saveButton", "extensionsInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput", "option1", "option2", etc.
-	rulesPath      string
-	Error          *errors.Error
-	TabManager     *rulesTab.RulesTabManager
-	Validator      *validation.Validator
+	rules           rules.Rules
+	FocusedElement  string // "locationInput", "saveButton", "extensionsInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput", "rules_option_1", "rules_option_2", etc.
+	rulesPath       string
+	SuccessSaveText string
+	Error           *errors.Error
+	TabManager      *rulesTab.RulesTabManager
+	Validator       *validation.Validator
 }
 
 // NewRulesModel creates a new rules management model
@@ -123,10 +124,11 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 			options.ShowStatistics:        lastestRules.ShowStatistics,
 			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
 		},
-		rules:          rules,
-		rulesPath:      rulesPath,
-		FocusedElement: "locationInput",
-		Validator:      validator,
+		rules:           rules,
+		rulesPath:       rulesPath,
+		SuccessSaveText: "",
+		FocusedElement:  "locationInput",
+		Validator:       validator,
 	}
 }
 
@@ -143,6 +145,120 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle keyboard events directly
 		return m.Handle(msg)
+
+	case tea.MouseMsg:
+		if msg.Action == tea.MouseActionRelease && msg.Button == tea.MouseButtonLeft {
+			// Handle tab clicks
+			for i := 0; i < 3; i++ {
+				if zone.Get(fmt.Sprintf("tab_%d", i)).InBounds(msg) {
+					m.TabManager.SetActiveTabIndex(i)
+					// Blur all inputs
+					m.LocationInput.Blur()
+					m.ExtensionsInput.Blur()
+					m.MinSizeInput.Blur()
+					m.MaxSizeInput.Blur()
+					m.ExcludeInput.Blur()
+					m.OlderInput.Blur()
+					m.NewerInput.Blur()
+
+					switch i {
+					case 0:
+						m.FocusedElement = "locationInput"
+						m.LocationInput.Focus()
+					case 1:
+						m.FocusedElement = "extensionsInput"
+						m.ExtensionsInput.Focus()
+					case 2:
+						m.FocusedElement = "rules_option_1"
+					}
+					return m, nil
+				}
+			}
+
+			if m.TabManager.GetActiveTabIndex() == 0 {
+				// Handle main tab elements
+				if zone.Get("rules_location_input").InBounds(msg) {
+					// Blur all other inputs
+					m.ExtensionsInput.Blur()
+					m.MinSizeInput.Blur()
+					m.MaxSizeInput.Blur()
+					m.ExcludeInput.Blur()
+					m.OlderInput.Blur()
+					m.NewerInput.Blur()
+
+					m.FocusedElement = "locationInput"
+					m.LocationInput.Focus()
+				} else if zone.Get("rules_save_button").InBounds(msg) {
+					// Blur all inputs
+					m.LocationInput.Blur()
+					m.ExtensionsInput.Blur()
+					m.MinSizeInput.Blur()
+					m.MaxSizeInput.Blur()
+					m.ExcludeInput.Blur()
+					m.OlderInput.Blur()
+					m.NewerInput.Blur()
+
+					m.FocusedElement = "saveButton"
+					return m.handleEnter()
+				}
+			}
+
+			// Handle filters tab elements
+			if m.TabManager.GetActiveTabIndex() == 1 {
+				for _, key := range []string{"extensionsInput", "minSizeInput", "maxSizeInput", "excludeInput", "olderInput", "newerInput"} {
+					if zone.Get(fmt.Sprintf("rules_%s", key)).InBounds(msg) {
+						// Blur all inputs
+						m.LocationInput.Blur()
+						m.ExtensionsInput.Blur()
+						m.MinSizeInput.Blur()
+						m.MaxSizeInput.Blur()
+						m.ExcludeInput.Blur()
+						m.OlderInput.Blur()
+						m.NewerInput.Blur()
+
+						m.FocusedElement = key
+						switch key {
+						case "extensionsInput":
+							m.ExtensionsInput.Focus()
+						case "minSizeInput":
+							m.MinSizeInput.Focus()
+						case "maxSizeInput":
+							m.MaxSizeInput.Focus()
+						case "excludeInput":
+							m.ExcludeInput.Focus()
+						case "olderInput":
+							m.OlderInput.Focus()
+						case "newerInput":
+							m.NewerInput.Focus()
+						}
+						return m, nil
+					}
+				}
+			}
+
+			// Handle options tab elements
+			if m.TabManager.GetActiveTabIndex() == 2 {
+				for i := 1; i <= len(options.DefaultCleanOption); i++ {
+					if zone.Get(fmt.Sprintf("rules_option_%d", i)).InBounds(msg) {
+						// Blur all inputs
+						m.LocationInput.Blur()
+						m.ExtensionsInput.Blur()
+						m.MinSizeInput.Blur()
+						m.MaxSizeInput.Blur()
+						m.ExcludeInput.Blur()
+						m.OlderInput.Blur()
+						m.NewerInput.Blur()
+
+						m.FocusedElement = fmt.Sprintf("rules_option_%d", i)
+						name := options.DefaultCleanOption[i-1]
+						m.OptionState[name] = !m.OptionState[name]
+						return m, nil
+					}
+				}
+			}
+		}
+		return m, nil
+
 	case *errors.Error:
 		m.Error = msg
 		return m, nil
@@ -186,7 +302,7 @@ func (m *RulesModel) View() string {
 		if activeTab == i {
 			style = styles.ActiveTabStyle
 		}
-		tabs[i] = style.Render(name)
+		tabs[i] = zone.Mark(fmt.Sprintf("tab_%d", i), style.Render(name))
 	}
 	tabsRow := lipgloss.JoinHorizontal(lipgloss.Left, tabs...)
 
@@ -194,76 +310,20 @@ func (m *RulesModel) View() string {
 	var content strings.Builder
 	content.WriteString(tabsRow)
 	content.WriteString("\n")
-
-	// Render active tab content
-	switch activeTab {
-	case 0: // Main tab
-		pathStyle := styles.StandardInputStyle
-		if m.FocusedElement == "locationInput" {
-			pathStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(pathStyle.Render("Path: " + m.LocationInput.View()))
-		content.WriteString("\n\n")
-
-		saveButtonStyle := styles.StandardButtonStyle
-		if m.FocusedElement == "saveButton" {
-			saveButtonStyle = styles.StandardButtonFocusedStyle
-		}
-		content.WriteString(saveButtonStyle.Render("💾 Save rules"))
-		content.WriteString("\n\n\n")
-		content.WriteString(styles.PathStyle.Render(fmt.Sprintf("Rules are stored in: %s", m.rulesPath)))
-		content.WriteString("\n\n" + help.NavigateHelpText)
-	case 1: // Filters tab
-		inputs := []struct {
-			name  string
-			input textinput.Model
-			key   string
-		}{
-			{"Extensions", m.ExtensionsInput, "extensionsInput"},
-			{"Min Size", m.MinSizeInput, "minSizeInput"},
-			{"Max Size", m.MaxSizeInput, "maxSizeInput"},
-			{"Exclude", m.ExcludeInput, "excludeInput"},
-			{"Older Than", m.OlderInput, "olderInput"},
-			{"Newer Than", m.NewerInput, "newerInput"},
-		}
-
-		for _, input := range inputs {
-			style := styles.StandardInputStyle
-			if m.FocusedElement == input.key {
-				style = styles.StandardInputFocusedStyle
-			}
-			content.WriteString(style.Render(input.name + ": " + input.input.View()))
-			content.WriteString("\n")
-		}
-
-	case 2: // Options tab
-		for i, name := range options.DefaultCleanOption {
-			style := styles.OptionStyle
-			if m.OptionState[name] {
-				style = styles.SelectedOptionStyle
-			}
-			if m.FocusedElement == fmt.Sprintf("option%d", i+1) {
-				style = styles.OptionFocusedStyle
-			}
-
-			emoji := options.GetEmojiByCleanOption(name)
-
-			content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
-			content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s",
-				map[bool]string{true: "✓", false: "○"}[m.OptionState[name]],
-				emoji, name)))
-			content.WriteString("\n")
-		}
-	}
+	content.WriteString(m.TabManager.GetActiveTab().View())
 
 	// Add error message if there is one
 	if m.Error != nil && m.Error.IsVisible() {
 		errorStyle := errors.GetStyle(m.Error.GetType())
 		content.WriteString("\n")
 		content.WriteString(errorStyle.Render(m.Error.GetMessage()))
+		m.SuccessSaveText = "" // Clear success message when there's an error
+	} else if m.SuccessSaveText != "" {
+		content.WriteString("\n")
+		content.WriteString(styles.SuccessStyle.Render(m.SuccessSaveText))
 	}
 
-	return styles.AppStyle.Render(content.String())
+	return zone.Scan(styles.AppStyle.Render(content.String()))
 }
 
 func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -295,8 +355,8 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleAltC()
 	case " ":
 		if activeTab == 2 { // Options tab
-			if strings.HasPrefix(m.FocusedElement, "option") {
-				optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+			if strings.HasPrefix(m.FocusedElement, "rules_option_") {
+				optionNum := strings.TrimPrefix(m.FocusedElement, "rules_option_")
 				idx, err := strconv.Atoi(optionNum)
 				if err == nil && idx > 0 && idx <= len(options.DefaultCleanOption) {
 					name := options.DefaultCleanOption[idx-1]
@@ -327,7 +387,6 @@ func (m *RulesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.NewerInput, cmd = m.NewerInput.Update(msg)
 		}
 	}
-
 	return m, cmd
 }
 
@@ -372,7 +431,7 @@ func (m *RulesModel) handleTab() (tea.Model, tea.Cmd) {
 			m.ExtensionsInput.Focus()
 		}
 	case 2: // Options tab
-		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, "rules_option_", len(options.DefaultCleanOption), true)
 	}
 
 	return m, nil
@@ -419,7 +478,7 @@ func (m *RulesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.OlderInput.Focus()
 		}
 	case 2: // Options tab
-		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, "rules_option_", len(options.DefaultCleanOption), false)
 	}
 
 	return m, nil
@@ -430,9 +489,9 @@ func (m *RulesModel) handleUpDown(key string) (tea.Model, tea.Cmd) {
 
 	if activeTab == 2 { // Options tab
 		if key == "up" {
-			m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
+			m.FocusedElement = options.GetNextOption(m.FocusedElement, "rules_option_", len(options.DefaultCleanOption), false)
 		} else {
-			m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
+			m.FocusedElement = options.GetNextOption(m.FocusedElement, "rules_option_", len(options.DefaultCleanOption), true)
 		}
 		return m, nil
 	}
@@ -458,7 +517,7 @@ func (m *RulesModel) handleArrowRight() (tea.Model, tea.Cmd) {
 			m.FocusedElement = "extensionsInput"
 			m.ExtensionsInput.Focus()
 		case 2:
-			m.FocusedElement = "option1"
+			m.FocusedElement = "rules_option_1"
 		}
 	}
 
@@ -471,7 +530,7 @@ func (m *RulesModel) handleArrowLeft() (tea.Model, tea.Cmd) {
 
 	if activeTabIndex == 0 {
 		m.TabManager.SetActiveTabIndex(tabLength - 1)
-		m.FocusedElement = "option1"
+		m.FocusedElement = "rules_option_1"
 	} else {
 		m.TabManager.SetActiveTabIndex(activeTabIndex - 1)
 		switch activeTabIndex - 1 {
@@ -503,7 +562,7 @@ func (m *RulesModel) handleF2() (tea.Model, tea.Cmd) {
 
 func (m *RulesModel) handleF3() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(2)
-	m.FocusedElement = "option1"
+	m.FocusedElement = "rules_option_1"
 	return m, nil
 }
 
@@ -512,13 +571,11 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 
 	if activeTab == 0 && m.FocusedElement == "saveButton" { // Save button in Main tab
 		if err := m.ValidateInputs(); err != nil {
+			m.SuccessSaveText = "" // Clear success message when there's an error
 			return m, func() tea.Msg {
 				return err
 			}
 		}
-
-		// Clear error if validation passed
-		m.Error = nil
 
 		// Save rules
 		m.rules.UpdateRules(
@@ -541,9 +598,11 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.OptionState[options.ExitAfterDeletion],
 			),
 		)
+		m.SuccessSaveText = "Rules saved successfully!" // Set success message
+		m.Error = nil                                   // Clear any existing error
 	} else if activeTab == 2 { // Options tab
-		if strings.HasPrefix(m.FocusedElement, "option") {
-			optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+		if strings.HasPrefix(m.FocusedElement, "rules_option_") {
+			optionNum := strings.TrimPrefix(m.FocusedElement, "rules_option_")
 			idx, err := strconv.Atoi(optionNum)
 			if err == nil && idx > 0 && idx <= len(options.DefaultCleanOption) {
 				name := options.DefaultCleanOption[idx-1]
@@ -635,6 +694,10 @@ func (m *RulesModel) GetOptionState() map[string]bool {
 
 func (m *RulesModel) SetOptionState(option string, state bool) {
 	m.OptionState[option] = state
+}
+
+func (m *RulesModel) GetRulesPath() string {
+	return m.rulesPath
 }
 
 func (m *RulesModel) GetPathInput() textinput.Model {

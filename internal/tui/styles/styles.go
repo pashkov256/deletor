@@ -22,6 +22,16 @@ var (
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1).Bold(true)
 
+	DocStyle = lipgloss.NewStyle().
+			Padding(1, 1)
+
+	MenuItem = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).MarginBottom(1)
+
+	// nolint:staticcheck
+	SelectedMenuItemStyle = MenuItem.Copy().
+				Foreground(lipgloss.Color("#1E90FF"))
+
 	// Input styles
 	StandardInputStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
@@ -98,6 +108,7 @@ var (
 		Padding(0, 1).
 		MarginRight(1)
 
+	// nolint:staticcheck
 	ActiveTabStyle = TabStyle.Copy().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#1E90FF")).
@@ -112,6 +123,7 @@ var (
 			Width(100).
 			Height(9)
 
+	// nolint:staticcheck
 	ListFocusedStyle = ListStyle.Copy().
 				Border(lipgloss.DoubleBorder()).
 				BorderForeground(lipgloss.Color("#0067cf"))
@@ -121,7 +133,7 @@ var (
 			Foreground(lipgloss.Color("#dddddd"))
 
 	SelectedItemStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFFFF")).
+				Foreground(lipgloss.Color("#1E90FF")).
 				Background(lipgloss.Color("#0066ff")).
 				Bold(true)
 
@@ -140,6 +152,14 @@ var (
 	ErrorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF0000")).
 			Bold(true)
+
+	SuccessStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FF00")).
+			Bold(true).
+			Padding(0, 1).
+			Margin(1, 0).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#00FF00"))
 
 	PathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).

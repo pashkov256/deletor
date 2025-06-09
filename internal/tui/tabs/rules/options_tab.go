@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -20,23 +21,22 @@ func (t *OptionsTab) Update(msg tea.Msg) tea.Cmd { return nil }
 func (t *OptionsTab) View() string {
 	var content strings.Builder
 
-	for optionIndex, name := range options.DefaultCleanOption {
+	for i, name := range options.DefaultCleanOption {
 		style := styles.OptionStyle
-		if t.model.GetOptionState()[name] {
-			style = styles.SelectedOptionStyle
-		}
-		if t.model.GetFocusedElement() == fmt.Sprintf("option%d", optionIndex+1) {
+		if t.model.GetFocusedElement() == fmt.Sprintf("rules_option_%d", i+1) {
 			style = styles.OptionFocusedStyle
+		} else {
+			if t.model.GetOptionState()[name] {
+				style = styles.SelectedOptionStyle
+			}
 		}
 
-		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", optionIndex+1)))
-
-		// Add emojis based on option name
 		emoji := options.GetEmojiByCleanOption(name)
 
-		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s",
+		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
+		content.WriteString(zone.Mark(fmt.Sprintf("rules_option_%d", i+1), style.Render(fmt.Sprintf("[%s] %s %-20s",
 			map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]],
-			emoji, name)))
+			emoji, name))))
 		content.WriteString("\n")
 	}
 

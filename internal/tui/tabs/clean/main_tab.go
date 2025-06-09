@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -23,11 +24,14 @@ func (t *MainTab) Update(msg tea.Msg) tea.Cmd { return nil }
 
 func (t *MainTab) View() string {
 	var content strings.Builder
+
+	// Path input
 	pathStyle := styles.StandardInputStyle
 	if t.model.GetFocusedElement() == "pathInput" {
 		pathStyle = styles.StandardInputFocusedStyle
 	}
-	content.WriteString(pathStyle.Render("Current Path: " + t.model.GetPathInput().View()))
+	content.WriteString(zone.Mark("main_path_input", pathStyle.Render("Current Path: "+t.model.GetPathInput().View())))
+	content.WriteString("\n")
 
 	// If no path is set, show only the start button
 	if t.model.GetCurrentPath() == "" {
@@ -35,8 +39,8 @@ func (t *MainTab) View() string {
 		if t.model.GetFocusedElement() == "startButton" {
 			startButtonStyle = styles.LaunchButtonFocusedStyle
 		}
-		content.WriteString("\n\n")
-		content.WriteString(startButtonStyle.Render("📂 Launch"))
+		content.WriteString("\n")
+		content.WriteString(zone.Mark("main_start_button", startButtonStyle.Render("📂 Launch")))
 		content.WriteString("\n")
 	} else {
 		// Show full interface when path is set
@@ -44,32 +48,28 @@ func (t *MainTab) View() string {
 		if t.model.GetFocusedElement() == "extInput" {
 			extStyle = styles.StandardInputFocusedStyle
 		}
+		content.WriteString(zone.Mark("main_ext_input", extStyle.Render("Extensions: "+t.model.GetExtInput().View())))
+		content.WriteString("\n\n")
+
+		if !t.model.GetShowDirs() {
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
+				t.model.GetFilteredCount(), utils.FormatSize(t.model.GetFilteredSize()))))
+		} else {
+			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
+				filepath.Base(t.model.GetCurrentPath()), len(t.model.GetDirList().Items()))))
+		}
 		content.WriteString("\n")
-		content.WriteString(extStyle.Render("Extensions: " + t.model.GetExtInput().View()))
-		content.WriteString("\n")
+		// List content
+		var listContent strings.Builder
+
+		// List items
 		var activeList list.Model
 		if t.model.GetShowDirs() {
 			activeList = t.model.GetDirList()
 		} else {
 			activeList = t.model.GetList()
 		}
-		fileCount := len(activeList.Items())
-		filteredSizeText := utils.FormatSize(t.model.GetFilteredSize())
-		content.WriteString("\n")
-		if !t.model.GetShowDirs() {
-			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
-				t.model.GetFilteredCount(), filteredSizeText)))
-		} else {
-			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
-				filepath.Base(t.model.GetCurrentPath()), fileCount)))
-		}
-		content.WriteString("\n")
-		listStyle := styles.ListStyle
-		if t.model.GetFocusedElement() == "list" {
-			listStyle = styles.ListFocusedStyle
-		}
 
-		var listContent strings.Builder
 		if len(activeList.Items()) == 0 {
 			if !t.model.GetShowDirs() {
 				listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
@@ -104,9 +104,7 @@ func (t *MainTab) View() string {
 
 			for i := startIdx; i < endIdx; i++ {
 				item := items[i].(models.CleanItem)
-
 				icon := utils.GetFileIcon(item.Size, item.Path, item.IsDir)
-
 				filename := filepath.Base(item.Path)
 				sizeStr := ""
 				if item.Size >= 0 && !item.IsDir {
@@ -122,34 +120,27 @@ func (t *MainTab) View() string {
 				if i == selectedIndex {
 					prefix = "> "
 					style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066ff")).Bold(true)
-				} else if item.IsDir && item.Size != -1 { // for File
+				} else if item.IsDir && item.Size != -1 {
 					style = style.Foreground(lipgloss.Color("#ccc"))
-				} else if item.Size == -1 { //for UP DIR
+				} else if item.Size == -1 {
 					style = style.Foreground(lipgloss.Color("#578cdb"))
 				}
 
-				// Use fixed widths for icon, filename, and size for alignment
-				const iconWidth = 3      // Fixed width for icon + space
-				const filenameWidth = 45 // Fixed width for filename
-				const sizeWidth = 10     // Fixed width for size string
+				const iconWidth = 3
+				const filenameWidth = 45
+				const sizeWidth = 10
 
-				// Ensure icon string has fixed width, padding with spaces if needed
 				iconDisplay := fmt.Sprintf("%-*s", iconWidth, icon)
-
-				// Truncate filename if too long
 				displayName := filename
 				if len(displayName) > filenameWidth {
 					displayName = displayName[:filenameWidth-3] + "..."
 				}
+				sizeDisplay := fmt.Sprintf("%-*s", sizeWidth, sizeStr)
 
-				// Format the size string to be left-aligned in a fixed width
-				sizeDisplay := fmt.Sprintf("%-*s", sizeWidth, sizeStr) // Left-align size string
-
-				// Construct the final line using fixed widths
 				line := fmt.Sprintf("%s%s%-*s%s",
 					prefix,
 					iconDisplay,
-					filenameWidth, displayName, // Filename with its padding
+					filenameWidth, displayName,
 					sizeDisplay)
 
 				listContent.WriteString(style.Render(line))
@@ -163,21 +154,26 @@ func (t *MainTab) View() string {
 				listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
 			}
 		}
+
+		listStyle := styles.ListStyle
+		if t.model.GetFocusedElement() == "list" {
+			listStyle = styles.ListFocusedStyle
+		}
 		content.WriteString(listStyle.Render(listContent.String()))
 
 		// Buttons section
 		content.WriteString("\n\n")
 		if t.model.GetFocusedElement() == "dirButton" {
-			content.WriteString(styles.StandardButtonFocusedStyle.Render("➡️  Show directories"))
+			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonFocusedStyle.Render("➡️  Show directories")))
 		} else {
-			content.WriteString(styles.StandardButtonStyle.Render("➡️  Show directories"))
+			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonStyle.Render("➡️  Show directories")))
 		}
 		content.WriteString("  ")
 
 		if t.model.GetFocusedElement() == "deleteButton" {
-			content.WriteString(styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning"))
+			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning")))
 		} else {
-			content.WriteString(styles.DeleteButtonStyle.Render("🗑️  Start cleaning"))
+			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonStyle.Render("🗑️  Start cleaning")))
 		}
 		content.WriteString("\n")
 	}

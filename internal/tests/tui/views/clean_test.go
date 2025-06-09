@@ -132,46 +132,50 @@ func TestCleanFilesModel_InitialState(t *testing.T) {
 func TestCleanFilesModel_InputInitialization(t *testing.T) {
 	model := setupCleanTestModel(t)
 
-	// Test input placeholders
 	tests := []struct {
-		name     string
-		input    textinput.Model
-		expected string
+		name        string
+		input       textinput.Model
+		placeholder string
 	}{
-		{"ExtInput", model.ExtInput, "e.g. js,png,zip"},
-		{"MinSizeInput", model.MinSizeInput, "e.g. 10b,10kb,10mb,10gb,10tb"},
-		{"MaxSizeInput", model.MaxSizeInput, "e.g. 10b,10kb,10mb,10gb,10tb"},
+		{
+			name:        "PathInput",
+			input:       model.PathInput,
+			placeholder: "",
+		},
+		{
+			name:        "ExtInput",
+			input:       model.ExtInput,
+			placeholder: "e.g. js,png,zip",
+		},
+		{
+			name:        "MinSizeInput",
+			input:       model.MinSizeInput,
+			placeholder: "e.g. 10b,10kb,10mb,10gb,10tb",
+		},
+		{
+			name:        "MaxSizeInput",
+			input:       model.MaxSizeInput,
+			placeholder: "e.g. 10b,10kb,10mb,10gb,10tb",
+		},
+		{
+			name:        "ExcludeInput",
+			input:       model.ExcludeInput,
+			placeholder: "specific files/paths (e.g. data,backup)",
+		},
+		{
+			name:        "OlderInput",
+			input:       model.OlderInput,
+			placeholder: "e.g. 60 min, 1 hour, 7 days, 1 month",
+		},
+		{
+			name:        "NewerInput",
+			input:       model.NewerInput,
+			placeholder: "e.g. 60 min, 1 hour, 7 days, 1 month",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.input.Placeholder != tt.expected {
-				t.Errorf("%s placeholder = %q, want %q", tt.name, tt.input.Placeholder, tt.expected)
-			}
-		})
-	}
-
-	// Test input initialization
-	inputs := []struct {
-		name        string
-		input       textinput.Model
-		prompt      string
-		placeholder string
-	}{
-		{"PathInput", model.PathInput, "Path", ""},
-		{"ExtInput", model.ExtInput, "Extensions", "e.g. js,png,zip"},
-		{"MinSizeInput", model.MinSizeInput, "Min Size", "e.g. 10b,10kb,10mb,10gb,10tb"},
-		{"MaxSizeInput", model.MaxSizeInput, "Max Size", "e.g. 10b,10kb,10mb,10gb,10tb"},
-		{"ExcludeInput", model.ExcludeInput, "Exclude", ""},
-		{"OlderInput", model.OlderInput, "Older Than", ""},
-		{"NewerInput", model.NewerInput, "Newer Than", ""},
-	}
-
-	for _, tt := range inputs {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.input.Prompt == "" {
-				t.Errorf("%s has empty prompt", tt.name)
-			}
 			if tt.input.Placeholder != tt.placeholder {
 				t.Errorf("%s placeholder = %q, want %q", tt.name, tt.input.Placeholder, tt.placeholder)
 			}
@@ -334,22 +338,79 @@ func TestCleanFilesModel_Navigation(t *testing.T) {
 		})
 
 		t.Run("Options Tab", func(t *testing.T) {
-			model.FocusedElement = "option1"
-			model.TabManager.SetActiveTabIndex(2)
+			tests := []struct {
+				name          string
+				initialFocus  string
+				key           string
+				expectedFocus string
+			}{
+				{
+					name:          "Tab_to_option2",
+					initialFocus:  "clean_option_1",
+					key:           "tab",
+					expectedFocus: "clean_option_2",
+				},
+				{
+					name:          "Tab_to_option3",
+					initialFocus:  "clean_option_2",
+					key:           "tab",
+					expectedFocus: "clean_option_3",
+				},
+				{
+					name:          "Tab_to_option4",
+					initialFocus:  "clean_option_3",
+					key:           "tab",
+					expectedFocus: "clean_option_4",
+				},
+				{
+					name:          "Tab_to_option5",
+					initialFocus:  "clean_option_4",
+					key:           "tab",
+					expectedFocus: "clean_option_5",
+				},
+				{
+					name:          "Tab_to_option6",
+					initialFocus:  "clean_option_5",
+					key:           "tab",
+					expectedFocus: "clean_option_6",
+				},
+				{
+					name:          "Tab_to_option7",
+					initialFocus:  "clean_option_6",
+					key:           "tab",
+					expectedFocus: "clean_option_7",
+				},
+				{
+					name:          "Tab_to_option8",
+					initialFocus:  "clean_option_7",
+					key:           "tab",
+					expectedFocus: "clean_option_8",
+				},
+				{
+					name:          "Tab_to_option9",
+					initialFocus:  "clean_option_8",
+					key:           "tab",
+					expectedFocus: "clean_option_9",
+				},
+				{
+					name:          "Tab_to_option10",
+					initialFocus:  "clean_option_9",
+					key:           "tab",
+					expectedFocus: "clean_option_1",
+				},
+			}
 
-			// Test Tab navigation through options
-			for i := 1; i <= len(options.DefaultCleanOption); i++ {
-				t.Run(fmt.Sprintf("Tab to option%d", i+1), func(t *testing.T) {
-					msg := tea.KeyMsg{Type: tea.KeyTab}
-					newModel, _ := model.Handle(msg)
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					model := setupCleanTestModel(t)
+					model.TabManager.SetActiveTabIndex(2)
+					model.FocusedElement = tt.initialFocus
+
+					msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
+					newModel, _ := model.Update(msg)
 					if m, ok := newModel.(*views.CleanFilesModel); ok {
-						model = m
-						expected := fmt.Sprintf("option%d", i+1)
-						if i == len(options.DefaultCleanOption) {
-							expected = "option1"
-						}
-						if model.FocusedElement != expected {
-							t.Errorf("After Tab, expected focus %s, got %s", expected, model.FocusedElement)
+						if m.FocusedElement != tt.expectedFocus {
+							t.Errorf("After %s, expected focus %s, got %s", tt.key, tt.expectedFocus, m.FocusedElement)
 						}
 					} else {
 						t.Errorf("Failed to convert model to CleanFilesModel")
@@ -792,8 +853,8 @@ func TestCleanFilesModel_OptionsAndSettings(t *testing.T) {
 			}
 		}
 	})
-
 }
+
 func compareSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

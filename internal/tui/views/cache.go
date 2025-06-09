@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/tui/help"
@@ -71,15 +72,19 @@ func (m *CacheModel) View() string {
 			emoji = "💻"
 		}
 
-		content.WriteString(style.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[m.OptionState[name]], emoji, name)))
+		optionContent := fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[m.OptionState[name]], emoji, name)
+		content.WriteString(zone.Mark(fmt.Sprintf("cache_option_%d", optionIndex+1), style.Render(optionContent)))
 		content.WriteString("\n")
 	}
 
 	if len(m.scanResults) > 0 {
 		content.WriteString("\n\n")
 
+		// nolint:staticcheck
 		pathStyle := styles.ScanResultPathStyle.Copy().Width(pathWidth).Align(lipgloss.Left)
+		// nolint:staticcheck
 		sizeStyle := styles.ScanResultSizeStyle.Copy().Width(sizeWidth).Align(lipgloss.Right)
+		// nolint:staticcheck
 		filesStyle := styles.ScanResultFilesStyle.Copy().Width(filesWidth).Align(lipgloss.Right)
 
 		header := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -141,12 +146,12 @@ func (m *CacheModel) View() string {
 		deleteBtn = styles.DeleteButtonFocusedStyle.Render("🗑️ Delete selected")
 	}
 
-	content.WriteString(scanBtn)
+	content.WriteString(zone.Mark("cache_scan_button", scanBtn))
 	content.WriteString("  ")
-	content.WriteString(deleteBtn)
+	content.WriteString(zone.Mark("cache_delete_button", deleteBtn))
 	content.WriteString("\n\n")
 	content.WriteString("\n" + help.NavigateHelpText)
-	return content.String()
+	return zone.Scan(content.String())
 }
 
 func (m *CacheModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -159,6 +164,29 @@ func (m *CacheModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleShiftTab()
 		case "enter", " ":
 			return m.handleSpace()
+		}
+	case tea.MouseMsg:
+		// nolint:staticcheck
+		if msg.Type == tea.MouseLeft && msg.Action == tea.MouseActionPress {
+			// Handle option clicks
+			for i := range options.DefaultCacheOption {
+				if zone.Get(fmt.Sprintf("cache_option_%d", i+1)).InBounds(msg) {
+					m.FocusedElement = fmt.Sprintf("option%d", i+1)
+					return m.handleSpace()
+				}
+			}
+
+			// Handle scan button click
+			if zone.Get("cache_scan_button").InBounds(msg) {
+				m.FocusedElement = "scanButton"
+				return m.handleSpace()
+			}
+
+			// Handle delete button click
+			if zone.Get("cache_delete_button").InBounds(msg) {
+				m.FocusedElement = "deleteButton"
+				return m.handleSpace()
+			}
 		}
 	}
 	return m, nil
