@@ -3,6 +3,8 @@ package filemanager_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -820,6 +822,96 @@ func TestScanFilesRecursively(t *testing.T) {
 					} else if parsedSize != expectedSize {
 						t.Errorf("expected size %d for file %s, got %d", expectedSize, path, parsedSize)
 					}
+				}
+			}
+		})
+	}
+}
+
+func TestScanEmptySubFolders(t *testing.T) {
+	tests := []struct {
+		name             string
+		dirs             []string
+		files            map[string]string
+		expectedEmpty    []string
+		expectedNonEmpty []string
+	}{
+		{
+			name: "No empty folders",
+			dirs: []string{"dir1", "dir2"},
+			files: map[string]string{
+				"dir1/file1.txt": "content1",
+				"dir2/file2.txt": "content2",
+			},
+			expectedEmpty:    []string{},
+			expectedNonEmpty: []string{"dir1", "dir2"},
+		},
+		{
+			name:             "Single empty folder",
+			dirs:             []string{"empty"},
+			files:            map[string]string{},
+			expectedEmpty:    []string{".", "empty"},
+			expectedNonEmpty: []string{},
+		},
+		{
+			name:             "Multiple empty folders",
+			dirs:             []string{"empty1", "empty2", "empty3"},
+			files:            map[string]string{},
+			expectedEmpty:    []string{".", "empty1", "empty2", "empty3"},
+			expectedNonEmpty: []string{},
+		},
+		{
+			name:             "Nested empty folders",
+			dirs:             []string{"parent/child1", "parent/child2/grandchild"},
+			files:            map[string]string{},
+			expectedEmpty:    []string{".", "parent", "parent/child1", "parent/child2", "parent/child2/grandchild"},
+			expectedNonEmpty: []string{},
+		},
+		{
+			name: "Mixed empty and non-empty folders",
+			dirs: []string{"empty1", "empty2", "nonempty1", "nonempty2"},
+			files: map[string]string{
+				"nonempty1/file1.txt": "content1",
+				"nonempty2/file2.txt": "content2",
+			},
+			expectedEmpty:    []string{"empty1", "empty2"},
+			expectedNonEmpty: []string{"nonempty1", "nonempty2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			createDirStructure(t, root, tt.dirs, tt.files, nil)
+
+			fm := filemanager.NewFileManager()
+			filter := fm.NewFileFilter(0, 0, nil, nil, time.Time{}, time.Time{})
+			scanner := filemanager.NewFileScanner(fm, filter, false)
+			emptyDirs := scanner.ScanEmptySubFolders(root)
+
+			// Convert expected paths to full paths
+			expectedEmptyFull := make([]string, len(tt.expectedEmpty))
+			for i, path := range tt.expectedEmpty {
+				if path == "." {
+					expectedEmptyFull[i] = root
+				} else {
+					expectedEmptyFull[i] = filepath.Join(root, path)
+				}
+			}
+
+			// Sort both slices to ensure consistent comparison
+			sort.Strings(emptyDirs)
+			sort.Strings(expectedEmptyFull)
+
+			if !reflect.DeepEqual(emptyDirs, expectedEmptyFull) {
+				t.Errorf("expected empty directories %v, got %v", expectedEmptyFull, emptyDirs)
+			}
+
+			// Verify non-empty directories still exist
+			for _, path := range tt.expectedNonEmpty {
+				fullPath := filepath.Join(root, path)
+				if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+					t.Errorf("expected non-empty directory to exist: %s", path)
 				}
 			}
 		})
