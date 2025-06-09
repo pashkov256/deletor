@@ -45,7 +45,7 @@ type CleanFilesModel struct {
 	Exclude         []string
 	Options         []string
 	OptionState     map[string]bool
-	FocusedElement  string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "option1", "option2", "option3"
+	FocusedElement  string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "clean_option_1", "clean_option_2", "clean_option_3"
 	FileToDelete    *models.CleanItem
 	ShowDirs        bool
 	DirList         list.Model
@@ -80,14 +80,12 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, v
 
 	// Initialize inputs
 	extInput := textinput.New()
-	extInput.Placeholder = "e.g. js,png,zip"
 	extInput.SetValue(strings.Join(latestExtensions, ","))
 	extInput.PromptStyle = styles.TextInputPromptStyle
 	extInput.TextStyle = styles.TextInputTextStyle
 	extInput.Cursor.Style = styles.TextInputCursorStyle
 
 	minSizeInput := textinput.New()
-	minSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
 	minSizeInput.SetValue(latestMinSize)
 	minSize, _ := utils.ToBytes(latestMinSize)
 	minSizeInput.PromptStyle = styles.TextInputPromptStyle
@@ -95,7 +93,6 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, v
 	minSizeInput.Cursor.Style = styles.TextInputCursorStyle
 
 	maxSizeInput := textinput.New()
-	maxSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
 	maxSizeInput.SetValue(latestMaxSize)
 	maxSizeInput.PromptStyle = styles.TextInputPromptStyle
 	maxSizeInput.TextStyle = styles.TextInputTextStyle
@@ -124,6 +121,13 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, v
 	newerInput.PromptStyle = styles.TextInputPromptStyle
 	newerInput.TextStyle = styles.TextInputTextStyle
 	newerInput.Cursor.Style = styles.TextInputCursorStyle
+
+	extInput.Placeholder = "e.g. js,png,zip"
+	minSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
+	maxSizeInput.Placeholder = "e.g. 10b,10kb,10mb,10gb,10tb"
+	excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
+	olderInput.Placeholder = "e.g. 60 min, 1 hour, 7 days, 1 month"
+	newerInput.Placeholder = "e.g. 60 min, 1 hour, 7 days, 1 month"
 
 	// Create a proper delegate with visible height
 	delegate := list.NewDefaultDelegate()
@@ -270,225 +274,7 @@ func (m *CleanFilesModel) View() string {
 	content.WriteString("\n")
 
 	// Render active tab content
-	switch activeTab {
-	case 0: // Main tab
-		// Path input
-		pathStyle := styles.StandardInputStyle
-		if m.FocusedElement == "pathInput" {
-			pathStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("main_path_input", pathStyle.Render("Current Path: "+m.PathInput.View())))
-		content.WriteString("\n")
-
-		// If no path is set, show only the start button
-		if m.CurrentPath == "" {
-			startButtonStyle := styles.LaunchButtonStyle
-			if m.FocusedElement == "startButton" {
-				startButtonStyle = styles.LaunchButtonFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(zone.Mark("main_start_button", startButtonStyle.Render("📂 Launch")))
-			content.WriteString("\n")
-		} else {
-			// Show full interface when path is set
-			extStyle := styles.StandardInputStyle
-			if m.FocusedElement == "extInput" {
-				extStyle = styles.StandardInputFocusedStyle
-			}
-			content.WriteString("\n")
-			content.WriteString(zone.Mark("main_ext_input", extStyle.Render("Extensions: "+m.ExtInput.View())))
-			content.WriteString("\n")
-
-			// List content
-			var listContent strings.Builder
-			if !m.ShowDirs {
-				listContent.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
-					m.FilteredCount, utils.FormatSize(m.FilteredSize))))
-			} else {
-				listContent.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
-					filepath.Base(m.CurrentPath), len(m.DirList.Items()))))
-			}
-			listContent.WriteString("\n")
-
-			// List items
-			var activeList list.Model
-			if m.ShowDirs {
-				activeList = m.DirList
-			} else {
-				activeList = m.List
-			}
-
-			if len(activeList.Items()) == 0 {
-				if !m.ShowDirs {
-					listContent.WriteString("No files match your filters. Try changing extensions or size filters.")
-				} else {
-					listContent.WriteString("No directories found in this location.")
-				}
-			} else {
-				items := activeList.Items()
-				selectedIndex := activeList.Index()
-				totalItems := len(items)
-
-				visibleItems := 10
-				if visibleItems > totalItems {
-					visibleItems = totalItems
-				}
-
-				startIdx := 0
-				if selectedIndex > visibleItems-3 && totalItems > visibleItems {
-					startIdx = selectedIndex - (visibleItems / 2)
-					if startIdx+visibleItems > totalItems {
-						startIdx = totalItems - visibleItems
-					}
-				}
-				if startIdx < 0 {
-					startIdx = 0
-				}
-
-				endIdx := startIdx + visibleItems
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					item := items[i].(models.CleanItem)
-					icon := utils.GetFileIcon(item.Size, item.Path, item.IsDir)
-					filename := filepath.Base(item.Path)
-					sizeStr := ""
-					if item.Size >= 0 && !item.IsDir {
-						sizeStr = utils.FormatSize(item.Size)
-					} else if item.Size == -1 {
-						sizeStr = "UP TO DIR"
-					} else if item.IsDir {
-						sizeStr = "DIR"
-					}
-					prefix := "  "
-					style := lipgloss.NewStyle()
-
-					if i == selectedIndex {
-						prefix = "> "
-						style = style.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#0066ff")).Bold(true)
-					} else if item.IsDir && item.Size != -1 {
-						style = style.Foreground(lipgloss.Color("#ccc"))
-					} else if item.Size == -1 {
-						style = style.Foreground(lipgloss.Color("#578cdb"))
-					}
-
-					const iconWidth = 3
-					const filenameWidth = 45
-					const sizeWidth = 10
-
-					iconDisplay := fmt.Sprintf("%-*s", iconWidth, icon)
-					displayName := filename
-					if len(displayName) > filenameWidth {
-						displayName = displayName[:filenameWidth-3] + "..."
-					}
-					sizeDisplay := fmt.Sprintf("%-*s", sizeWidth, sizeStr)
-
-					line := fmt.Sprintf("%s%s%-*s%s",
-						prefix,
-						iconDisplay,
-						filenameWidth, displayName,
-						sizeDisplay)
-
-					listContent.WriteString(style.Render(line))
-					listContent.WriteString("\n")
-				}
-
-				if totalItems > visibleItems {
-					scrollInfo := fmt.Sprintf("\nShowing %d-%d of %d items (%.0f%%)",
-						startIdx+1, endIdx, totalItems,
-						float64(selectedIndex+1)/float64(totalItems)*100)
-					listContent.WriteString(lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#999999")).Render(scrollInfo))
-				}
-			}
-
-			listStyle := styles.ListStyle
-			if m.FocusedElement == "list" {
-				listStyle = styles.ListFocusedStyle
-			}
-			content.WriteString(listStyle.Render(listContent.String()))
-
-			// Buttons section
-			content.WriteString("\n\n")
-			if m.FocusedElement == "dirButton" {
-				content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonFocusedStyle.Render("➡️  Show directories")))
-			} else {
-				content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonStyle.Render("➡️  Show directories")))
-			}
-			content.WriteString("  ")
-
-			if m.FocusedElement == "deleteButton" {
-				content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning")))
-			} else {
-				content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonStyle.Render("🗑️  Start cleaning")))
-			}
-			content.WriteString("\n")
-		}
-
-	case 1: // Filters tab
-		content.WriteString(styles.TitleStyle.Render("File Filters"))
-		content.WriteString("\n\n")
-
-		// Exclude patterns
-		excludeStyle := styles.StandardInputStyle
-		if m.FocusedElement == "excludeInput" {
-			excludeStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("filters_exclude_input", excludeStyle.Render("Exclude patterns: "+m.ExcludeInput.View())))
-		content.WriteString("\n\n")
-
-		// Size filters
-		minSizeStyle := styles.StandardInputStyle
-		if m.FocusedElement == "minSizeInput" {
-			minSizeStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("filters_min_size_input", minSizeStyle.Render("Min size (bytes): "+m.MinSizeInput.View())))
-		content.WriteString("\n")
-
-		maxSizeStyle := styles.StandardInputStyle
-		if m.FocusedElement == "maxSizeInput" {
-			maxSizeStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("filters_max_size_input", maxSizeStyle.Render("Max size (bytes): "+m.MaxSizeInput.View())))
-		content.WriteString("\n\n")
-
-		// Date filters
-		olderStyle := styles.StandardInputStyle
-		if m.FocusedElement == "olderInput" {
-			olderStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("filters_older_input", olderStyle.Render("Older than (days): "+m.OlderInput.View())))
-		content.WriteString("\n")
-
-		newerStyle := styles.StandardInputStyle
-		if m.FocusedElement == "newerInput" {
-			newerStyle = styles.StandardInputFocusedStyle
-		}
-		content.WriteString(zone.Mark("filters_newer_input", newerStyle.Render("Newer than (days): "+m.NewerInput.View())))
-
-	case 2: // Options tab
-		content.WriteString(styles.TitleStyle.Render("Cleaning Options"))
-		content.WriteString("\n\n")
-
-		for i, option := range options.DefaultCleanOption {
-			optionStyle := styles.OptionStyle
-			if m.FocusedElement == fmt.Sprintf("option%d", i+1) {
-				optionStyle = styles.OptionFocusedStyle
-			}
-
-			icon := "☐"
-			if m.OptionState[option] {
-				icon = "☑"
-			}
-
-			content.WriteString(zone.Mark(fmt.Sprintf("option_%d", i+1), optionStyle.Render(fmt.Sprintf("%s %s", icon, option))))
-			content.WriteString("\n")
-		}
-
-	default:
-		content.WriteString(m.TabManager.GetActiveTab().View())
-	}
+	content.WriteString(m.TabManager.GetActiveTab().View())
 
 	// Add error message if there is one
 	if m.Error != nil && m.Error.IsVisible() {
@@ -518,11 +304,10 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle keyboard events directly
 		return m.Handle(msg)
 
 	case tea.MouseMsg:
-		// Only process mouse down events
+		// nolint:staticcheck
 		if msg.Type == tea.MouseLeft && msg.Action == tea.MouseActionPress {
 			// Handle tab clicks
 			for i := 0; i < 5; i++ {
@@ -560,23 +345,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if zone.Get("main_start_button").InBounds(msg) {
 				m.blurAllInputs()
 				m.FocusedElement = "startButton"
-				path := m.PathInput.Value()
-				if path != "" {
-					expandedPath := utils.ExpandTilde(path)
-					if _, err := os.Stat(expandedPath); err == nil {
-						m.CurrentPath = expandedPath
-						m.FocusedElement = "pathInput"
-						m.PathInput.Focus()
-						m.IsLaunched = true
-						m.Error = nil
-						return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
-					} else {
-						return m, func() tea.Msg {
-							return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid path: %s", path))
-						}
-					}
-				}
-				return m, nil
+				return m.HandlePressStartButton()
 			}
 
 			// Handle extensions input click
@@ -591,12 +360,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if zone.Get("main_dir_button").InBounds(msg) {
 				m.blurAllInputs()
 				m.FocusedElement = "dirButton"
-				m.ShowDirs = !m.ShowDirs
-				if m.ShowDirs {
-					return m, m.LoadDirs()
-				} else {
-					return m, m.LoadFiles()
-				}
+				return m.HandlePressDirButton()
 			}
 
 			// Handle delete button click
@@ -644,9 +408,9 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle options tab clicks
 			for i, option := range options.DefaultCleanOption {
-				if zone.Get(fmt.Sprintf("option_%d", i+1)).InBounds(msg) {
+				if zone.Get(fmt.Sprintf("clean_option_%d", i+1)).InBounds(msg) {
 					m.blurAllInputs()
-					m.FocusedElement = fmt.Sprintf("option%d", i+1)
+					m.FocusedElement = fmt.Sprintf("clean_option_%d", i+1)
 					m.OptionState[option] = !m.OptionState[option]
 
 					// If this is the options.ShowHiddenFiles option, reload files
@@ -1339,7 +1103,7 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 			m.ExcludeInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
-		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), true)
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, "clean_option_", len(options.DefaultCleanOption), true)
 	}
 
 	return m, nil
@@ -1347,9 +1111,8 @@ func (m *CleanFilesModel) handleTab() (tea.Model, tea.Cmd) {
 
 func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 	// Handle space key for options
-	if strings.HasPrefix(m.FocusedElement, "option") {
-		// Extract option number from the focused element (e.g. "option1" -> "1")
-		optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+	if strings.HasPrefix(m.FocusedElement, "clean_option_") {
+		optionNum := strings.TrimPrefix(m.FocusedElement, "clean_option_")
 		idx, err := strconv.Atoi(optionNum)
 		if err != nil {
 			return m, nil
@@ -1369,7 +1132,7 @@ func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 		}
 
 		// Keep focus on the current option
-		m.FocusedElement = "option" + optionNum
+		m.FocusedElement = "clean_option_" + optionNum
 
 		// If this is the options.ShowHiddenFiles option, reload files
 		if optName == options.ShowHiddenFiles {
@@ -1437,7 +1200,7 @@ func (m *CleanFilesModel) handleShiftTab() (tea.Model, tea.Cmd) {
 			m.OlderInput.Focus()
 		}
 	case 2: // Tab navigation for Options tab
-		m.FocusedElement = options.GetNextOption(m.FocusedElement, len(options.DefaultCleanOption), false)
+		m.FocusedElement = options.GetNextOption(m.FocusedElement, "clean_option_", len(options.DefaultCleanOption), false)
 	}
 
 	return m, nil
@@ -1487,7 +1250,7 @@ func (m *CleanFilesModel) handleF2() (tea.Model, tea.Cmd) {
 
 func (m *CleanFilesModel) handleF3() (tea.Model, tea.Cmd) {
 	m.TabManager.SetActiveTabIndex(2)
-	m.FocusedElement = "option1"
+	m.FocusedElement = "clean_option_1"
 	return m, nil
 }
 func (m *CleanFilesModel) handleF4() (tea.Model, tea.Cmd) {
@@ -1509,22 +1272,7 @@ func (m *CleanFilesModel) handleAltC() (tea.Model, tea.Cmd) {
 func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 	if m.CurrentPath == "" {
 		if m.FocusedElement == "startButton" {
-			path := m.PathInput.Value()
-			if path != "" {
-				expandedPath := utils.ExpandTilde(path)
-				if _, err := os.Stat(expandedPath); err == nil {
-					m.CurrentPath = expandedPath
-					m.FocusedElement = "pathInput"
-					m.PathInput.Focus()
-					m.IsLaunched = true // Mark as launched when path is set
-					m.Error = nil       // Clear error when valid path is entered
-					return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
-				} else {
-					return m, func() tea.Msg {
-						return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid path: %s", path))
-					}
-				}
-			}
+			return m.HandlePressStartButton()
 		}
 	} else {
 		switch m.FocusedElement {
@@ -1577,13 +1325,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 			// Update the list of files when pressing Enter in the input fields
 			return m, m.LoadFiles()
 		case "dirButton":
-			if m.ShowDirs {
-				m.ShowDirs = false
-				return m, m.LoadFiles()
-			} else {
-				m.ShowDirs = true
-				return m, m.LoadDirs()
-			}
+			return m.HandlePressDirButton()
 		case "deleteButton":
 			return m.OnDelete()
 		case "list":
@@ -1612,8 +1354,8 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 		default:
-			if strings.HasPrefix(m.FocusedElement, "option") {
-				optionNum := strings.TrimPrefix(m.FocusedElement, "option")
+			if strings.HasPrefix(m.FocusedElement, "clean_option_") {
+				optionNum := strings.TrimPrefix(m.FocusedElement, "clean_option_")
 				idx, err := strconv.Atoi(optionNum)
 				if err != nil {
 					return m, nil
@@ -1630,7 +1372,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 					m.Logger.Log(logging.DEBUG, fmt.Sprintf("Option '%s' toggled to: %v", optName, m.OptionState[optName]))
 				}
 
-				m.FocusedElement = "option" + optionNum
+				m.FocusedElement = "clean_option_" + optionNum
 
 				if optName == options.ShowHiddenFiles {
 					return m, m.LoadFiles()
@@ -1641,6 +1383,47 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *CleanFilesModel) HandlePressDirButton() (tea.Model, tea.Cmd) {
+	if m.ShowDirs {
+		m.ShowDirs = false
+		return m, m.LoadFiles()
+	} else {
+		m.ShowDirs = true
+		return m, m.LoadDirs()
+	}
+}
+
+func (m *CleanFilesModel) HandlePressStartButton() (tea.Model, tea.Cmd) {
+	path := m.PathInput.Value()
+	if path != "" {
+		expandedPath := utils.ExpandTilde(path)
+		if _, err := os.Stat(expandedPath); err == nil {
+			m.CurrentPath = expandedPath
+			m.FocusedElement = "pathInput"
+			m.PathInput.Focus()
+			m.IsLaunched = true
+			m.Error = nil // Clear error when valid path is entered
+			return m, tea.Batch(m.LoadFiles(), m.CalculateDirSizeAsync())
+		} else {
+			return m, func() tea.Msg {
+				return errors.New(errors.ErrorTypeValidation, fmt.Sprintf("Invalid path: %s", path))
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m *CleanFilesModel) blurAllInputs() {
+	m.PathInput.Blur()
+	m.ExtInput.Blur()
+	m.MinSizeInput.Blur()
+	m.MaxSizeInput.Blur()
+	m.ExcludeInput.Blur()
+	m.OlderInput.Blur()
+	m.NewerInput.Blur()
 }
 
 func (m *CleanFilesModel) GetCurrentPath() string {
@@ -1787,14 +1570,4 @@ func (m *CleanFilesModel) SetExcludeInput(input textinput.Model) {
 
 func (m *CleanFilesModel) SetSizeInput(input textinput.Model) {
 	m.MinSizeInput = input
-}
-
-func (m *CleanFilesModel) blurAllInputs() {
-	m.PathInput.Blur()
-	m.ExtInput.Blur()
-	m.MinSizeInput.Blur()
-	m.MaxSizeInput.Blur()
-	m.ExcludeInput.Blur()
-	m.OlderInput.Blur()
-	m.NewerInput.Blur()
 }

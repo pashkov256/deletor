@@ -15,7 +15,7 @@ func RunTUI(
 ) error {
 	zone.NewGlobal()
 	app := tui.NewApp(filemanager, rules, validator)
-	p := tea.NewProgram(app, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(app, tea.WithAltScreen(), tea.WithMouseAllMotion())
 	_, err := p.Run()
 	return err
 }

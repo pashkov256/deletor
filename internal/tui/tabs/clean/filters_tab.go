@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 )
@@ -18,45 +19,42 @@ func (t *FiltersTab) Update(msg tea.Msg) tea.Cmd { return nil }
 func (t *FiltersTab) View() string {
 	var content strings.Builder
 
-	excludeInput := t.model.GetExcludeInput()
-	minSizeInput := t.model.GetMinSizeInput()
-	maxSizeInput := t.model.GetMaxSizeInput()
-	olderInput := t.model.GetOlderInput()
-	newerInput := t.model.GetNewerInput()
-
+	// Exclude patterns
 	excludeStyle := styles.StandardInputStyle
-	minSizeStyle := styles.StandardInputStyle
-	maxSizeStyle := styles.StandardInputStyle
-	olderStyle := styles.StandardInputStyle
-	newerStyle := styles.StandardInputStyle
-
-	excludeInput.Placeholder = "specific files/paths (e.g. data,backup)"
-	olderInput.Placeholder = "e.g. 60 min, 1 hour, 7 days, 1 month"
-	newerInput.Placeholder = "e.g. 60 min, 1 hour, 7 days, 1 month"
-
-	switch t.model.GetFocusedElement() {
-	case "excludeInput":
+	if t.model.GetFocusedElement() == "excludeInput" {
 		excludeStyle = styles.StandardInputFocusedStyle
-	case "minSizeInput":
+	}
+	content.WriteString(zone.Mark("filters_exclude_input", excludeStyle.Render("Exclude: "+t.model.GetExcludeInput().View())))
+	content.WriteString("\n")
+
+	// Size filters
+	minSizeStyle := styles.StandardInputStyle
+	if t.model.GetFocusedElement() == "minSizeInput" {
 		minSizeStyle = styles.StandardInputFocusedStyle
-	case "maxSizeInput":
+	}
+	content.WriteString(zone.Mark("filters_min_size_input", minSizeStyle.Render("Min size: "+t.model.GetMinSizeInput().View())))
+	content.WriteString("\n")
+
+	maxSizeStyle := styles.StandardInputStyle
+	if t.model.GetFocusedElement() == "maxSizeInput" {
 		maxSizeStyle = styles.StandardInputFocusedStyle
-	case "olderInput":
+	}
+	content.WriteString(zone.Mark("filters_max_size_input", maxSizeStyle.Render("Max size: "+t.model.GetMaxSizeInput().View())))
+	content.WriteString("\n")
+
+	// Date filters
+	olderStyle := styles.StandardInputStyle
+	if t.model.GetFocusedElement() == "olderInput" {
 		olderStyle = styles.StandardInputFocusedStyle
-	case "newerInput":
+	}
+	content.WriteString(zone.Mark("filters_older_input", olderStyle.Render("Older than: "+t.model.GetOlderInput().View())))
+	content.WriteString("\n")
+
+	newerStyle := styles.StandardInputStyle
+	if t.model.GetFocusedElement() == "newerInput" {
 		newerStyle = styles.StandardInputFocusedStyle
 	}
+	content.WriteString(zone.Mark("filters_newer_input", newerStyle.Render("Newer than: "+t.model.GetNewerInput().View())))
 
-	content.WriteString(excludeStyle.Render("Exclude: " + excludeInput.View()))
-	content.WriteString("\n")
-	content.WriteString(minSizeStyle.Render("Min size: " + minSizeInput.View()))
-	content.WriteString("\n")
-	content.WriteString(maxSizeStyle.Render("Max size: " + maxSizeInput.View()))
-	content.WriteString("\n")
-	content.WriteString(olderStyle.Render("Modified more: " + olderInput.View()))
-	content.WriteString("\n")
-	content.WriteString(newerStyle.Render("Modified less: " + newerInput.View()))
-	content.WriteString("\n\n")
-	content.WriteString("Press on any input in focus to update the file list, or CRTL+R")
 	return content.String()
 }

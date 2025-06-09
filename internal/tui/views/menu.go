@@ -5,25 +5,10 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/styles"
-)
-
-var (
-	docStyle = lipgloss.NewStyle().
-			Padding(1, 1).
-			Align(lipgloss.Center)
-
-	buttonStyle = lipgloss.NewStyle().
-			PaddingLeft(2).
-			PaddingRight(2).
-			Foreground(lipgloss.Color("#FFFFFF"))
-
-	selectedButtonStyle = buttonStyle.Copy().
-				Foreground(lipgloss.Color("#1E90FF"))
 )
 
 type MainMenu struct {
@@ -44,10 +29,10 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "tab":
-			return m.handleTab()
-		case "shift+tab":
-			return m.handleShiftTab()
+		case "tab", "down":
+			return m.HandleFocusBottom()
+		case "shift+tab", "up":
+			return m.HandleFocusTop()
 		case "enter":
 			return m, func() tea.Msg {
 				return tea.KeyMsg{
@@ -84,19 +69,12 @@ func (m *MainMenu) View() string {
 	content.WriteString("\n\n")
 
 	// Menu items from constants
-	items := []string{
-		menu.CleanFIlesTitle,
-		menu.CleanCacheTitle,
-		menu.ManageRulesTitle,
-		menu.StatisticsTitle,
-		menu.ExitTitle,
-	}
 
 	// Render buttons
-	for i, item := range items {
-		style := buttonStyle
+	for i, item := range menu.MenuItems {
+		style := styles.MenuItem
 		if i == m.SelectedIndex {
-			style = selectedButtonStyle
+			style = styles.SelectedMenuItemStyle
 		}
 
 		button := style.Render(item)
@@ -104,21 +82,28 @@ func (m *MainMenu) View() string {
 		content.WriteString("\n")
 	}
 
-	// Help text
 	content.WriteString("\n")
 	content.WriteString(help.NavigateHelpText)
 
-	return zone.Scan(styles.AppStyle.Render(docStyle.Render(content.String())))
+	return zone.Scan(styles.AppStyle.Render(styles.DocStyle.Render(content.String())))
 }
 
-// handleTab moves the cursor down in the list
-func (m *MainMenu) handleTab() (tea.Model, tea.Cmd) {
-	m.SelectedIndex = (m.SelectedIndex + 1) % 5
+// HandleFocusBottom moves focus down
+func (m *MainMenu) HandleFocusBottom() (tea.Model, tea.Cmd) {
+	if m.SelectedIndex < len(menu.MenuItems)-1 {
+		m.SelectedIndex++
+	} else {
+		m.SelectedIndex = 0
+	}
 	return m, nil
 }
 
-// handleShiftTab moves the cursor up in the list
-func (m *MainMenu) handleShiftTab() (tea.Model, tea.Cmd) {
-	m.SelectedIndex = (m.SelectedIndex - 1 + 5) % 5
+// HandleFocusTop moves focus up
+func (m *MainMenu) HandleFocusTop() (tea.Model, tea.Cmd) {
+	if m.SelectedIndex > 0 {
+		m.SelectedIndex--
+	} else {
+		m.SelectedIndex = len(menu.MenuItems) - 1
+	}
 	return m, nil
 }

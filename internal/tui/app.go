@@ -73,14 +73,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if a.page == menuPage {
-				items := []string{
-					menu.CleanFIlesTitle,
-					menu.CleanCacheTitle,
-					menu.ManageRulesTitle,
-					menu.StatisticsTitle,
-					menu.ExitTitle,
-				}
-				switch items[a.menu.SelectedIndex] {
+				switch menu.MenuItems[a.menu.SelectedIndex] {
 				case menu.CleanFIlesTitle:
 					a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
 					cmds = append(cmds, a.cleanFilesModel.Init(), a.cleanFilesModel.LoadFiles())
@@ -89,8 +82,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a.page = cachePage
 				case menu.ManageRulesTitle:
 					a.page = rulesPage
-				case menu.StatisticsTitle:
-					a.page = statsPage
+
 				case menu.ExitTitle:
 					return a, tea.Quit
 				}

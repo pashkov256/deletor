@@ -16,7 +16,7 @@ type RulesModel interface {
 	GetNewerInput() textinput.Model
 	GetFocusedElement() string
 	GetOptionState() map[string]bool
-
+	GetRulesPath() string
 	// Setters
 	SetFocusedElement(element string)
 	SetOptionState(option string, state bool)

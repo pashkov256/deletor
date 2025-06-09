@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/views"
@@ -35,6 +36,19 @@ func setupTestModel() *views.RulesModel {
 	return views.NewRulesModel(rulesInstance, validator)
 }
 
+func setupTest() (*views.RulesModel, *tea.Program) {
+	// Initialize bubblezone
+	zone.NewGlobal()
+
+	// Create test model
+	rulesManager := rules.NewRules()
+	validator := validation.NewValidator()
+	model := views.NewRulesModel(rulesManager, validator)
+	program := tea.NewProgram(model)
+
+	return model, program
+}
+
 func TestRulesModel_Init(t *testing.T) {
 	model := setupTestModel()
 	cmd := model.Init()
@@ -52,46 +66,47 @@ func TestRulesModel_Init(t *testing.T) {
 
 func TestRulesModel_View(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupModel     func(*views.RulesModel)
-		expectedOutput string
+		name     string
+		setup    func(*views.RulesModel)
+		expected string
 	}{
 		{
 			name: "Main tab view",
-			setupModel: func(m *views.RulesModel) {
+			setup: func(m *views.RulesModel) {
 				m.Init()
 				m.TabManager.SetActiveTabIndex(0)
 				m.FocusedElement = "locationInput"
 			},
-			expectedOutput: "🗂️ [F1] Main",
+			expected: "🗂️ [F1] Main",
 		},
 		{
 			name: "Filters tab view",
-			setupModel: func(m *views.RulesModel) {
+			setup: func(m *views.RulesModel) {
 				m.Init()
 				m.TabManager.SetActiveTabIndex(1)
 				m.FocusedElement = "extensionsInput"
 			},
-			expectedOutput: "🧹 [F2] Filters",
+			expected: "🧹 [F2] Filters",
 		},
 		{
 			name: "Options tab view",
-			setupModel: func(m *views.RulesModel) {
+			setup: func(m *views.RulesModel) {
 				m.Init()
 				m.TabManager.SetActiveTabIndex(2)
-				m.FocusedElement = "option1"
+				m.FocusedElement = "rules_option_1"
 			},
-			expectedOutput: "⚙️ [F3] Options",
+
+			expected: "⚙️ [F3] Options",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := setupTestModel()
-			tt.setupModel(model)
+			model, _ := setupTest()
+			tt.setup(model)
 			view := model.View()
-			if !strings.Contains(view, tt.expectedOutput) {
-				t.Errorf("View() output does not contain expected text: %s", tt.expectedOutput)
+			if !strings.Contains(view, tt.expected) {
+				t.Errorf("View() output does not contain expected text: %s", tt.expected)
 			}
 		})
 	}
@@ -198,7 +213,7 @@ func TestRulesModel_TabNavigation(t *testing.T) {
 			key:           tea.KeyF3,
 			initialTab:    0,
 			expectedTab:   2,
-			expectedFocus: "option1",
+			expectedFocus: "rules_option_1",
 		},
 	}
 
@@ -217,7 +232,7 @@ func TestRulesModel_TabNavigation(t *testing.T) {
 				model.FocusedElement = "extensionsInput"
 				model.ExtensionsInput.Focus()
 			case 2:
-				model.FocusedElement = "option1"
+				model.FocusedElement = "rules_option_1"
 			}
 
 			// Handle the key press
@@ -274,7 +289,7 @@ func TestRulesModel_OptionToggling(t *testing.T) {
 			if optionIndex == -1 {
 				t.Fatalf("Option %s not found in DefaultCleanOption", tt.optionKey)
 			}
-			model.FocusedElement = fmt.Sprintf("option%d", optionIndex)
+			model.FocusedElement = fmt.Sprintf("rules_option_%d", optionIndex)
 
 			// Simulate space key press
 			updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace})

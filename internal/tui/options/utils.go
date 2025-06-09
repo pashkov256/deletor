@@ -34,10 +34,10 @@ func GetEmojiByCleanOption(optionName string) string {
 }
 
 // GetNextOption returns the next or previous option in a circular manner
-func GetNextOption(currentOption string, maxOptions int, forward bool) string {
+func GetNextOption(currentOption, optionPrefix string, maxOptions int, forward bool) string {
 	currentNum := 1
-	if strings.HasPrefix(currentOption, "option") {
-		numStr := strings.TrimPrefix(currentOption, "option")
+	if strings.HasPrefix(currentOption, optionPrefix) {
+		numStr := strings.TrimPrefix(currentOption, optionPrefix)
 		if num, err := strconv.Atoi(numStr); err == nil {
 			currentNum = num
 		}
@@ -56,5 +56,5 @@ func GetNextOption(currentOption string, maxOptions int, forward bool) string {
 		}
 	}
 
-	return fmt.Sprintf("option%d", nextNum)
+	return fmt.Sprintf(optionPrefix + fmt.Sprintf("%d", nextNum))
 }
