@@ -1,8 +1,10 @@
 package validation
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pashkov256/deletor/internal/validation"
@@ -116,6 +118,81 @@ func TestValidator_ValidateExtension(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateExtension(%q) error = %v, wantErr %v",
 					tt.ext, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateTimeDuration(t *testing.T) {
+	errString := "expected format: number followed by time unit (sec, min, hour, day, week, month, year)"
+	tests := []struct {
+		name     string
+		input    string
+		expected error
+	}{
+		// Valid cases
+		{"Valid seconds singular", "1 sec", nil},
+		{"Valid seconds plural", "10 secs", nil},
+		{"Valid minutes singular", "1 min", nil},
+		{"Valid minutes plural", "30 mins", nil},
+		{"Valid hours singular", "1 hour", nil},
+		{"Valid hours plural", "24 hours", nil},
+		{"Valid days singular", "1 day", nil},
+		{"Valid days plural", "7 days", nil},
+		{"Valid weeks singular", "1 week", nil},
+		{"Valid weeks plural", "4 weeks", nil},
+		{"Valid months singular", "1 month", nil},
+		{"Valid months plural", "12 months", nil},
+		{"Valid years singular", "1 year", nil},
+		{"Valid years plural", "5 years", nil},
+		{"Valid with space", "5  sec", nil},
+		{"Valid with multiple spaces", "10   secs", nil},
+		{"Valid uppercase units", "1 WEEK", nil},
+		{"Valid mixed case units", "1 mOnTh", nil},
+		{"Valid large number", "9999999999999 years", nil},
+		{"Valid no space", "5sec", nil},
+		{"Valid minimal space", "5 sec", nil},
+		{"Valid extra space", "5  sec", nil},
+		{"Newline character", "10\nsec", nil},
+		{"Tab character", "10\tsec", nil},
+		{"Unit without s", "2 year", nil},
+		{"Unit with extra s", "1 years", nil},
+
+		// Invalid cases
+		{"Empty string", "", errors.New(errString)},
+		{"Only spaces", "   ", errors.New(errString)},
+		{"Missing number", "sec", errors.New(errString)},
+		{"Missing unit", "10", errors.New(errString)},
+		{"Invalid unit", "10 apples", errors.New(errString)},
+		{"Negative number", "-5 sec", errors.New(errString)},
+		{"Decimal number", "5.5 sec", errors.New(errString)},
+		{"Trailing characters", "10 sec!", errors.New(errString)},
+		{"Leading characters", "about 10 sec", errors.New(errString)},
+		{"Multiple numbers", "10 20 sec", errors.New(errString)},
+		{"Invalid plural form", "1 secss", errors.New(errString)},
+		{"Invalid time unit", "10 lightyears", errors.New(errString)},
+		{"Special characters", "#$% sec", errors.New(errString)},
+		{"Scientific notation", "1e5 sec", errors.New(errString)},
+		{"Comma separated", "1,000 sec", errors.New(errString)},
+	}
+
+	v := validation.NewValidator()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := v.ValidateTimeDuration(tt.input)
+			if tt.expected == nil {
+				if err != nil {
+					t.Errorf("Input: %s", tt.input)
+				}
+			} else {
+				if err != nil {
+					if !strings.Contains(err.Error(), tt.expected.Error()) {
+						t.Errorf("ValidateTimeDuration(%q) error = %v, want containing %v", tt.input, err, tt.expected)
+					}
+				} else {
+					t.Errorf("ValidateTimeDuration(%q) expected error but got nil", tt.input)
+				}
 			}
 		})
 	}
