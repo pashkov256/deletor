@@ -71,7 +71,7 @@ func (m *Manager) scan(path string) ScanResult {
 }
 
 // ClearCache removes all files from cache locations using OS-specific deletion methods
-func (m *Manager) ClearCache() {
+func (m *Manager) ClearCache() (deleteError error) {
 	for _, location := range m.locations {
 		filepath.Walk(location.Path, func(path string, info os.FileInfo, err error) error {
 			if info == nil {
@@ -86,6 +86,8 @@ func (m *Manager) ClearCache() {
 				// Try normal deletion first
 				err := os.Remove(path)
 				if err != nil {
+					deleteError = err
+
 					if runtime.GOOS == "windows" {
 						err := deleteFileWithWindowsAPI(path)
 						if err != nil {
@@ -105,6 +107,8 @@ func (m *Manager) ClearCache() {
 			return nil
 		})
 	}
+
+	return deleteError
 }
 func (m *Manager) GetOS() OS {
 	return m.os
