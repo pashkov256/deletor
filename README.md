@@ -60,28 +60,21 @@ deletor -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,
 go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data,backup
 ```
 
-### Arguments:
-`-e` — comma-separated list of extensions (for example, mp4,zip,jpg).
+### ⚙️ CLI Flags
 
-`-d` — the path to the file search directory.
-
-`--min-size` — minimum file size to delete (for example, 10 kb, 1mb, 1gb).
-
-`--max-size` — maximum file size to delete (for example, 10kb, 1mb, 1gb).
-
-`--older` — Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)
-
-`--newer` — Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)
-
-`--exclude` - exclude specific files/paths (e.g. data,backup)
-
-`-subdirs` - include subdirectories in scan, default false
-
-`-prune-empty` - delete empty folders after scan
-
-`-progress` - display a progress bar during file scanning
-
-`-skip-confirm` - skip the confirmation of deletion
+| Flags           | Description                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| `-e`           | Comma-separated list of extensions (e.g., `mp4,zip,jpg`).                   |
+| `-d`           | Path to the file search directory.                                          |
+| `--min-size`   | Minimum file size to delete (e.g., `10kb`, `1mb`, `1gb`).                   |
+| `--max-size`   | Maximum file size to delete (e.g., `10kb`, `1mb`, `1gb`).                   |
+| `--older`      | Modification time older than (e.g., `1sec`, `2min`, `3hour`, `4day`).       |
+| `--newer`      | Modification time newer than (e.g., `1sec`, `2min`, `3hour`, `4day`).       |
+| `--exclude`    | Exclude specific files/paths (e.g., `data`, `backup`).                      |
+| `-subdirs`     | Include subdirectories in scan. Default is false.                           |
+| `-prune-empty` | Delete empty folders after scan.                                            |
+| `-progress`    | Display a progress bar during file scanning.                                |
+| `-skip-confirm`| Skip the confirmation of deletion.                                          |
 
 
 ## ✨ The Power of Dual Modes: TUI and CLI
