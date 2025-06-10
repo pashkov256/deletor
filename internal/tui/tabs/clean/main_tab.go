@@ -136,7 +136,7 @@ func (t *MainTab) View() string {
 
 				// Check if file is selected
 				if !t.model.GetShowDirs() && t.model.GetSelectedFiles()[item.Path] {
-					style = style.Foreground(lipgloss.Color("#FFA500")).Bold(true)
+					style = styles.SelectedFileItem
 				}
 
 				const iconWidth = 3

@@ -22,6 +22,8 @@ var (
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1).Bold(true)
 
+	SelectedFileItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#f5a402")).Bold(true)
+
 	DocStyle = lipgloss.NewStyle().
 			Padding(1, 1)
 

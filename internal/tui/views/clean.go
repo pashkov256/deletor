@@ -707,7 +707,46 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	stats.TrashedFiles = 0
 	stats.TrashedSize = 0
 
-	if m.OptionState[options.IncludeSubfolders] {
+	// return m.DeleteUserSelectedFiles(stats)
+	if len(m.SelectedFiles) > 0 {
+		stats.TotalFiles = int64(m.SelectedCount)
+		stats.TotalSize = m.SelectedSize
+
+		if m.OptionState[options.SendFilesToTrash] {
+			for filePath := range m.SelectedFiles {
+				m.Filemanager.MoveFileToTrash(filePath)
+			}
+			stats.TrashedFiles = int64(m.SelectedCount)
+			stats.TrashedSize = m.SelectedSize
+		} else {
+			for filePath := range m.SelectedFiles {
+				os.Remove(filePath)
+			}
+			stats.DeletedFiles = int64(m.SelectedCount)
+			stats.DeletedSize = m.SelectedSize
+		}
+		// Update end time
+		stats.EndTime = time.Now()
+
+		// Log final statistics
+		if m.Logger != nil {
+			m.Logger.Log(logging.INFO, fmt.Sprintf("Delete operation completed. Statistics: %+v", stats))
+			m.Logger.UpdateStats(stats)
+		}
+
+		// Update all LogTabs
+		if m.TabManager != nil {
+			for _, tab := range m.TabManager.GetAllTabs() {
+				if logTab, ok := tab.(*clean.LogTab); ok {
+					logTab.UpdateStats(stats)
+				}
+			}
+		}
+
+		return m, m.LoadFiles()
+	}
+
+	if m.OptionState[options.IncludeSubfolders] && len(m.SelectedFiles) == 0 {
 		var olderDuration, newerDuration time.Time
 		var err error
 
@@ -744,7 +783,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	}
 
 	// Process files based on Confirm deletion option
-	if m.OptionState[options.ConfirmDeletion] {
+	if m.OptionState[options.ConfirmDeletion] && len(m.SelectedFiles) == 0 {
 		// Single file deletion mode
 		selectedItem := m.List.SelectedItem()
 		if selectedItem == nil {
@@ -874,14 +913,46 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Clear selections after deletion
-	m.SelectedFiles = make(map[string]bool)
-	m.SelectedSize = 0
-	m.SelectedCount = 0
-	m.LastSelectedIndex = -1
-
 	if m.OptionState[options.ExitAfterDeletion] {
 		return m, tea.Quit
+	}
+
+	return m, m.LoadFiles()
+}
+
+func (m *CleanFilesModel) DeleteUserSelectedFiles(stats *logging.ScanStatistics) (tea.Model, tea.Cmd) {
+
+	if len(m.SelectedFiles) > 0 {
+		stats.TotalFiles = int64(m.SelectedCount)
+		stats.TotalSize = m.SelectedSize
+
+		if m.OptionState[options.SendFilesToTrash] {
+			for filePath := range m.SelectedFiles {
+				m.Filemanager.MoveFileToTrash(filePath)
+			}
+			stats.TrashedFiles = int64(m.SelectedCount)
+			stats.TrashedSize = m.SelectedSize
+		} else {
+			for filePath := range m.SelectedFiles {
+				os.Remove(filePath)
+			}
+			stats.DeletedFiles = int64(m.SelectedCount)
+			stats.DeletedSize = m.SelectedSize
+		}
+
+		stats.EndTime = time.Now()
+
+		// Log final statistics
+		if m.Logger != nil {
+			m.Logger.Log(logging.INFO, fmt.Sprintf("Delete user selected files completed. Statistics: %+v", stats))
+			m.Logger.UpdateStats(stats)
+		}
+
+		// Clear selections after deletion
+		m.SelectedFiles = make(map[string]bool)
+		m.SelectedSize = 0
+		m.SelectedCount = 0
+		m.LastSelectedIndex = -1
 	}
 
 	return m, m.LoadFiles()
@@ -927,7 +998,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case "shift+up", "shift+down":
-		if !m.ShowDirs && m.FocusedElement == "list" {
+		if !m.ShowDirs {
 			// Get current item before update
 			selectedItem := m.List.SelectedItem()
 			if selectedItem != nil {
@@ -1108,7 +1179,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 	case "alt+up", "alt+down":
-		if !m.ShowDirs && m.FocusedElement == "list" {
+		if !m.ShowDirs {
 			// Get current item before update
 			selectedItem := m.List.SelectedItem()
 			if selectedItem != nil {
