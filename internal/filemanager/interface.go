@@ -15,6 +15,7 @@ type FileManager interface {
 	IsEmptyDir(dir string) bool
 	ExpandTilde(path string) string
 	CalculateDirSize(path string) int64
+	DeleteFile(filePath string)
 	MoveFileToTrash(filePath string)
 }
 

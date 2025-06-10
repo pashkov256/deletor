@@ -24,6 +24,7 @@ func GetFlags() *Config {
 	skipConfirm := flag.Bool("skip-confirm", false, "Skip the confirmation of deletion?")
 	older := flag.String("older", "", "Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 	newer := flag.String("newer", "", "Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
+	moveToTrash := flag.Bool("trash", false, "Move files to trash?")
 
 	flag.Parse()
 
@@ -85,6 +86,7 @@ func GetFlags() *Config {
 	config.Directory = *dir
 	config.SkipConfirm = *skipConfirm
 	config.DeleteEmptyFolders = *deleteEmptyFolders
+	config.MoveFileToTrash = *moveToTrash
 
 	return config
 }

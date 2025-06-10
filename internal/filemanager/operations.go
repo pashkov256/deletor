@@ -159,3 +159,8 @@ func (f *defaultFileManager) MoveFilesToTrash(dir string, extensions []string, e
 func (f *defaultFileManager) MoveFileToTrash(filePath string) {
 	wastebasket.Trash(filePath)
 }
+
+// DeleteFile deletes a single file
+func (f *defaultFileManager) DeleteFile(filePath string) {
+	os.Remove(filePath)
+}
