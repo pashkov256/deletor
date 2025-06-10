@@ -11,6 +11,11 @@ import (
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
+const (
+	confirmMsgDlt   string = "Delete these files?"
+	confirmMsgTrash string = "Move files to trash?"
+)
+
 func RunCLI(
 	fm filemanager.FileManager,
 	rules rules.Rules,
@@ -50,14 +55,27 @@ func RunCLI(
 		fmt.Println() // This is required for formatting
 		if !config.SkipConfirm {
 			fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
-			actionIsDelete = printer.AskForConfirmation("Delete these files?")
+			var msg string
+			if config.MoveFileToTrash {
+				msg = confirmMsgTrash
+			} else {
+				msg = confirmMsgDlt
+			}
+			actionIsDelete = printer.AskForConfirmation(msg)
 		}
 
 		if actionIsDelete {
-			for path := range toDeleteMap {
-				os.Remove(path)
+			if config.MoveFileToTrash {
+				for path := range toDeleteMap {
+					fm.MoveFileToTrash(path)
+				}
+				printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
+			} else {
+				for path := range toDeleteMap {
+					os.Remove(path)
+				}
+				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 			}
-			printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 
 			utils.LogDeletionToFile(toDeleteMap)
 		}

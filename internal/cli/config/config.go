@@ -17,6 +17,7 @@ type Config struct {
 	DeleteEmptyFolders bool      // Whether to remove empty directories
 	OlderThan          time.Time // Only process files older than this time
 	NewerThan          time.Time // Only process files newer than this time
+	MoveFileToTrash    bool      // // If true, files will be moved to trash instead of being permanently deleted
 }
 
 // LoadConfig initializes and returns a new Config instance with values from command-line flags
