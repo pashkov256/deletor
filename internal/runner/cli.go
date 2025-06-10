@@ -72,7 +72,7 @@ func RunCLI(
 				printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
 			} else {
 				for path := range toDeleteMap {
-					os.Remove(path)
+					fm.DeleteFile(path)
 				}
 				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 			}
