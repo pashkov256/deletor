@@ -86,10 +86,21 @@ func TestRunCLI_TrashFlag(t *testing.T) {
 			expectTrash:  false,
 		},
 		{
-			name: "Should move files to trash when trash flag is true",
+			name: "Should move files to trash when trash flag is true - without confirmation",
 			config: &config.Config{
 				Extensions:      []string{".txt"},
 				SkipConfirm:     true,
+				IncludeSubdirs:  true,
+				MoveFileToTrash: true,
+			},
+			expectDelete: false,
+			expectTrash:  true,
+		},
+		{
+			name: "Should move files to trash when trash flag is true - with confirmation",
+			config: &config.Config{
+				Extensions:      []string{".txt"},
+				SkipConfirm:     false,
 				IncludeSubdirs:  true,
 				MoveFileToTrash: true,
 			},
@@ -104,6 +115,25 @@ func TestRunCLI_TrashFlag(t *testing.T) {
 			defer cleanup()
 
 			tt.config.Directory = testDir
+
+			if !tt.config.SkipConfirm {
+				tmpFile, err := os.CreateTemp("", "input_*")
+				assert.NoError(t, err)
+				defer os.Remove(tmpFile.Name())
+
+				_, err = tmpFile.WriteString("y\n")
+				assert.NoError(t, err)
+				tmpFile.Close()
+
+				oldStdin := os.Stdin
+				defer func() { os.Stdin = oldStdin }()
+
+				// Opening a temporary file as stdin
+				file, err := os.Open(tmpFile.Name())
+				assert.NoError(t, err)
+				os.Stdin = file
+				defer file.Close()
+			}
 
 			// Create mock file manager
 			mockFm := &mockFileManager{
