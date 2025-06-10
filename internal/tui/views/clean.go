@@ -30,36 +30,40 @@ import (
 )
 
 type CleanFilesModel struct {
-	List            list.Model
-	ExtInput        textinput.Model
-	MinSizeInput    textinput.Model
-	MaxSizeInput    textinput.Model
-	PathInput       textinput.Model
-	ExcludeInput    textinput.Model
-	OlderInput      textinput.Model
-	NewerInput      textinput.Model
-	CurrentPath     string
-	Extensions      []string
-	MinSize         int64
-	MaxSize         int64
-	Exclude         []string
-	Options         []string
-	OptionState     map[string]bool
-	FocusedElement  string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "clean_option_1", "clean_option_2", "clean_option_3"
-	FileToDelete    *models.CleanItem
-	ShowDirs        bool
-	DirList         list.Model
-	DirSize         int64 // Cached directory size
-	CalculatingSize bool  // Flag to indicate size calculation in progress
-	FilteredSize    int64 // Total size of filtered files
-	FilteredCount   int   // Count of filtered files
-	Rules           rules.Rules
-	Filemanager     filemanager.FileManager
-	TabManager      *clean.CleanTabManager
-	Validator       *validation.Validator
-	Logger          *logging.Logger
-	Error           *errors.Error
-	IsLaunched      bool // Track if the app has been launched
+	List              list.Model
+	ExtInput          textinput.Model
+	MinSizeInput      textinput.Model
+	MaxSizeInput      textinput.Model
+	PathInput         textinput.Model
+	ExcludeInput      textinput.Model
+	OlderInput        textinput.Model
+	NewerInput        textinput.Model
+	CurrentPath       string
+	Extensions        []string
+	MinSize           int64
+	MaxSize           int64
+	Exclude           []string
+	Options           []string
+	OptionState       map[string]bool
+	FocusedElement    string // "pathInput", "extInput","excludeInput","olderInput","newerInput", "minSizeInput","maxSizeInput", "deleteButton","dirButton", "clean_option_1", "clean_option_2", "clean_option_3"
+	FileToDelete      *models.CleanItem
+	ShowDirs          bool
+	DirList           list.Model
+	DirSize           int64 // Cached directory size
+	CalculatingSize   bool  // Flag to indicate size calculation in progress
+	FilteredSize      int64 // Total size of filtered files
+	FilteredCount     int   // Count of filtered files
+	Rules             rules.Rules
+	Filemanager       filemanager.FileManager
+	TabManager        *clean.CleanTabManager
+	Validator         *validation.Validator
+	Logger            *logging.Logger
+	Error             *errors.Error
+	IsLaunched        bool            // Track if the app has been launched
+	SelectedFiles     map[string]bool // Track selected files by path
+	SelectedSize      int64           // Track selected files size
+	SelectedCount     int             // Track selected files count
+	LastSelectedIndex int             // Track last selected index for range selection
 }
 
 // Message for directory size updates
@@ -197,17 +201,21 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, v
 			options.ShowStatistics:        lastestRules.ShowStatistics,
 			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
 		},
-		FocusedElement:  "list",
-		ShowDirs:        false,
-		DirList:         dirList,
-		DirSize:         0,
-		CalculatingSize: false,
-		FilteredSize:    0,
-		FilteredCount:   0,
-		Rules:           rules,
-		Filemanager:     fileManager,
-		Validator:       validator,
-		IsLaunched:      expandedPath != "", // Set IsLaunched to true if path is already set
+		FocusedElement:    "list",
+		ShowDirs:          false,
+		DirList:           dirList,
+		DirSize:           0,
+		CalculatingSize:   false,
+		FilteredSize:      0,
+		FilteredCount:     0,
+		Rules:             rules,
+		Filemanager:       fileManager,
+		Validator:         validator,
+		IsLaunched:        expandedPath != "", // Set IsLaunched to true if path is already set
+		SelectedFiles:     make(map[string]bool),
+		SelectedSize:      0,
+		SelectedCount:     0,
+		LastSelectedIndex: -1,
 	}
 
 	// Initialize tab manager
@@ -290,8 +298,9 @@ func (m *CleanFilesModel) View() string {
 	} else {
 		ui = lipgloss.JoinVertical(lipgloss.Left,
 			content.String(),
-			help.CleanHelpText,
 			help.NavigateHelpText,
+			help.ListHelpText,
+			help.CleanHelpText,
 		)
 	}
 
@@ -690,16 +699,6 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		OperationType: "delete",
 	}
 
-	// Get selected item and all items
-	selectedItem := m.List.SelectedItem()
-	allItems := m.List.Items()
-
-	// Debug log
-	if m.Logger != nil {
-		m.Logger.Log(logging.DEBUG, fmt.Sprintf("Selected item: %+v", selectedItem))
-		m.Logger.Log(logging.DEBUG, fmt.Sprintf("Total items in list: %d", len(allItems)))
-	}
-
 	// Initialize counters
 	stats.TotalFiles = 0
 	stats.TotalSize = 0
@@ -747,6 +746,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	// Process files based on Confirm deletion option
 	if m.OptionState[options.ConfirmDeletion] {
 		// Single file deletion mode
+		selectedItem := m.List.SelectedItem()
 		if selectedItem == nil {
 			if m.Logger != nil {
 				m.Logger.Log(logging.DEBUG, "No file selected for deletion")
@@ -791,20 +791,37 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	} else {
 		// Batch deletion mode - process all selected files
-		if len(allItems) == 0 {
+		items := m.List.Items()
+		if len(items) == 0 {
 			if m.Logger != nil {
 				m.Logger.Log(logging.DEBUG, "No files to delete")
 			}
 			return m, nil
 		}
 
-		stats.TotalFiles = int64(len(allItems))
+		// Count selected files
+		selectedCount := 0
+		for _, item := range items {
+			cleanItem := item.(models.CleanItem)
+			if cleanItem.Size != -1 && m.SelectedFiles[cleanItem.Path] {
+				selectedCount++
+			}
+		}
 
-		for _, item := range allItems {
+		if selectedCount == 0 {
+			if m.Logger != nil {
+				m.Logger.Log(logging.DEBUG, "No files selected for deletion")
+			}
+			return m, nil
+		}
+
+		stats.TotalFiles = int64(selectedCount)
+
+		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
 
-			// Skip parent directory entry
-			if cleanItem.Size == -1 {
+			// Skip parent directory entry and unselected files
+			if cleanItem.Size == -1 || !m.SelectedFiles[cleanItem.Path] {
 				continue
 			}
 
@@ -857,6 +874,12 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Clear selections after deletion
+	m.SelectedFiles = make(map[string]bool)
+	m.SelectedSize = 0
+	m.SelectedCount = 0
+	m.LastSelectedIndex = -1
+
 	if m.OptionState[options.ExitAfterDeletion] {
 		return m, tea.Quit
 	}
@@ -903,6 +926,70 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
+	case "shift+up", "shift+down":
+		if !m.ShowDirs && m.FocusedElement == "list" {
+			// Get current item before update
+			selectedItem := m.List.SelectedItem()
+			if selectedItem != nil {
+				item := selectedItem.(models.CleanItem)
+				if item.Size != -1 {
+					m.SelectedFiles[item.Path] = true
+					m.SelectedSize += item.Size
+					m.SelectedCount++
+				}
+			}
+
+			// Create new message with just the direction
+			var directionMsg tea.KeyMsg
+			if msg.String() == "shift+up" {
+				directionMsg = tea.KeyMsg{Type: tea.KeyUp}
+			} else {
+				directionMsg = tea.KeyMsg{Type: tea.KeyDown}
+			}
+
+			// Update list position with just the direction
+			var cmd tea.Cmd
+			m.List, cmd = m.List.Update(directionMsg)
+
+			return m, cmd
+		}
+		return m, nil
+	case "ctrl+a":
+		if !m.ShowDirs {
+			items := m.List.Items()
+
+			// Check if any files are selected
+			hasSelected := false
+			for _, item := range items {
+				cleanItem := item.(models.CleanItem)
+				if cleanItem.Size != -1 && m.SelectedFiles[cleanItem.Path] {
+					hasSelected = true
+					break
+				}
+			}
+
+			// If any files are selected, deselect all
+			if hasSelected {
+				m.SelectedFiles = make(map[string]bool)
+				m.SelectedSize = 0
+				m.SelectedCount = 0
+			} else {
+				// Otherwise select all files
+				m.SelectedFiles = make(map[string]bool)
+				m.SelectedSize = 0
+				m.SelectedCount = 0
+				for _, item := range items {
+					cleanItem := item.(models.CleanItem)
+					if cleanItem.Size != -1 { // Skip parent directory entry
+						m.SelectedFiles[cleanItem.Path] = true
+						m.SelectedSize += cleanItem.Size
+						m.SelectedCount++
+					}
+				}
+			}
+			return m, nil
+		}
+		return m, nil
 	case "right":
 		if !strings.HasSuffix(m.FocusedElement, "Input") {
 			return m.handleArrowRight()
@@ -972,7 +1059,42 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.handleEnter()
+	case " ":
+		if !m.ShowDirs && m.FocusedElement == "list" {
+			selectedItem := m.List.SelectedItem()
+			if selectedItem == nil {
+				return m, nil
+			}
 
+			cleanItem, ok := selectedItem.(models.CleanItem)
+			if !ok {
+				return m, nil
+			}
+
+			// Skip parent directory entry
+			if cleanItem.Size == -1 {
+				return m, nil
+			}
+
+			// Toggle selection
+			if m.SelectedFiles == nil {
+				m.SelectedFiles = make(map[string]bool)
+			}
+
+			if m.SelectedFiles[cleanItem.Path] {
+				delete(m.SelectedFiles, cleanItem.Path)
+				m.SelectedSize -= cleanItem.Size
+				m.SelectedCount--
+			} else {
+				m.SelectedFiles[cleanItem.Path] = true
+				m.SelectedSize += cleanItem.Size
+				m.SelectedCount++
+			}
+
+			m.LastSelectedIndex = m.List.Index()
+			return m, nil
+		}
+		return m.handleSpace()
 	case "list":
 		var cmd tea.Cmd
 		var cmds []tea.Cmd
@@ -985,6 +1107,34 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
+	case "alt+up", "alt+down":
+		if !m.ShowDirs && m.FocusedElement == "list" {
+			// Get current item before update
+			selectedItem := m.List.SelectedItem()
+			if selectedItem != nil {
+				item := selectedItem.(models.CleanItem)
+				if item.Size != -1 && m.SelectedFiles[item.Path] {
+					delete(m.SelectedFiles, item.Path)
+					m.SelectedSize -= item.Size
+					m.SelectedCount--
+				}
+			}
+
+			// Create new message with just the direction
+			var directionMsg tea.KeyMsg
+			if msg.String() == "alt+up" {
+				directionMsg = tea.KeyMsg{Type: tea.KeyUp}
+			} else {
+				directionMsg = tea.KeyMsg{Type: tea.KeyDown}
+			}
+
+			// Update list position with just the direction
+			var cmd tea.Cmd
+			m.List, cmd = m.List.Update(directionMsg)
+
+			return m, cmd
+		}
+		return m, nil
 	default:
 		m.UpdateInputs(msg)
 
@@ -1519,6 +1669,18 @@ func (m *CleanFilesModel) GetOlderInput() textinput.Model {
 
 func (m *CleanFilesModel) GetNewerInput() textinput.Model {
 	return m.NewerInput
+}
+
+func (m *CleanFilesModel) GetSelectedFiles() map[string]bool {
+	return m.SelectedFiles
+}
+
+func (m *CleanFilesModel) GetSelectedCount() int {
+	return m.SelectedCount
+}
+
+func (m *CleanFilesModel) GetSelectedSize() int64 {
+	return m.SelectedSize
 }
 
 func (m *CleanFilesModel) SetFocusedElement(element string) {

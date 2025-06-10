@@ -52,8 +52,16 @@ func (t *MainTab) View() string {
 		content.WriteString("\n\n")
 
 		if !t.model.GetShowDirs() {
-			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Size of selected files: %s",
-				t.model.GetFilteredCount(), utils.FormatSize(t.model.GetFilteredSize()))))
+			// Show selected files info if any are selected
+			if t.model.GetSelectedCount() > 0 {
+				content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Selected files (%d) • Selected size: %s",
+					t.model.GetSelectedCount(), utils.FormatSize(t.model.GetSelectedSize()))))
+			} else {
+				// Show total files info
+				content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("All files (%d) • Total size: %s",
+					t.model.GetFilteredCount(), utils.FormatSize(t.model.GetFilteredSize()))))
+			}
+
 		} else {
 			content.WriteString(styles.ListTitleStyle.Render(fmt.Sprintf("Directories in %s (%d)",
 				filepath.Base(t.model.GetCurrentPath()), len(t.model.GetDirList().Items()))))
@@ -126,8 +134,13 @@ func (t *MainTab) View() string {
 					style = style.Foreground(lipgloss.Color("#578cdb"))
 				}
 
+				// Check if file is selected
+				if !t.model.GetShowDirs() && t.model.GetSelectedFiles()[item.Path] {
+					style = style.Foreground(lipgloss.Color("#FFA500")).Bold(true)
+				}
+
 				const iconWidth = 3
-				const filenameWidth = 45
+				const filenameWidth = 70
 				const sizeWidth = 10
 
 				iconDisplay := fmt.Sprintf("%-*s", iconWidth, icon)

@@ -37,13 +37,13 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("#666666")).
 				Padding(0, 0).
-				Width(100)
+				Width(87)
 
 	StandardInputFocusedStyle = lipgloss.NewStyle().
 					Border(lipgloss.RoundedBorder()).
 					BorderForeground(lipgloss.Color("#1E90FF")).
 					Padding(0, 0).
-					Width(100)
+					Width(87)
 
 	// Text input styles
 	TextInputPromptStyle = lipgloss.NewStyle().
@@ -120,7 +120,7 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#666666")).
 			Padding(0, 0).
-			Width(100).
+			Width(87).
 			Height(9)
 
 	// nolint:staticcheck
