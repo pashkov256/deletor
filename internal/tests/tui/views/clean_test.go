@@ -10,16 +10,25 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/options"
+	"github.com/pashkov256/deletor/internal/tui/tabs/clean"
 	"github.com/pashkov256/deletor/internal/tui/views"
 	"github.com/pashkov256/deletor/internal/validation"
 )
 
 func setupCleanTestModel(t *testing.T) *views.CleanFilesModel {
 	tempDir := t.TempDir()
+
+	// Create a temporary log file
+	tempLogFile := filepath.Join(tempDir, "test.log")
+	_, err := os.Create(tempLogFile)
+	if err != nil {
+		t.Fatalf("Failed to create temporary log file: %v", err)
+	}
 
 	rulesObj := rules.NewRules()
 	_ = rulesObj.SetupRulesConfig()
@@ -35,6 +44,23 @@ func setupCleanTestModel(t *testing.T) *views.CleanFilesModel {
 	model.PathInput.SetValue(tempDir)
 	model.IsLaunched = true
 
+	// Initialize TabManager
+	model.TabManager = clean.NewCleanTabManager(model, clean.NewCleanTabFactory())
+
+	// Initialize Logger with temporary log file
+	logger, err := logging.NewLogger(tempLogFile, func(stats *logging.ScanStatistics) {
+		if model.TabManager != nil {
+			if logTab, ok := model.TabManager.GetActiveTab().(*clean.LogTab); ok {
+				logTab.UpdateStats(stats)
+			}
+		}
+	})
+	if err != nil {
+		t.Fatalf("Failed to initialize logger: %v", err)
+	}
+	model.Logger = logger
+
+	// Update options after initialization
 	model.OptionState = map[string]bool{
 		options.ShowHiddenFiles:       false,
 		options.ConfirmDeletion:       false,
