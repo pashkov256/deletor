@@ -65,7 +65,7 @@ func (m *MainMenu) View() string {
 	var content strings.Builder
 
 	// Title
-	content.WriteString(styles.TitleStyle.Render("🗑️  Deletor v1.4.0"))
+	content.WriteString(styles.TitleStyle.Render("🗑️  Deletor v1.5.0"))
 	content.WriteString("\n\n")
 
 	// Menu items from constants

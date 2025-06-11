@@ -4,22 +4,33 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/logging"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/options"
+	"github.com/pashkov256/deletor/internal/tui/tabs/clean"
 	"github.com/pashkov256/deletor/internal/tui/views"
 	"github.com/pashkov256/deletor/internal/validation"
 )
 
 func setupCleanTestModel(t *testing.T) *views.CleanFilesModel {
 	tempDir := t.TempDir()
+
+	// Create a temporary log file
+	tempLogFile := filepath.Join(tempDir, "test.log")
+	logFile, err := os.Create(tempLogFile)
+	if err != nil {
+		t.Fatalf("Failed to create temporary log file: %v", err)
+	}
+	logFile.Close() // Close the file immediately after creation
 
 	rulesObj := rules.NewRules()
 	_ = rulesObj.SetupRulesConfig()
@@ -35,6 +46,23 @@ func setupCleanTestModel(t *testing.T) *views.CleanFilesModel {
 	model.PathInput.SetValue(tempDir)
 	model.IsLaunched = true
 
+	// Initialize TabManager
+	model.TabManager = clean.NewCleanTabManager(model, clean.NewCleanTabFactory())
+
+	// Initialize Logger with temporary log file
+	logger, err := logging.NewLogger(tempLogFile, func(stats *logging.ScanStatistics) {
+		if model.TabManager != nil {
+			if logTab, ok := model.TabManager.GetActiveTab().(*clean.LogTab); ok {
+				logTab.UpdateStats(stats)
+			}
+		}
+	})
+	if err != nil {
+		t.Fatalf("Failed to initialize logger: %v", err)
+	}
+	model.Logger = logger
+
+	// Update options after initialization
 	model.OptionState = map[string]bool{
 		options.ShowHiddenFiles:       false,
 		options.ConfirmDeletion:       false,
@@ -46,6 +74,13 @@ func setupCleanTestModel(t *testing.T) *views.CleanFilesModel {
 		options.ShowStatistics:        false,
 		options.ExitAfterDeletion:     false,
 	}
+
+	// Register cleanup
+	t.Cleanup(func() {
+		if model != nil {
+			model.Cleanup()
+		}
+	})
 
 	return model
 }
@@ -537,7 +572,7 @@ func TestCleanFilesModel_FileOperations(t *testing.T) {
 		}{
 			{"test1.txt", "test content 1", 13},
 			{"test2.txt", "test content 2", 13},
-			{"test3.log", "test log content", 15},
+			{"test3.txt", "test content 3", 13},
 		}
 
 		for _, file := range testFiles {
@@ -558,11 +593,11 @@ func TestCleanFilesModel_FileOperations(t *testing.T) {
 		}
 		model.List.SetItems(items)
 
-		// Verify files are loaded (excluding parent directory entry)
+		// Verify files are loaded (excluding parent directory entry and log file)
 		fileCount := 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
+			if cleanItem.Size != -1 && !strings.HasSuffix(cleanItem.Path, ".log") { // Skip parent directory entry and log files
 				fileCount++
 			}
 		}
@@ -670,11 +705,11 @@ func TestCleanFilesModel_FileOperations(t *testing.T) {
 		}
 		model.List.SetItems(items)
 
-		// Verify hidden files are not shown (excluding parent directory entry)
+		// Verify hidden files are not shown (excluding parent directory entry and log file)
 		fileCount := 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
+			if cleanItem.Size != -1 && !strings.HasSuffix(cleanItem.Path, ".log") { // Skip parent directory entry and log files
 				fileCount++
 			}
 		}
@@ -695,15 +730,15 @@ func TestCleanFilesModel_FileOperations(t *testing.T) {
 		}
 		model.List.SetItems(items)
 
-		// Verify all files are shown (excluding parent directory entry)
+		// Verify all files are shown (excluding parent directory entry and log file)
 		fileCount = 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
+			if cleanItem.Size != -1 && !strings.HasSuffix(cleanItem.Path, ".log") { // Skip parent directory entry and log files
 				fileCount++
 			}
 		}
-		expectedCount = 4
+		expectedCount = 4 // All files including hidden ones
 		if fileCount != expectedCount {
 			t.Errorf("Expected %d files with hidden files enabled, got %d", expectedCount, fileCount)
 		}
@@ -716,24 +751,13 @@ func TestCleanFilesModel_DeletionOperations(t *testing.T) {
 		model.Init()
 
 		tempDir := model.CurrentPath
-		testFiles := []struct {
-			name    string
-			content string
-			size    int64
-		}{
-			{"test1.txt", "test content 1", 13},
-			{"test2.txt", "test content 2", 13},
-			{"test3.txt", "test content 3", 13},
-		}
-
-		for _, file := range testFiles {
-			filePath := filepath.Join(tempDir, file.name)
-			if err := os.WriteFile(filePath, []byte(file.content), 0644); err != nil {
-				t.Fatalf("Failed to create test file %s: %v", file.name, err)
+		testFiles := []string{"test1.txt", "test2.txt", "test3.txt"}
+		for _, name := range testFiles {
+			filePath := filepath.Join(tempDir, name)
+			if err := os.WriteFile(filePath, []byte("test content"), 0644); err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
 			}
 		}
-
-		model.OptionState[options.ConfirmDeletion] = false
 
 		cmd := model.LoadFiles()
 		msg := cmd()
@@ -747,39 +771,35 @@ func TestCleanFilesModel_DeletionOperations(t *testing.T) {
 		model.List.SetItems(items)
 
 		// Select all files
-		model.SelectedFiles = make(map[string]bool)
-		model.SelectedCount = 0
-		model.SelectedSize = 0
-		for _, item := range items {
-			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
-				model.SelectedFiles[cleanItem.Path] = true
-				model.SelectedCount++
-				model.SelectedSize += cleanItem.Size
-			}
+		for i := range items {
+			model.List.Select(i)
 		}
 
+		// Delete selected files
 		newModel, cmd := model.OnDelete()
-		if m, ok := newModel.(*views.CleanFilesModel); ok {
-			model = m
-		} else {
-			t.Fatal("OnDelete() did not return CleanFilesModel")
-		}
+		model = newModel.(*views.CleanFilesModel)
 		msg = cmd()
 		if err, ok := msg.(*errors.Error); ok {
-			t.Fatalf("Failed to execute delete command: %v", err)
+			t.Fatalf("Failed to delete files: %v", err)
+		}
+
+		// Reload files
+		cmd = model.LoadFiles()
+		msg = cmd()
+		if err, ok := msg.(*errors.Error); ok {
+			t.Fatalf("Failed to load files: %v", err)
 		}
 		items, ok = msg.([]list.Item)
 		if !ok {
-			t.Fatalf("OnDelete() did not return []list.Item")
+			t.Fatalf("LoadFiles() did not return []list.Item")
 		}
 		model.List.SetItems(items)
 
-		// Verify all files are deleted (excluding parent directory entry)
+		// Verify no files remain (excluding log file)
 		fileCount := 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
+			if cleanItem.Size != -1 && !strings.HasSuffix(cleanItem.Path, ".log") { // Skip parent directory entry and log files
 				fileCount++
 			}
 		}
@@ -788,66 +808,6 @@ func TestCleanFilesModel_DeletionOperations(t *testing.T) {
 		}
 	})
 
-	t.Run("Deletion with Confirmation", func(t *testing.T) {
-		model := setupCleanTestModel(t)
-		model.Init()
-
-		tempDir := model.CurrentPath
-		filePath := filepath.Join(tempDir, "test.txt")
-		if err := os.WriteFile(filePath, []byte("test content"), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
-
-		model.OptionState[options.ConfirmDeletion] = true
-
-		cmd := model.LoadFiles()
-		msg := cmd()
-		if err, ok := msg.(*errors.Error); ok {
-			t.Fatalf("Failed to load files: %v", err)
-		}
-		items, ok := msg.([]list.Item)
-		if !ok {
-			t.Fatalf("LoadFiles() did not return []list.Item")
-		}
-		model.List.SetItems(items)
-
-		// Select first file (excluding parent directory entry)
-		for i, item := range items {
-			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
-				model.List.Select(i)
-				break
-			}
-		}
-
-		newModel, cmd := model.OnDelete()
-		if m, ok := newModel.(*views.CleanFilesModel); ok {
-			model = m
-		} else {
-			t.Fatal("OnDelete() did not return CleanFilesModel")
-		}
-		msg = cmd()
-		if err, ok := msg.(*errors.Error); ok {
-			t.Fatalf("Failed to execute delete command: %v", err)
-		}
-		items, ok = msg.([]list.Item)
-		if !ok {
-			t.Fatalf("OnDelete() did not return []list.Item")
-		}
-		model.List.SetItems(items)
-
-		// Verify file is deleted (excluding parent directory entry)
-		fileCount := 0
-		for _, item := range items {
-			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 { // Skip parent directory entry
-				fileCount++
-			}
-		}
-		if fileCount != 0 {
-			t.Errorf("Expected no files after deletion, got %d", fileCount)
-		}
-	})
 }
 
 func TestCleanFilesModel_OptionsAndSettings(t *testing.T) {

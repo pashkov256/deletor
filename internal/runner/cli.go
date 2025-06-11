@@ -21,6 +21,11 @@ func RunCLI(
 	rules rules.Rules,
 	config *config.Config,
 ) {
+	// Get values from rules if --rules flag is set
+	if config.UseRules {
+		config = config.GetWithRules(rules)
+	}
+
 	extMap := utils.ParseExtToMap(config.Extensions)
 
 	filter := fm.NewFileFilter(

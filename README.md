@@ -34,7 +34,7 @@
 
 ---
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor2.gif" alt="Project Banner" />
+  <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/deletorv150.gif" alt="Project Banner" />
 </p>
 
 ## 📦 Installation
@@ -73,6 +73,7 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 | `--exclude`    | Exclude specific files/paths (e.g., `data`, `backup`).                      |
 | `-subdirs`     | Include subdirectories in scan. Default is false.                           |
 | `-prune-empty` | Delete empty folders after scan.                                            |
+| `-rules`       | Running with values from the rules                                          |
 | `-progress`    | Display a progress bar during file scanning.                                |
 | `-skip-confirm`| Skip the confirmation of deletion.                                          |
 
