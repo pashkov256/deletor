@@ -84,8 +84,6 @@ go run . -cli -d ~/Downloads -e mp4,zip  --min-size 10mb -subdirs --exclude data
 
 - CLI mode is perfect for automation, scripting, and quick one-liners. It's essential for server environments, cron jobs, and integrating into larger toolchains.
 
-Unlike many traditional disk usage tools that focus only on visualizing disk space (like *ncdu*, *gdu*, *dua-cli*), Deletor is optimized specifically for fast and targeted file removal.
-It offers advanced filtering options by file extension, size, and custom exclusions, making it a powerful tool for real-world file management — not just analysis.
 
 
 ## 🛠 Contributing
