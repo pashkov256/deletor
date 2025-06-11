@@ -76,6 +76,7 @@ func (c *Config) GetWithRules(rules rules.Rules) *Config {
 		c.IncludeSubdirs = defaultRules.IncludeSubfolders
 	}
 	if !c.DeleteEmptyFolders {
+
 		c.DeleteEmptyFolders = defaultRules.DeleteEmptySubfolders
 	}
 	if !c.MoveFileToTrash {

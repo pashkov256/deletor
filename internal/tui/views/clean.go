@@ -500,6 +500,12 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 	return func() tea.Msg {
+		// Reset selection state when loading new directory
+		m.SelectedFiles = make(map[string]bool)
+		m.SelectedCount = 0
+		m.SelectedSize = 0
+		m.LastSelectedIndex = -1
+
 		var items []list.Item
 		var totalFilteredSize int64 = 0
 		var filteredCount = 0
@@ -618,6 +624,12 @@ func (m *CleanFilesModel) LoadFiles() tea.Cmd {
 
 func (m *CleanFilesModel) LoadDirs() tea.Cmd {
 	return func() tea.Msg {
+		// Reset selection state when loading directories
+		m.SelectedFiles = make(map[string]bool)
+		m.SelectedCount = 0
+		m.SelectedSize = 0
+		m.LastSelectedIndex = -1
+
 		var items []list.Item
 
 		// Add parent directory with special display
@@ -713,6 +725,10 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 
 		if m.OptionState[options.SendFilesToTrash] {
 			for filePath := range m.SelectedFiles {
+				// Skip log files
+				if strings.HasSuffix(filePath, ".log") {
+					continue
+				}
 				m.Filemanager.MoveFileToTrash(filePath)
 				delete(m.SelectedFiles, filePath)
 			}
@@ -720,6 +736,10 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 			stats.TrashedSize = m.SelectedSize
 		} else {
 			for filePath := range m.SelectedFiles {
+				// Skip log files
+				if strings.HasSuffix(filePath, ".log") {
+					continue
+				}
 				os.Remove(filePath)
 				delete(m.SelectedFiles, filePath)
 			}
@@ -749,6 +769,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 
 		return m, m.LoadFiles()
 	}
+
 	if m.OptionState[options.IncludeSubfolders] {
 		var olderDuration, newerDuration time.Time
 		var err error
@@ -797,8 +818,8 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		}
 
 		item := selectedItem.(models.CleanItem)
-		// Skip parent directory entry
-		if item.Size == -1 {
+		// Skip parent directory entry and log files
+		if item.Size == -1 || strings.HasSuffix(item.Path, ".log") {
 			return m, nil
 		}
 
@@ -845,7 +866,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		selectedCount := 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 {
+			if cleanItem.Size != -1 && !strings.HasSuffix(cleanItem.Path, ".log") {
 				selectedCount++
 			}
 		}
@@ -861,8 +882,8 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			// Skip parent directory entry and unselected files
-			if cleanItem.Size == -1 {
+			// Skip parent directory entry, log files and unselected files
+			if cleanItem.Size == -1 || strings.HasSuffix(cleanItem.Path, ".log") {
 				continue
 			}
 
@@ -1169,17 +1190,35 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.handleSpace()
 	case "list":
-		var cmd tea.Cmd
 		var cmds []tea.Cmd
-		if m.CurrentPath != "" {
-			if m.ShowDirs {
-				m.DirList, cmd = m.DirList.Update(msg)
-			} else {
-				m.List, cmd = m.List.Update(msg)
+		if !m.ShowDirs && m.List.SelectedItem() != nil {
+			selectedItem := m.List.SelectedItem().(models.CleanItem)
+			if selectedItem.Size == -1 {
+				// Reset to file view mode before changing path
+				m.ShowDirs = false
+				m.CurrentPath = selectedItem.Path
+				m.PathInput.SetValue(selectedItem.Path)
+				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+				return m, tea.Batch(cmds...)
 			}
-			cmds = append(cmds, cmd)
+			info, err := os.Stat(selectedItem.Path)
+			if err == nil && info.IsDir() {
+				// Reset to file view mode before changing path
+				m.ShowDirs = false
+				m.CurrentPath = selectedItem.Path
+				m.PathInput.SetValue(selectedItem.Path)
+				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+				return m, tea.Batch(cmds...)
+			}
+		} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
+			selectedDir := m.DirList.SelectedItem().(models.CleanItem)
+			m.CurrentPath = selectedDir.Path
+			m.PathInput.SetValue(selectedDir.Path)
+			m.ShowDirs = false
+			cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+			return m, tea.Batch(cmds...)
 		}
-		return m, tea.Batch(cmds...)
+		return m, nil
 	case "alt+up", "alt+down":
 		if !m.ShowDirs {
 			// Get current item before update
@@ -1558,6 +1597,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				if selectedItem.Size == -1 {
 					m.CurrentPath = selectedItem.Path
 					m.PathInput.SetValue(selectedItem.Path)
+					m.ShowDirs = false
 					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
 					return m, tea.Batch(cmds...)
 				}
@@ -1565,7 +1605,9 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				if err == nil && info.IsDir() {
 					m.CurrentPath = selectedItem.Path
 					m.PathInput.SetValue(selectedItem.Path)
+					m.ShowDirs = false
 					cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
+
 					return m, tea.Batch(cmds...)
 				}
 			} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
@@ -1805,4 +1847,14 @@ func (m *CleanFilesModel) SetExcludeInput(input textinput.Model) {
 
 func (m *CleanFilesModel) SetSizeInput(input textinput.Model) {
 	m.MinSizeInput = input
+}
+
+// Cleanup performs necessary cleanup operations when the model is destroyed
+func (m *CleanFilesModel) Cleanup() {
+	if m.Logger != nil {
+		if err := m.Logger.Close(); err != nil {
+			fmt.Printf("Error closing logger: %v\n", err)
+		}
+		m.Logger = nil
+	}
 }

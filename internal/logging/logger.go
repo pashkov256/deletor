@@ -110,5 +110,12 @@ func (l *Logger) UpdateStats(stats *ScanStatistics) {
 func (l *Logger) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.logFile.Close()
+
+	if l.logFile == nil {
+		return nil
+	}
+
+	err := l.logFile.Close()
+	l.logFile = nil // Set to nil after closing to prevent double-close
+	return err
 }
