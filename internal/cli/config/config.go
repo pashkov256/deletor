@@ -1,6 +1,11 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/utils"
+)
 
 // Config holds all command-line configuration options for the application
 type Config struct {
@@ -17,7 +22,8 @@ type Config struct {
 	DeleteEmptyFolders bool      // Whether to remove empty directories
 	OlderThan          time.Time // Only process files older than this time
 	NewerThan          time.Time // Only process files newer than this time
-	MoveFileToTrash    bool      // // If true, files will be moved to trash instead of being permanently deleted
+	MoveFileToTrash    bool      // If true, files will be moved to trash instead of being permanently deleted
+	UseRules           bool      // Whether to use rules from configuration file
 }
 
 // LoadConfig initializes and returns a new Config instance with values from command-line flags
@@ -27,5 +33,54 @@ func LoadConfig() *Config {
 
 // GetConfig returns the current configuration instance
 func (c *Config) GetConfig() *Config {
+	return c
+}
+
+// GetWithRules returns a value from config if it's set, otherwise returns value from rules
+func (c *Config) GetWithRules(rules rules.Rules) *Config {
+	if c == nil {
+		c = &Config{}
+	}
+
+	// Get all rules at once
+	defaultRules, err := rules.GetRules()
+	if err != nil {
+		return c
+	}
+
+	// Get values from rules if not set in config
+	if len(c.Extensions) == 0 {
+		c.Extensions = defaultRules.Extensions
+	}
+	if c.Directory == "" && defaultRules.Path != "" {
+		c.Directory = utils.ExpandTilde(defaultRules.Path)
+	} else if c.Directory != "" && defaultRules.Path != "" {
+		c.Directory = utils.ExpandTilde(c.Directory)
+	}
+	if c.MinSize == 0 && defaultRules.MinSize != "" {
+		c.MinSize = utils.ToBytesOrDefault(defaultRules.MinSize)
+	}
+	if c.MaxSize == 0 && defaultRules.MaxSize != "" {
+		c.MaxSize = utils.ToBytesOrDefault(defaultRules.MaxSize)
+	}
+	if len(c.Exclude) == 0 {
+		c.Exclude = defaultRules.Exclude
+	}
+	if c.OlderThan.IsZero() && defaultRules.OlderThan != "" {
+		c.OlderThan, _ = utils.ParseTimeDuration(defaultRules.OlderThan)
+	}
+	if c.NewerThan.IsZero() && defaultRules.NewerThan != "" {
+		c.NewerThan, _ = utils.ParseTimeDuration(defaultRules.NewerThan)
+	}
+	if !c.IncludeSubdirs {
+		c.IncludeSubdirs = defaultRules.IncludeSubfolders
+	}
+	if !c.DeleteEmptyFolders {
+		c.DeleteEmptyFolders = defaultRules.DeleteEmptySubfolders
+	}
+	if !c.MoveFileToTrash {
+		c.MoveFileToTrash = defaultRules.SendFilesToTrash
+	}
+
 	return c
 }

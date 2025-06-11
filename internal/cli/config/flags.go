@@ -25,6 +25,7 @@ func GetFlags() *Config {
 	older := flag.String("older", "", "Modification time older than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 	newer := flag.String("newer", "", "Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 	moveToTrash := flag.Bool("trash", false, "Move files to trash?")
+	useRules := flag.Bool("rules", false, "Use rules from configuration file")
 
 	flag.Parse()
 
@@ -87,6 +88,7 @@ func GetFlags() *Config {
 	config.SkipConfirm = *skipConfirm
 	config.DeleteEmptyFolders = *deleteEmptyFolders
 	config.MoveFileToTrash = *moveToTrash
+	config.UseRules = *useRules
 
 	return config
 }
