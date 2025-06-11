@@ -499,8 +499,10 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *CleanFilesModel) LoadFiles() tea.Cmd {
+	m.ShowDirs = false
 	return func() tea.Msg {
-		// Reset selection state when loading new directory
+
+		m.ShowDirs = false // Reset selection state when loading new directory
 		m.SelectedFiles = make(map[string]bool)
 		m.SelectedCount = 0
 		m.SelectedSize = 0
@@ -1190,35 +1192,17 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.handleSpace()
 	case "list":
+		var cmd tea.Cmd
 		var cmds []tea.Cmd
-		if !m.ShowDirs && m.List.SelectedItem() != nil {
-			selectedItem := m.List.SelectedItem().(models.CleanItem)
-			if selectedItem.Size == -1 {
-				// Reset to file view mode before changing path
-				m.ShowDirs = false
-				m.CurrentPath = selectedItem.Path
-				m.PathInput.SetValue(selectedItem.Path)
-				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
-				return m, tea.Batch(cmds...)
+		if m.CurrentPath != "" {
+			if m.ShowDirs {
+				m.DirList, cmd = m.DirList.Update(msg)
+			} else {
+				m.List, cmd = m.List.Update(msg)
 			}
-			info, err := os.Stat(selectedItem.Path)
-			if err == nil && info.IsDir() {
-				// Reset to file view mode before changing path
-				m.ShowDirs = false
-				m.CurrentPath = selectedItem.Path
-				m.PathInput.SetValue(selectedItem.Path)
-				cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
-				return m, tea.Batch(cmds...)
-			}
-		} else if m.ShowDirs && m.DirList.SelectedItem() != nil {
-			selectedDir := m.DirList.SelectedItem().(models.CleanItem)
-			m.CurrentPath = selectedDir.Path
-			m.PathInput.SetValue(selectedDir.Path)
-			m.ShowDirs = false
-			cmds = append(cmds, m.LoadFiles(), m.CalculateDirSizeAsync())
-			return m, tea.Batch(cmds...)
+			cmds = append(cmds, cmd)
 		}
-		return m, nil
+		return m, tea.Batch(cmds...)
 	case "alt+up", "alt+down":
 		if !m.ShowDirs {
 			// Get current item before update
