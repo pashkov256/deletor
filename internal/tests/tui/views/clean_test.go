@@ -746,6 +746,19 @@ func TestCleanFilesModel_DeletionOperations(t *testing.T) {
 		}
 		model.List.SetItems(items)
 
+		// Select all files
+		model.SelectedFiles = make(map[string]bool)
+		model.SelectedCount = 0
+		model.SelectedSize = 0
+		for _, item := range items {
+			cleanItem := item.(models.CleanItem)
+			if cleanItem.Size != -1 { // Skip parent directory entry
+				model.SelectedFiles[cleanItem.Path] = true
+				model.SelectedCount++
+				model.SelectedSize += cleanItem.Size
+			}
+		}
+
 		newModel, cmd := model.OnDelete()
 		if m, ok := newModel.(*views.CleanFilesModel); ok {
 			model = m
