@@ -20,6 +20,8 @@
 
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
+- 🖱️ **Mouse Support**: Full mouse support for selection, scrolling, and interaction
+- 🔢 **Multi-Selection**: Select multiple files at once for batch operations
 - ♻️ **Safe Deletion: Files**: Are moved to the system trash/recycle bin instead of permanent deletion
 - 🧹 **OS Cache Cleaner**: Free up space by deleting temporary system cache
 - 🛠️ **Deep Customization** Shape the tool to behave exactly how you need
