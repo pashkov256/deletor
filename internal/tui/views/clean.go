@@ -707,7 +707,6 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	stats.TrashedFiles = 0
 	stats.TrashedSize = 0
 
-	// return m.DeleteUserSelectedFiles(stats)
 	if len(m.SelectedFiles) > 0 {
 		stats.TotalFiles = int64(m.SelectedCount)
 		stats.TotalSize = m.SelectedSize
@@ -715,12 +714,14 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		if m.OptionState[options.SendFilesToTrash] {
 			for filePath := range m.SelectedFiles {
 				m.Filemanager.MoveFileToTrash(filePath)
+				delete(m.SelectedFiles, filePath)
 			}
 			stats.TrashedFiles = int64(m.SelectedCount)
 			stats.TrashedSize = m.SelectedSize
 		} else {
 			for filePath := range m.SelectedFiles {
 				os.Remove(filePath)
+				delete(m.SelectedFiles, filePath)
 			}
 			stats.DeletedFiles = int64(m.SelectedCount)
 			stats.DeletedSize = m.SelectedSize
@@ -742,11 +743,13 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		m.SelectedFiles = make(map[string]bool)
+		m.SelectedCount = 0
+		m.SelectedSize = 0
 
 		return m, m.LoadFiles()
 	}
-
-	if m.OptionState[options.IncludeSubfolders] && len(m.SelectedFiles) == 0 {
+	if m.OptionState[options.IncludeSubfolders] {
 		var olderDuration, newerDuration time.Time
 		var err error
 
@@ -783,7 +786,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 	}
 
 	// Process files based on Confirm deletion option
-	if m.OptionState[options.ConfirmDeletion] && len(m.SelectedFiles) == 0 {
+	if m.OptionState[options.ConfirmDeletion] {
 		// Single file deletion mode
 		selectedItem := m.List.SelectedItem()
 		if selectedItem == nil {
@@ -842,7 +845,7 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 		selectedCount := 0
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-			if cleanItem.Size != -1 && m.SelectedFiles[cleanItem.Path] {
+			if cleanItem.Size != -1 {
 				selectedCount++
 			}
 		}
@@ -858,9 +861,8 @@ func (m *CleanFilesModel) OnDelete() (tea.Model, tea.Cmd) {
 
 		for _, item := range items {
 			cleanItem := item.(models.CleanItem)
-
 			// Skip parent directory entry and unselected files
-			if cleanItem.Size == -1 || !m.SelectedFiles[cleanItem.Path] {
+			if cleanItem.Size == -1 {
 				continue
 			}
 
@@ -1033,7 +1035,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			hasSelected := false
 			for _, item := range items {
 				cleanItem := item.(models.CleanItem)
-				if cleanItem.Size != -1 && m.SelectedFiles[cleanItem.Path] {
+				if cleanItem.Size != -1 {
 					hasSelected = true
 					break
 				}

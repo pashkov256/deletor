@@ -22,7 +22,7 @@ var (
 			Background(lipgloss.Color("#1E90FF")).
 			Padding(0, 1).Bold(true)
 
-	SelectedFileItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#f5a402")).Bold(true)
+	SelectedFileItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#07f767")).Bold(true)
 
 	DocStyle = lipgloss.NewStyle().
 			Padding(1, 1)
@@ -32,7 +32,7 @@ var (
 
 	// nolint:staticcheck
 	SelectedMenuItemStyle = MenuItem.Copy().
-				Foreground(lipgloss.Color("#1E90FF"))
+				Foreground(lipgloss.Color("#1E90FF")).Bold(true)
 
 	// Input styles
 	StandardInputStyle = lipgloss.NewStyle().
