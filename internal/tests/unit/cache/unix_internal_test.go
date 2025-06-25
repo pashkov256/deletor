@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-  
-  "github.com/pashkov256/deletor/internal/cache"
 )
 
 func TestDeleteFileWithUnixAPI(t *testing.T) {
@@ -19,9 +17,9 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testFile)
+		err = DeleteFileWithUnixAPI(testFile)
 		if err != nil {
-			t.Errorf("deleteFileWithUnixAPI failed: %v", err)
+			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
 
 		if _, err := os.Stat(testFile); !os.IsNotExist(err) {
@@ -36,9 +34,9 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testFile)
+		err = DeleteFileWithUnixAPI(testFile)
 		if err != nil {
-			t.Errorf("deleteFileWithUnixAPI failed: %v", err)
+			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
 
 		if _, err := os.Stat(testFile); !os.IsNotExist(err) {
@@ -53,9 +51,9 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testFile)
+		err = DeleteFileWithUnixAPI(testFile)
 		if err != nil {
-			t.Errorf("deleteFileWithUnixAPI failed: %v", err)
+			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
 
 		if _, err := os.Stat(testFile); !os.IsNotExist(err) {
@@ -66,7 +64,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 	t.Run("nonexistent file returns error", func(t *testing.T) {
 		nonexistentFile := filepath.Join(tempDir, "nonexistent.txt")
 		
-		err := cache_pkg.deleteFileWithUnixAPI(nonexistentFile)
+		err := DeleteFileWithUnixAPI(nonexistentFile)
 		if err == nil {
 			t.Errorf("Expected error for nonexistent file, got nil")
 		}
@@ -79,7 +77,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testDir)
+		err = DeleteFileWithUnixAPI(testDir)
 		if err == nil {
 			t.Errorf("Expected error when trying to delete directory, got nil")
 		}
@@ -94,9 +92,9 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testFile)
+		err = DeleteFileWithUnixAPI(testFile)
 		if err != nil {
-			t.Errorf("deleteFileWithUnixAPI failed: %v", err)
+			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
 
 		if _, err := os.Stat(testFile); !os.IsNotExist(err) {
@@ -107,7 +105,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 
 func TestDeleteFileWithWindowsAPI(t *testing.T) {
 	t.Run("stub function returns nil", func(t *testing.T) {
-		err := cache_pkg.deleteFileWithWindowsAPI("/any/path")
+		err := DeleteFileWithWindowsAPI("/any/path")
 		if err != nil {
 			t.Errorf("Expected nil from stub function, got: %v", err)
 		}
@@ -125,9 +123,9 @@ func BenchmarkDeleteFileWithUnixAPI(b *testing.B) {
 			b.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = cache_pkg.deleteFileWithUnixAPI(testFile)
+		err = DeleteFileWithUnixAPI(testFile)
 		if err != nil {
-			b.Fatalf("deleteFileWithUnixAPI failed: %v", err)
+			b.Fatalf("DeleteFileWithUnixAPI failed: %v", err)
 		}
 	}
 }
@@ -147,9 +145,9 @@ func TestDeleteFileWithUnixAPI_Symlink(t *testing.T) {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
 
-	err = cache_pkg.deleteFileWithUnixAPI(symlinkFile)
+	err = DeleteFileWithUnixAPI(symlinkFile)
 	if err != nil {
-		t.Errorf("deleteFileWithUnixAPI failed on symlink: %v", err)
+		t.Errorf("DeleteFileWithUnixAPI failed on symlink: %v", err)
 	}
 
 	if _, err := os.Lstat(symlinkFile); !os.IsNotExist(err) {
