@@ -7,10 +7,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// deleteFileWithWindowsAPI deletes a file using Windows API calls.
+// DeleteFileWithWindowsAPI deletes a file using Windows API calls.
 // Handles read-only files by removing the read-only attribute before deletion.
 // Returns error if file cannot be deleted or if path conversion fails.
-func deleteFileWithWindowsAPI(path string) error {
+func DeleteFileWithWindowsAPI(path string) error {
 	// Convert path to Windows path format
 	pathPtr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -35,8 +35,8 @@ func deleteFileWithWindowsAPI(path string) error {
 	return windows.DeleteFile(pathPtr)
 }
 
-// deleteFileWithUnixAPI is a stub implementation for Windows platforms.
+// DeleteFileWithUnixAPI is a stub implementation for Windows platforms.
 // Returns nil as this function is not implemented on Windows.
-func deleteFileWithUnixAPI(path string) error {
+func DeleteFileWithUnixAPI(path string) error {
 	return nil
 }

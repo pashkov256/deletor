@@ -89,14 +89,14 @@ func (m *Manager) ClearCache() (deleteError error) {
 					deleteError = err
 
 					if runtime.GOOS == "windows" {
-						err := deleteFileWithWindowsAPI(path)
+						err := DeleteFileWithWindowsAPI(path)
 						if err != nil {
 							return err
 						}
 					}
 
 					if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-						err := deleteFileWithUnixAPI(path)
+						err := DeleteFileWithUnixAPI(path)
 						if err != nil {
 							return err
 						}
