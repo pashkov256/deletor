@@ -3,14 +3,14 @@
 
 package cache
 
-// deleteFileWithWindowsAPI is a stub implementation for non-Windows platforms.
+// DeleteFileWithWindowsAPI is a stub implementation for non-Windows platforms.
 // Returns nil as this function is not implemented on non-Windows systems.
-func deleteFileWithWindowsAPI(path string) error {
+func DeleteFileWithWindowsAPI(path string) error {
 	return nil
 }
 
-// deleteFileWithUnixAPI is a stub implementation for non-Unix platforms.
+// DeleteFileWithUnixAPI is a stub implementation for non-Unix platforms.
 // Returns nil as this function is not implemented on non-Unix systems.
-func deleteFileWithUnixAPI(path string) error {
+func DeleteFileWithUnixAPI(path string) error {
 	return nil
 }
