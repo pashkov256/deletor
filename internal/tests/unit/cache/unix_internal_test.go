@@ -1,3 +1,6 @@
+//go:build linux || darwin
+// +build linux darwin
+
 package cache
 
 import (
@@ -5,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pashkov256/deletor/internal/cache"
 )
 
 func TestDeleteFileWithUnixAPI(t *testing.T) {
@@ -17,7 +22,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testFile)
+		err = cache.DeleteFileWithUnixAPI(testFile)
 		if err != nil {
 			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
@@ -34,7 +39,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testFile)
+		err = cache.DeleteFileWithUnixAPI(testFile)
 		if err != nil {
 			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
@@ -51,7 +56,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testFile)
+		err = cache.DeleteFileWithUnixAPI(testFile)
 		if err != nil {
 			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
@@ -64,7 +69,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 	t.Run("nonexistent file returns error", func(t *testing.T) {
 		nonexistentFile := filepath.Join(tempDir, "nonexistent.txt")
 		
-		err := DeleteFileWithUnixAPI(nonexistentFile)
+		err := cache.DeleteFileWithUnixAPI(nonexistentFile)
 		if err == nil {
 			t.Errorf("Expected error for nonexistent file, got nil")
 		}
@@ -77,7 +82,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testDir)
+		err = cache.DeleteFileWithUnixAPI(testDir)
 		if err == nil {
 			t.Errorf("Expected error when trying to delete directory, got nil")
 		}
@@ -92,7 +97,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testFile)
+		err = cache.DeleteFileWithUnixAPI(testFile)
 		if err != nil {
 			t.Errorf("DeleteFileWithUnixAPI failed: %v", err)
 		}
@@ -105,7 +110,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 
 func TestDeleteFileWithWindowsAPI(t *testing.T) {
 	t.Run("stub function returns nil", func(t *testing.T) {
-		err := DeleteFileWithWindowsAPI("/any/path")
+		err := cache.DeleteFileWithWindowsAPI("/any/path")
 		if err != nil {
 			t.Errorf("Expected nil from stub function, got: %v", err)
 		}
@@ -123,7 +128,7 @@ func BenchmarkDeleteFileWithUnixAPI(b *testing.B) {
 			b.Fatalf("Failed to create test file: %v", err)
 		}
 
-		err = DeleteFileWithUnixAPI(testFile)
+		err = cache.DeleteFileWithUnixAPI(testFile)
 		if err != nil {
 			b.Fatalf("DeleteFileWithUnixAPI failed: %v", err)
 		}
@@ -145,7 +150,7 @@ func TestDeleteFileWithUnixAPI_Symlink(t *testing.T) {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
 
-	err = DeleteFileWithUnixAPI(symlinkFile)
+	err = cache.DeleteFileWithUnixAPI(symlinkFile)
 	if err != nil {
 		t.Errorf("DeleteFileWithUnixAPI failed on symlink: %v", err)
 	}
