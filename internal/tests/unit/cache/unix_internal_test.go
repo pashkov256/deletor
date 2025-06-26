@@ -68,7 +68,7 @@ func TestDeleteFileWithUnixAPI(t *testing.T) {
 
 	t.Run("nonexistent file returns error", func(t *testing.T) {
 		nonexistentFile := filepath.Join(tempDir, "nonexistent.txt")
-		
+
 		err := cache.DeleteFileWithUnixAPI(nonexistentFile)
 		if err == nil {
 			t.Errorf("Expected error for nonexistent file, got nil")
@@ -119,7 +119,7 @@ func TestDeleteFileWithWindowsAPI(t *testing.T) {
 
 func BenchmarkDeleteFileWithUnixAPI(b *testing.B) {
 	tempDir := b.TempDir()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		testFile := filepath.Join(tempDir, fmt.Sprintf("bench_file_%d.txt", i))
@@ -137,7 +137,7 @@ func BenchmarkDeleteFileWithUnixAPI(b *testing.B) {
 
 func TestDeleteFileWithUnixAPI_Symlink(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	originalFile := filepath.Join(tempDir, "original.txt")
 	err := os.WriteFile(originalFile, []byte("original content"), 0644)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestDeleteFileWithUnixAPI_Symlink(t *testing.T) {
 	if _, err := os.Lstat(symlinkFile); !os.IsNotExist(err) {
 		t.Errorf("Symlink still exists after deletion")
 	}
-	
+
 	if _, err := os.Stat(originalFile); os.IsNotExist(err) {
 		t.Errorf("Original file was deleted when removing symlink")
 	}
