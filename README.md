@@ -39,6 +39,19 @@
   <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/deletorv150.gif" alt="Project Banner" />
 </p>
 
+## 
+
+<p align="center">
+<code><b>deletor</b></code> is featured as <b>"Tool of The Week"</b> (June 10, 2025) on <a href="https://terminaltrove.com/deletor/">Terminal Trove</a>
+
+<a href="https://terminaltrove.com/deletor">
+    <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/open_source/tool_of_week_mini.svg" alt="Terminal Trove Tool of The Week" width="640" />
+</a>
+</p>
+
+
+
+
 ## 📦 Installation
 
 ### Using Go
