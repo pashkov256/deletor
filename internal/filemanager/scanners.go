@@ -93,7 +93,6 @@ func (s *FileScanner) ScanFilesCurrentLevel(dir string) (toDeleteMap map[string]
 			toDeleteMap[filepath.Join(dir, entry.Name())] = utils.FormatSize(info.Size())
 			totalClearSize += info.Size()
 
-
 			if s.haveProgress {
 				s.ProgressChan <- info.Size()
 			}
