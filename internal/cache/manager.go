@@ -11,17 +11,17 @@ import (
 
 // Manager handles cache operations for different operating systems
 type Manager struct {
-	os          OS
-	locations   []CacheLocation
-	filemanager filemanager.FileManager
+	Os          OS                      //made exportable for testing
+	Locations   []CacheLocation         //made exportable for testing
+	Filemanager filemanager.FileManager //made exportable for testing
 }
 
 // NewCacheManager creates a new cache manager instance for the current OS
 func NewCacheManager(fm filemanager.FileManager) *Manager {
 	return &Manager{
-		os:          OS(runtime.GOOS),
-		locations:   getLocationsForOS(OS(runtime.GOOS)),
-		filemanager: fm,
+		Os:          OS(runtime.GOOS),
+		Locations:   getLocationsForOS(OS(runtime.GOOS)),
+		Filemanager: fm,
 	}
 }
 
@@ -32,7 +32,7 @@ func (m *Manager) ScanAllLocations() []ScanResult {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	for _, location := range m.locations {
+	for _, location := range m.Locations {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -72,7 +72,7 @@ func (m *Manager) scan(path string) ScanResult {
 
 // ClearCache removes all files from cache locations using OS-specific deletion methods
 func (m *Manager) ClearCache() (deleteError error) {
-	for _, location := range m.locations {
+	for _, location := range m.Locations {
 		filepath.Walk(location.Path, func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				return nil
@@ -111,5 +111,5 @@ func (m *Manager) ClearCache() (deleteError error) {
 	return deleteError
 }
 func (m *Manager) GetOS() OS {
-	return m.os
+	return m.Os
 }
