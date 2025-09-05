@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/pashkov256/deletor/internal/cli/config"
@@ -12,18 +13,30 @@ import (
 )
 
 func main() {
-	var rules = rules.NewRules()
+	// Initialize rules
+	rules := rules.NewRules()
 	rules.SetupRulesConfig()
-	config := config.GetFlags()
+
+	// Load CLI flags/config
+	cfg := config.GetFlags()
+
+	// Initialize validator & file manager
 	validator := validation.NewValidator()
 	fm := filemanager.NewFileManager()
 
-	if config.IsCLIMode {
-		runner.RunCLI(fm, rules, config)
+	// Ensure resources are cleaned up if needed
+
+	// defer fm.Close()
+
+	if cfg.IsCLIMode {
+		if err := runner.RunCLI(fm, rules, cfg); err != nil {
+			log.Printf("CLI Error: %v\n", err)
+			os.Exit(2)
+		}
 	} else {
 		if err := runner.RunTUI(fm, rules, validator); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
+			log.Printf("TUI Error: %v\n", err)
+			os.Exit(3)
 		}
 	}
 }
