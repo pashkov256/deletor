@@ -24,6 +24,8 @@ type Config struct {
 	NewerThan          time.Time // Only process files newer than this time
 	MoveFileToTrash    bool      // If true, files will be moved to trash instead of being permanently deleted
 	UseRules           bool      // Whether to use rules from configuration file
+	JsonLogsEnabled    bool      // Whether to generates JSON-formatted logs
+	JsonLogsPath       string    // Path to append JSON-formatted logs
 }
 
 // LoadConfig initializes and returns a new Config instance with values from command-line flags
