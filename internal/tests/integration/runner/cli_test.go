@@ -84,10 +84,11 @@ func TestRunCLI_BasicFileOperations(t *testing.T) {
 		{
 			name: "Delete by extension",
 			config: &config.Config{
-				Directory:      testDir,
-				Extensions:     []string{".txt"},
-				SkipConfirm:    true,
-				IncludeSubdirs: true,
+				Directory:       testDir,
+				Extensions:      []string{".txt"},
+				SkipConfirm:     true,
+				IncludeSubdirs:  true,
+				JsonLogsEnabled: true,
 			},
 			expectedFiles: 3, // remaining .doc and .pdf files
 			expectedDirs:  3,
@@ -107,10 +108,11 @@ func TestRunCLI_BasicFileOperations(t *testing.T) {
 		{
 			name: "Delete by time",
 			config: &config.Config{
-				Directory:      testDir,
-				OlderThan:      time.Now().Add(-time.Hour),
-				SkipConfirm:    true,
-				IncludeSubdirs: true,
+				Directory:       testDir,
+				OlderThan:       time.Now().Add(-time.Hour),
+				SkipConfirm:     true,
+				IncludeSubdirs:  true,
+				JsonLogsEnabled: true,
 			},
 			expectedFiles: 3, // all files are newly created, but some are deleted
 			expectedDirs:  3,

@@ -82,7 +82,11 @@ func RunCLI(
 				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 			}
 
-			utils.LogDeletionToFile(toDeleteMap)
+			if config.JsonLogsEnabled {
+				utils.LogDeletionToFileAsJson(toDeleteMap, config.JsonLogsPath)
+			} else {
+				utils.LogDeletionToFile(toDeleteMap)
+			}
 		}
 
 	} else {

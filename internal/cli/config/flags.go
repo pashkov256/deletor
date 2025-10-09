@@ -26,6 +26,7 @@ func GetFlags() *Config {
 	newer := flag.String("newer", "", "Modification time newer than (e.g. 1sec, 2min, 3hour, 4day, 5week, 6month, 7year)")
 	moveToTrash := flag.Bool("trash", false, "Move files to trash?")
 	useRules := flag.Bool("rules", false, "Use rules from configuration file")
+	jsonLogsEnabled := flag.Bool("log-json", false, "Enable JSON-formatted logging. Use --log-json or --log-json \"/path/to/file\" to specify a path to write logs.")
 
 	flag.Parse()
 
@@ -79,6 +80,12 @@ func GetFlags() *Config {
 			os.Exit(1)
 		}
 		config.NewerThan = newerThan
+	}
+
+	// Get file path for outputting Json logs
+	if *jsonLogsEnabled {
+		config.JsonLogsEnabled = true
+		config.JsonLogsPath = utils.ParseJsonLogsPath(os.Args[1:], "--log-json")
 	}
 
 	config.IsCLIMode = *isCLIMode

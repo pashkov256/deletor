@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,7 +55,7 @@ func ExpandTilde(path string) string {
 // ToBytes converts a human-readable size string to bytes
 // Example: "1.5MB" -> 1572864, "2GB" -> 2147483648
 func ToBytes(sizeStr string) (int64, error) {
-	sizeStr = strings.TrimSpace(strings.ToLower(sizeStr))
+	sizeStr = strings.ReplaceAll(strings.ToLower(sizeStr), " ", "")
 
 	var unitIndex int
 	for unitIndex = 0; unitIndex < len(sizeStr); unitIndex++ {
@@ -126,6 +127,64 @@ func LogDeletionToFile(files map[string]string) {
 		return
 	}
 	defer file.Close()
+}
+
+// LogDeletionToFileAsJson generates JSON-formated deletion logs and writes to a file
+func LogDeletionToFileAsJson(files map[string]string, dir string) {
+	yellow := color.New(color.FgYellow).SprintFunc()
+	jsonFilePath := filepath.Join(dir, "deletor.json")
+	type DeletionLog struct {
+		Path      string `json:"path"`
+		Size      string `json:"size"`
+		Bytes     int64  `json:"bytes"`
+		DeletedAt string `json:"deleted_at"`
+	}
+
+	var existingLogs []DeletionLog
+	deletionTimestamp := time.Now().Format("2006-01-02 15:04:05")
+
+	// Read data from file if exists
+	data, err := os.ReadFile(jsonFilePath)
+	if err != nil && !os.IsNotExist(err) {
+		fmt.Println(yellow("Error:"), "Failed to read file")
+		return
+	}
+
+	// Unmarshal data to existing logs
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &existingLogs); err != nil {
+			fmt.Println(yellow("Error:"), "Failed to parse contents from file")
+			return
+		}
+	}
+
+	// Generate new logs
+	newLogs := make([]DeletionLog, len(files))
+	index := 0
+
+	for path, size := range files {
+		newLogs[index] = DeletionLog{
+			Path:      path,
+			Size:      size,
+			Bytes:     ToBytesOrDefault(size),
+			DeletedAt: deletionTimestamp,
+		}
+		index++
+	}
+
+	// Append new logs to existing logs
+	updatedLogs := append(existingLogs, newLogs...)
+
+	jsonData, err := json.MarshalIndent(updatedLogs, "", "\t")
+	if err != nil {
+		fmt.Println(yellow("Error:"), "Failed to marshal logs to json")
+		return
+	}
+
+	// Write to file
+	if err := os.WriteFile(jsonFilePath, jsonData, 0644); err != nil {
+		fmt.Println(yellow("Error:"), "Failed to save file")
+	}
 }
 
 // ParseExtToSlice converts a comma-separated string of extensions into a slice
@@ -226,6 +285,19 @@ func ParseTimeDuration(timeStr string) (time.Time, error) {
 
 	// Return the time that is duration from now
 	return time.Now().Add(-duration), nil
+}
+
+// ParseJsonLogsPath gets the optional path provided for JSON-formatted logs
+func ParseJsonLogsPath(args []string, flagName string) string {
+	length := len(args)
+	for i := 0; i < length-1; i++ {
+		// Checks if the next argument to "--log-json" is not a flag
+		if args[i] == flagName && len(args[i+1]) > 0 && args[i+1][0] != '-' {
+			path := strings.TrimSpace(args[i+1])
+			return filepath.Clean(path)
+		}
+	}
+	return ""
 }
 
 func GetFileIcon(size int64, path string, isDir bool) string {
