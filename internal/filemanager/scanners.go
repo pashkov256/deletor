@@ -12,6 +12,17 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+// meterSpinnerFrames mirrors the Meter spinner from charmbracelet/bubbles.
+var meterSpinnerFrames = []string{
+	"▱▱▱",
+	"▰▱▱",
+	"▰▰▱",
+	"▰▰▰",
+	"▰▰▱",
+	"▰▱▱",
+	"▱▱▱",
+}
+
 // FileScanner handles file system scanning operations with progress tracking
 type FileScanner struct {
 	fileManager  FileManager // File manager instance for operations
@@ -60,7 +71,7 @@ func (s *FileScanner) ProgressBarScanner(dir string) {
 		progressbar.OptionOnCompletion(func() {
 			fmt.Fprint(os.Stderr, "\n")
 		}),
-		progressbar.OptionSpinnerType(14),
+		progressbar.OptionSpinnerCustom(meterSpinnerFrames),
 		progressbar.OptionFullWidth(),
 		progressbar.OptionSetRenderBlankState(true))
 
