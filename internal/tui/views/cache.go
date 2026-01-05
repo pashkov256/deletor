@@ -12,6 +12,7 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -26,6 +27,7 @@ type CacheModel struct {
 	scanResults    []cache.ScanResult
 	isScanning     bool
 	status         string
+	Error *errors.Error
 }
 
 type CachePath struct {
@@ -134,6 +136,14 @@ func (m *CacheModel) View() string {
 		content.WriteString("\n")
 		content.WriteString(styles.InfoStyle.Render(m.status))
 	}
+
+	// Add error message if there is one
+	if m.Error != nil && m.Error.IsVisible() {
+		errorStyle := errors.GetStyle(m.Error.GetType())
+		content.WriteString("\n")
+		content.WriteString(errorStyle.Render(m.Error.GetMessage()))
+	}
+
 
 	content.WriteString("\n")
 	scanBtn := styles.LaunchButtonStyle.Render("🔍 Scan now")
@@ -252,11 +262,15 @@ func (m *CacheModel) handleSpace() (tea.Model, tea.Cmd) {
 		if runtime.GOOS == "darwin" {
 			m.status = "Currently only Windows and linux is supported for cache clearing\n"
 		} else {
-			m.cacheManager.ClearCache()
-			m.scanResults = []cache.ScanResult{}
-			m.status = "Cache clearing completed\n"
+			if err := m.cacheManager.ClearCache(); err != nil {
+				m.Error = errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Failed to clear all files: %v", err))
+				m.status = ""
+			} else {
+				m.scanResults = []cache.ScanResult{}
+				m.status = "Cache clearing completed\n"
+				m.Error = nil // Clear error on successful deletion
+			}
 		}
-		return m, nil
 	}
 	return m, nil
 }
