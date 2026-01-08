@@ -122,6 +122,7 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 			options.LogOperations:         lastestRules.LogOperations,
 			options.LogToFile:             lastestRules.LogToFile,
 			options.ShowStatistics:        lastestRules.ShowStatistics,
+			options.DisableEmoji:          lastestRules.DisableEmoji,
 			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
 		},
 		rules:           rules,
@@ -595,6 +596,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.OptionState[options.LogOperations],
 				m.OptionState[options.LogToFile],
 				m.OptionState[options.ShowStatistics],
+				m.OptionState[options.DisableEmoji],
 				m.OptionState[options.ExitAfterDeletion],
 			),
 		)

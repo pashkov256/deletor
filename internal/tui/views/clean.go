@@ -199,6 +199,7 @@ func InitialCleanModel(rules rules.Rules, fileManager filemanager.FileManager, v
 			options.LogOperations:         lastestRules.LogOperations,
 			options.LogToFile:             lastestRules.LogToFile,
 			options.ShowStatistics:        lastestRules.ShowStatistics,
+			options.DisableEmoji:          lastestRules.DisableEmoji,
 			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
 		},
 		FocusedElement:    "list",

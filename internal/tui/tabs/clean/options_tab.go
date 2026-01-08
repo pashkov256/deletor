@@ -30,7 +30,10 @@ func (t *OptionsTab) View() string {
 			}
 		}
 
-		emoji := options.GetEmojiByCleanOption(name)
+		emoji := ""
+		if !t.model.GetOptionState()[options.DisableEmoji] { // Selects an emoji if not disabled
+			emoji = options.GetEmojiByCleanOption(name)
+		}
 
 		content.WriteString(zone.Mark(fmt.Sprintf("clean_option_%d", i+1), optionStyle.Render(fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[t.model.GetOptionState()[name]], emoji, name))))
 

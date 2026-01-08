@@ -25,6 +25,7 @@ type defaultRules struct {
 	LogOperations         bool     `json:",omitempty"` // Whether to log operations
 	LogToFile             bool     `json:",omitempty"` // Whether to write logs to file
 	ShowStatistics        bool     `json:",omitempty"` // Whether to display statistics
+	DisableEmoji          bool     `json:",omitempty"` // Whether to disable emoji
 	ExitAfterDeletion     bool     `json:",omitempty"` // Whether to exit after deletion
 }
 

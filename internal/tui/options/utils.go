@@ -26,6 +26,8 @@ func GetEmojiByCleanOption(optionName string) string {
 		emoji = "📄"
 	case ShowStatistics:
 		emoji = "📊"
+	case DisableEmoji:
+		emoji = "🚫"
 	case ExitAfterDeletion:
 		emoji = "🚪"
 	}
