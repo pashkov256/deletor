@@ -12,22 +12,22 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
+	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/help"
-	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/utils"
 )
 
 type CacheModel struct {
-	OptionState    map[string]bool
-	FocusedElement string
-	cacheManager   cache.Manager
-	filemanager    filemanager.FileManager
-	scanResults    []cache.ScanResult
-	isScanning     bool
-	rulesModel     interfaces.RulesModel
-	status         string
+	OptionState      map[string]bool
+	FocusedElement   string
+	cacheManager     cache.Manager
+	filemanager      filemanager.FileManager
+	scanResults      []cache.ScanResult
+	isScanning       bool
+	rulesOptionState map[string]bool
+	status           string
 }
 
 type CachePath struct {
@@ -35,14 +35,26 @@ type CachePath struct {
 	Size string
 }
 
-func InitialCacheModel(fm filemanager.FileManager, rm interfaces.RulesModel) *CacheModel {
+func InitialCacheModel(fm filemanager.FileManager, rules rules.Rules) *CacheModel {
+	latestRules, _ := rules.GetRules()
 	return &CacheModel{
 		cacheManager:   *cache.NewCacheManager(fm),
 		filemanager:    fm,
 		OptionState:    options.DefaultCacheOptionState,
 		FocusedElement: "option1",
-		rulesModel:     rm,
-		status:         "",
+		rulesOptionState: map[string]bool{
+			options.ShowHiddenFiles:       latestRules.ShowHiddenFiles,
+			options.ConfirmDeletion:       latestRules.ConfirmDeletion,
+			options.IncludeSubfolders:     latestRules.IncludeSubfolders,
+			options.DeleteEmptySubfolders: latestRules.DeleteEmptySubfolders,
+			options.SendFilesToTrash:      latestRules.SendFilesToTrash,
+			options.LogOperations:         latestRules.LogOperations,
+			options.LogToFile:             latestRules.LogToFile,
+			options.ShowStatistics:        latestRules.ShowStatistics,
+			options.DisableEmoji:          latestRules.DisableEmoji,
+			options.ExitAfterDeletion:     latestRules.ExitAfterDeletion,
+		},
+		status: "",
 	}
 }
 
@@ -56,7 +68,7 @@ func (m *CacheModel) Init() tea.Cmd {
 
 func (m *CacheModel) View() string {
 	var content strings.Builder
-	disableEmoji := m.rulesModel.GetOptionState()[options.DisableEmoji]
+	disableEmoji := m.GetRulesOptionState()[options.DisableEmoji]
 	content.WriteString("\n")
 	content.WriteString("Select cache types to clear:\n")
 	for optionIndex, name := range options.DefaultCacheOption {
@@ -284,4 +296,8 @@ func (m *CacheModel) handleSpace() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, nil
+}
+
+func (m *CacheModel) GetRulesOptionState() map[string]bool {
+	return m.rulesOptionState
 }

@@ -620,7 +620,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	return m, func() tea.Msg { return RulesSavedMsg{} } //update app with rules
 }
 
 func (m *RulesModel) handleSave() (tea.Model, tea.Cmd) {
@@ -736,3 +736,5 @@ func (m *RulesModel) GetOlderInput() textinput.Model {
 func (m *RulesModel) GetNewerInput() textinput.Model {
 	return m.NewerInput
 }
+
+type RulesSavedMsg struct{}

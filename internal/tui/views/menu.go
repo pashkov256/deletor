@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
+	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/help"
-	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -16,13 +16,25 @@ import (
 
 type MainMenu struct {
 	SelectedIndex int
-	rulesModel    interfaces.RulesModel
+	OptionState   map[string]bool
 }
 
-func NewMainMenu(rulesModel interfaces.RulesModel) *MainMenu {
+func NewMainMenu(rules rules.Rules) *MainMenu {
+	latestRules, _ := rules.GetRules()
 	return &MainMenu{
 		SelectedIndex: 0,
-		rulesModel:    rulesModel,
+		OptionState: map[string]bool{
+			options.ShowHiddenFiles:       latestRules.ShowHiddenFiles,
+			options.ConfirmDeletion:       latestRules.ConfirmDeletion,
+			options.IncludeSubfolders:     latestRules.IncludeSubfolders,
+			options.DeleteEmptySubfolders: latestRules.DeleteEmptySubfolders,
+			options.SendFilesToTrash:      latestRules.SendFilesToTrash,
+			options.LogOperations:         latestRules.LogOperations,
+			options.LogToFile:             latestRules.LogToFile,
+			options.ShowStatistics:        latestRules.ShowStatistics,
+			options.DisableEmoji:          latestRules.DisableEmoji,
+			options.ExitAfterDeletion:     latestRules.ExitAfterDeletion,
+		},
 	}
 }
 
@@ -69,7 +81,7 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *MainMenu) View() string {
 	var content strings.Builder
 
-	disableEmoji := m.rulesModel.GetOptionState()[options.DisableEmoji]
+	disableEmoji := m.GetOptionState()[options.DisableEmoji]
 
 	// Title
 	title := "🗑️ Deletor v1.5.0"
@@ -127,4 +139,8 @@ func (m *MainMenu) HandleFocusTop() (tea.Model, tea.Cmd) {
 		m.SelectedIndex = len(menu.MenuItems) - 1
 	}
 	return m, nil
+}
+
+func (m *MainMenu) GetOptionState() map[string]bool {
+	return m.OptionState
 }
