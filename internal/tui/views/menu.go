@@ -7,17 +7,21 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/tui/help"
+	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/menu"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 )
 
 type MainMenu struct {
 	SelectedIndex int
+	rulesModel    interfaces.RulesModel
 }
 
-func NewMainMenu() *MainMenu {
+func NewMainMenu(rulesModel interfaces.RulesModel) *MainMenu {
 	return &MainMenu{
 		SelectedIndex: 0,
+		rulesModel:    rulesModel,
 	}
 }
 
@@ -64,8 +68,14 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *MainMenu) View() string {
 	var content strings.Builder
 
+	disableEmoji := m.rulesModel.GetOptionState()[options.DisableEmoji]
+
 	// Title
-	content.WriteString(styles.TitleStyle.Render("🗑️  Deletor v1.5.0"))
+	title := "Deletor v1.5.0"
+	if !disableEmoji {
+		title = "🗑️  " + title
+	}
+	content.WriteString(styles.TitleStyle.Render(title))
 	content.WriteString("\n\n")
 
 	// Menu items from constants
@@ -76,7 +86,12 @@ func (m *MainMenu) View() string {
 		if i == m.SelectedIndex {
 			style = styles.SelectedMenuItemStyle
 		}
-
+		if disableEmoji { // removing emoji if disabled
+			_, afterItem, separatedSuccessfully := strings.Cut(item, " ")
+			if separatedSuccessfully {
+				item = afterItem
+			}
+		}
 		button := style.Render(item)
 		content.WriteString(zone.Mark(fmt.Sprintf("menu_button_%d", i), button))
 		content.WriteString("\n")

@@ -37,9 +37,10 @@ func NewApp(
 	rules rules.Rules,
 	validator *validation.Validator,
 ) *App {
+	rm := views.NewRulesModel(rules, validator)
 	return &App{
-		menu:        views.NewMainMenu(),
-		rulesModel:  views.NewRulesModel(rules, validator),
+		menu:        views.NewMainMenu(rm),
+		rulesModel:  rm,
 		page:        menuPage,
 		filemanager: filemanager,
 		rules:       rules,
