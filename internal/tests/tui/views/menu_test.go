@@ -3,12 +3,14 @@ package views_test
 import (
 	"testing"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 func setupMenuTestModel() *views.MainMenu {
-	return views.NewMainMenu()
+	rm := newTestingRulesModel()
+	return views.NewMainMenu(rm)
 }
 
 func TestMainMenu_Init(t *testing.T) {
@@ -43,7 +45,7 @@ func TestMainMenu_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := views.NewMainMenu()
+			model := views.NewMainMenu(&testingRulesModel{})
 			model.SelectedIndex = tt.initialIndex
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
@@ -79,4 +81,38 @@ func TestMainMenu_ListNavigation(t *testing.T) {
 	if model.SelectedIndex != 0 {
 		t.Error("Shift+Tab key should move cursor up")
 	}
+}
+
+// mock model that minimially implements interfaces.RulesModel
+func newTestingRulesModel() *testingRulesModel {
+	return &testingRulesModel{
+		options: map[string]bool{
+			"DisableEmoji": false,
+		},
+	}
+}
+
+type testingRulesModel struct {
+	options map[string]bool
+}
+
+func (t *testingRulesModel) GetOptionState() map[string]bool {
+	return t.options
+}
+
+func (t *testingRulesModel) GetPathInput() textinput.Model    { return textinput.Model{} }
+func (t *testingRulesModel) GetExtInput() textinput.Model     { return textinput.Model{} }
+func (t *testingRulesModel) GetMinSizeInput() textinput.Model { return textinput.Model{} }
+func (t *testingRulesModel) GetMaxSizeInput() textinput.Model { return textinput.Model{} }
+func (t *testingRulesModel) GetExcludeInput() textinput.Model { return textinput.Model{} }
+func (t *testingRulesModel) GetOlderInput() textinput.Model   { return textinput.Model{} }
+func (t *testingRulesModel) GetNewerInput() textinput.Model   { return textinput.Model{} }
+func (t *testingRulesModel) GetFocusedElement() string        { return "" }
+func (t *testingRulesModel) GetRulesPath() string             { return "" }
+
+func (t *testingRulesModel) SetFocusedElement(string)    {}
+func (t *testingRulesModel) SetOptionState(string, bool) {}
+
+func (t *testingRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return nil, nil
 }
