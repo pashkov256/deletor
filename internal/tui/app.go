@@ -50,7 +50,7 @@ func NewApp(
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
-	a.cacheModel = views.InitialCacheModel(a.filemanager)
+	a.cacheModel = views.InitialCacheModel(a.filemanager, a.rulesModel)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 

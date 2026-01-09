@@ -52,10 +52,15 @@ func (t *LogTab) Update(msg tea.Msg) tea.Cmd {
 
 func (t *LogTab) View() string {
 	var content strings.Builder
+	disableEmoji := t.model.GetOptionState()[options.DisableEmoji]
 
 	// Check if statistics are enabled
 	if !t.model.GetOptionState()[options.ShowStatistics] {
-		return styles.InfoStyle.Render("\n⚠️ Statistics display is disabled. Enable 'Show statistics' in Options tab (F3). ⚠️")
+		statsMsg := "Statistics display is disabled. Enable 'Show statistics' in Options tab (F3)."
+		if !disableEmoji {
+			statsMsg = "⚠️" + statsMsg + "⚠️"
+		}
+		return styles.InfoStyle.Render("\n" + statsMsg)
 	}
 
 	tableStyle := lipgloss.NewStyle().
@@ -107,7 +112,6 @@ func (t *LogTab) View() string {
 		{"🚫", "Ignored Files", fmt.Sprintf("%d", t.totalStats.IgnoredFiles), false},
 		{"📈", "Ignored Size", utils.FormatSize(t.totalStats.IgnoredSize), false},
 	}
-	disableEmoji := t.model.GetOptionState()[options.DisableEmoji]
 	// Create table content
 	var tableContent strings.Builder
 	for _, row := range rows {

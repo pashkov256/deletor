@@ -11,6 +11,7 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/models"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/utils"
 )
@@ -24,7 +25,7 @@ func (t *MainTab) Update(msg tea.Msg) tea.Cmd { return nil }
 
 func (t *MainTab) View() string {
 	var content strings.Builder
-
+	disableEmoji := t.model.GetOptionState()[options.DisableEmoji]
 	// Path input
 	pathStyle := styles.StandardInputStyle
 	if t.model.GetFocusedElement() == "pathInput" {
@@ -40,7 +41,14 @@ func (t *MainTab) View() string {
 			startButtonStyle = styles.LaunchButtonFocusedStyle
 		}
 		content.WriteString("\n")
-		content.WriteString(zone.Mark("main_start_button", startButtonStyle.Render("📂 Launch")))
+		launchMsg := "📂 Launch"
+		if disableEmoji {
+			newLaunchMsg, err := utils.RemoveEmoji(launchMsg)
+			if err == nil {
+				launchMsg = newLaunchMsg
+			}
+		}
+		content.WriteString(zone.Mark("main_start_button", startButtonStyle.Render(launchMsg)))
 		content.WriteString("\n")
 	} else {
 		// Show full interface when path is set
@@ -112,7 +120,10 @@ func (t *MainTab) View() string {
 
 			for i := startIdx; i < endIdx; i++ {
 				item := items[i].(models.CleanItem)
-				icon := utils.GetFileIcon(item.Size, item.Path, item.IsDir)
+				icon := ""
+				if !disableEmoji {
+					icon = utils.GetFileIcon(item.Size, item.Path, item.IsDir)
+				}
 				filename := filepath.Base(item.Path)
 				sizeStr := ""
 				if item.Size >= 0 && !item.IsDir {
@@ -175,18 +186,30 @@ func (t *MainTab) View() string {
 		content.WriteString(listStyle.Render(listContent.String()))
 
 		// Buttons section
+		dirMsg := "➡️  Show directories"
+		cleanMsg := "🗑️  Start cleaning"
+		if disableEmoji {
+			newDirMsg, err := utils.RemoveEmoji(dirMsg)
+			if err == nil {
+				dirMsg = newDirMsg
+			}
+			newCleanMsg, err := utils.RemoveEmoji(cleanMsg)
+			if err == nil {
+				cleanMsg = newCleanMsg
+			}
+		}
 		content.WriteString("\n\n")
 		if t.model.GetFocusedElement() == "dirButton" {
-			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonFocusedStyle.Render("➡️  Show directories")))
+			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonFocusedStyle.Render(dirMsg)))
 		} else {
-			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonStyle.Render("➡️  Show directories")))
+			content.WriteString(zone.Mark("main_dir_button", styles.StandardButtonStyle.Render(dirMsg)))
 		}
 		content.WriteString("  ")
 
 		if t.model.GetFocusedElement() == "deleteButton" {
-			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonFocusedStyle.Render("🗑️  Start cleaning")))
+			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonFocusedStyle.Render(cleanMsg)))
 		} else {
-			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonStyle.Render("🗑️  Start cleaning")))
+			content.WriteString(zone.Mark("main_delete_button", styles.DeleteButtonStyle.Render(cleanMsg)))
 		}
 		content.WriteString("\n")
 	}

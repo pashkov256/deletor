@@ -297,11 +297,18 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *RulesModel) View() string {
 	activeTab := m.TabManager.GetActiveTabIndex()
 	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options"}
+	disableEmoji := m.OptionState[options.DisableEmoji]
 	tabs := make([]string, 3)
 	for i, name := range tabNames {
 		style := styles.TabStyle
 		if activeTab == i {
 			style = styles.ActiveTabStyle
+		}
+		if disableEmoji {
+			newName, err := utils.RemoveEmoji(name)
+			if err == nil {
+				name = newName
+			}
 		}
 		tabs[i] = zone.Mark(fmt.Sprintf("tab_%d", i), style.Render(name))
 	}

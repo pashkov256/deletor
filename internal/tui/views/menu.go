@@ -11,6 +11,7 @@ import (
 	"github.com/pashkov256/deletor/internal/tui/menu"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 type MainMenu struct {
@@ -71,9 +72,12 @@ func (m *MainMenu) View() string {
 	disableEmoji := m.rulesModel.GetOptionState()[options.DisableEmoji]
 
 	// Title
-	title := "Deletor v1.5.0"
-	if !disableEmoji {
-		title = "🗑️  " + title
+	title := "🗑️ Deletor v1.5.0"
+	if disableEmoji {
+		newTitle, err := utils.RemoveEmoji(title)
+		if err == nil {
+			title = newTitle
+		}
 	}
 	content.WriteString(styles.TitleStyle.Render(title))
 	content.WriteString("\n\n")
@@ -86,12 +90,14 @@ func (m *MainMenu) View() string {
 		if i == m.SelectedIndex {
 			style = styles.SelectedMenuItemStyle
 		}
+
 		if disableEmoji { // removing emoji if disabled
-			_, afterItem, separatedSuccessfully := strings.Cut(item, " ")
-			if separatedSuccessfully {
-				item = afterItem
+			newItem, err := utils.RemoveEmoji(item)
+			if err == nil {
+				item = newItem
 			}
 		}
+
 		button := style.Render(item)
 		content.WriteString(zone.Mark(fmt.Sprintf("menu_button_%d", i), button))
 		content.WriteString("\n")

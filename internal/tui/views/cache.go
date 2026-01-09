@@ -13,6 +13,7 @@ import (
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	"github.com/pashkov256/deletor/internal/tui/help"
+	"github.com/pashkov256/deletor/internal/tui/interfaces"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
 	"github.com/pashkov256/deletor/internal/utils"
@@ -25,6 +26,7 @@ type CacheModel struct {
 	filemanager    filemanager.FileManager
 	scanResults    []cache.ScanResult
 	isScanning     bool
+	rulesModel     interfaces.RulesModel
 	status         string
 }
 
@@ -33,12 +35,13 @@ type CachePath struct {
 	Size string
 }
 
-func InitialCacheModel(fm filemanager.FileManager) *CacheModel {
+func InitialCacheModel(fm filemanager.FileManager, rm interfaces.RulesModel) *CacheModel {
 	return &CacheModel{
 		cacheManager:   *cache.NewCacheManager(fm),
 		filemanager:    fm,
 		OptionState:    options.DefaultCacheOptionState,
 		FocusedElement: "option1",
+		rulesModel:     rm,
 		status:         "",
 	}
 }
@@ -53,7 +56,7 @@ func (m *CacheModel) Init() tea.Cmd {
 
 func (m *CacheModel) View() string {
 	var content strings.Builder
-
+	disableEmoji := m.rulesModel.GetOptionState()[options.DisableEmoji]
 	content.WriteString("\n")
 	content.WriteString("Select cache types to clear:\n")
 	for optionIndex, name := range options.DefaultCacheOption {
@@ -67,9 +70,11 @@ func (m *CacheModel) View() string {
 		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", optionIndex+1)))
 
 		emoji := ""
-		switch name {
-		case options.SystemCache:
-			emoji = "💻"
+		if !disableEmoji {
+			switch name {
+			case options.SystemCache:
+				emoji = "💻"
+			}
 		}
 
 		optionContent := fmt.Sprintf("[%s] %s %-20s", map[bool]string{true: "✓", false: "○"}[m.OptionState[name]], emoji, name)
@@ -123,7 +128,14 @@ func (m *CacheModel) View() string {
 		content.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, totalLabel, totalSizeStr, totalFilesStr))
 	} else if m.isScanning {
 		content.WriteString("\n")
-		content.WriteString(styles.InfoStyle.Render("🔍 Scanning..."))
+		ScanningMsg := "🔍 Scanning..."
+		if disableEmoji {
+			newScanningMsg, err := utils.RemoveEmoji(ScanningMsg)
+			if err == nil {
+				ScanningMsg = newScanningMsg
+			}
+		}
+		content.WriteString(styles.InfoStyle.Render(ScanningMsg))
 	} else {
 		content.WriteString("\n")
 		content.WriteString(styles.ScanResultEmptyStyle.Render("Press 'Scan now' to see cache locations \n"))
@@ -136,14 +148,27 @@ func (m *CacheModel) View() string {
 	}
 
 	content.WriteString("\n")
-	scanBtn := styles.LaunchButtonStyle.Render("🔍 Scan now")
-	deleteBtn := styles.DeleteButtonStyle.Render("🗑️ Delete selected")
+
+	scanMsg := "🔍 Scan now"
+	deleteMsg := "🗑️ Delete selected"
+	if disableEmoji { //remove emojis if disabled
+		newScanMsg, err := utils.RemoveEmoji(scanMsg)
+		if err == nil {
+			scanMsg = newScanMsg
+		}
+		newDeleteMsg, err := utils.RemoveEmoji(deleteMsg)
+		if err == nil {
+			deleteMsg = newDeleteMsg
+		}
+	}
+	scanBtn := styles.LaunchButtonStyle.Render(scanMsg)
+	deleteBtn := styles.DeleteButtonStyle.Render(deleteMsg)
 
 	switch m.FocusedElement {
 	case "scanButton":
-		scanBtn = styles.LaunchButtonFocusedStyle.Render("🔍 Scan now")
+		scanBtn = styles.LaunchButtonFocusedStyle.Render(scanMsg)
 	case "deleteButton":
-		deleteBtn = styles.DeleteButtonFocusedStyle.Render("🗑️ Delete selected")
+		deleteBtn = styles.DeleteButtonFocusedStyle.Render(deleteMsg)
 	}
 
 	content.WriteString(zone.Mark("cache_scan_button", scanBtn))

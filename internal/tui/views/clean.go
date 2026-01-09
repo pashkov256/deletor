@@ -267,11 +267,18 @@ func (m *CleanFilesModel) View() string {
 	// --- Tabs rendering ---
 	activeTab := m.TabManager.GetActiveTabIndex()
 	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options", "📖 [F4] Log", "❔ [F5] Help"}
+	disableEmoji := m.OptionState[options.DisableEmoji]
 	tabs := make([]string, 5)
 	for i, name := range tabNames {
 		style := styles.TabStyle
 		if activeTab == i {
 			style = styles.ActiveTabStyle
+		}
+		if disableEmoji {
+			newName, err := utils.RemoveEmoji(name)
+			if err == nil {
+				name = newName
+			}
 		}
 		tabs[i] = zone.Mark(fmt.Sprintf("tab_%d", i), style.Render(name))
 	}
@@ -1151,7 +1158,10 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "alt+8": // Toggle show statistics
 		m.OptionState[options.ShowStatistics] = !m.OptionState[options.ShowStatistics]
 		return m, nil
-	case "alt+9": // Toggle exit after deletion
+	case "alt+9":
+		m.OptionState[options.DisableEmoji] = !m.OptionState[options.DisableEmoji]
+		return m, nil
+	case "alt+0": // Toggle exit after deletion
 		m.OptionState[options.ExitAfterDeletion] = !m.OptionState[options.ExitAfterDeletion]
 		return m, nil
 	case "enter":
