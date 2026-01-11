@@ -1,7 +1,7 @@
 package menu
 
 var (
-	CleanFIlesTitle  = "🧹 Clean files pop"
+	CleanFIlesTitle  = "🧹 Clean files"
 	CleanCacheTitle  = "♻️ Clean cache"
 	ManageRulesTitle = "⚙️ Manage rules"
 	StatisticsTitle  = "📊 Statistics"
