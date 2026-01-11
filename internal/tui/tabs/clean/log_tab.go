@@ -52,10 +52,15 @@ func (t *LogTab) Update(msg tea.Msg) tea.Cmd {
 
 func (t *LogTab) View() string {
 	var content strings.Builder
+	disableEmoji := t.model.GetOptionState()[options.DisableEmoji]
 
 	// Check if statistics are enabled
 	if !t.model.GetOptionState()[options.ShowStatistics] {
-		return styles.InfoStyle.Render("\n⚠️ Statistics display is disabled. Enable 'Show statistics' in Options tab (F3). ⚠️")
+		statsMsg := "Statistics display is disabled. Enable 'Show statistics' in Options tab (F3)."
+		if !disableEmoji {
+			statsMsg = "⚠️" + statsMsg + "⚠️"
+		}
+		return styles.InfoStyle.Render("\n" + statsMsg)
 	}
 
 	tableStyle := lipgloss.NewStyle().
@@ -89,34 +94,37 @@ func (t *LogTab) View() string {
 	timeStr := t.startTime.Format("02.01.2006 15:04:05 ")
 
 	rows := []struct {
-		label string
-		value string
+		emoji        string
+		label        string
+		value        string
+		newlineAfter bool
 	}{
-		{"🔄 Last operation", t.stats.OperationType},
-		{"📂 Directory", t.stats.Directory},
-		{"⏰ Start Time", timeStr},
-		{"⏱️ Program lifetime", durationStr},
-		{"📝 Total Files", fmt.Sprintf("%d", t.totalStats.TotalFiles)},
-		{"💾 Total Size", utils.FormatSize(t.totalStats.TotalSize)},
-		{"🗑️ Deleted Files", fmt.Sprintf("%d", t.totalStats.DeletedFiles)},
-		{"📈 Deleted Size", utils.FormatSize(t.totalStats.DeletedSize)},
-		{"♻️ Trashed Files", fmt.Sprintf("%d", t.totalStats.TrashedFiles)},
-		{"📈 Trashed Size", utils.FormatSize(t.totalStats.TrashedSize)},
-		{"🚫 Ignored Files", fmt.Sprintf("%d", t.totalStats.IgnoredFiles)},
-		{"📈 Ignored Size", utils.FormatSize(t.totalStats.IgnoredSize)},
+		{"🔄", "Last operation", t.stats.OperationType, false},
+		{"📂", "Directory", t.stats.Directory, false},
+		{"⏰", "Start Time", timeStr, false},
+		{"⏱️", "Program lifetime", durationStr, true},
+		{"📝", "Total Files", fmt.Sprintf("%d", t.totalStats.TotalFiles), false},
+		{"💾", "Total Size", utils.FormatSize(t.totalStats.TotalSize), true},
+		{"🗑️", "Deleted Files", fmt.Sprintf("%d", t.totalStats.DeletedFiles), false},
+		{"📈", "Deleted Size", utils.FormatSize(t.totalStats.DeletedSize), true},
+		{"♻️", "Trashed Files", fmt.Sprintf("%d", t.totalStats.TrashedFiles), false},
+		{"📈", "Trashed Size", utils.FormatSize(t.totalStats.TrashedSize), true},
+		{"🚫", "Ignored Files", fmt.Sprintf("%d", t.totalStats.IgnoredFiles), false},
+		{"📈", "Ignored Size", utils.FormatSize(t.totalStats.IgnoredSize), false},
 	}
-
 	// Create table content
 	var tableContent strings.Builder
 	for _, row := range rows {
-		tableContent.WriteString(labelStyle.Render(row.label))
+		label := row.label
+		if !disableEmoji {
+			label = row.emoji + " " + label
+		}
+		tableContent.WriteString(labelStyle.Render(label))
 		tableContent.WriteString(valueStyle.Render(row.value))
 		tableContent.WriteString("\n")
-
-		if row.label == "💾 Total Size" || row.label == "📈 Trashed Size" || row.label == "🗑️ Deleted Size" || row.label == "📈 Deleted Size" || row.label == "⏱️ Program lifetime" {
+		if row.newlineAfter {
 			tableContent.WriteString("\n")
 		}
-
 	}
 
 	// Render table with border

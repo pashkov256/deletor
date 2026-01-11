@@ -107,6 +107,7 @@ func TestSetupRulesConfig_NoExistingConfig(t *testing.T) {
 	// Test boolean fields
 	boolFields := map[string]bool{
 		"ShowStatistics":        true,
+		"DisableEmoji":          false,
 		"ShowHiddenFiles":       false,
 		"ConfirmDeletion":       false,
 		"IncludeSubfolders":     false,
@@ -258,7 +259,7 @@ func TestUpdateRules_MultipleOptions(t *testing.T) {
 		rules.WithOlderThan("10d"),
 		rules.WithNewerThan("10d"),
 		rules.WithExtensions(testExtensions),
-		rules.WithOptions(true, true, true, false, false, true, false, true, false),
+		rules.WithOptions(true, true, true, false, false, true, false, true, false, false),
 		rules.WithExclude(testExclude),
 	)
 	if err != nil {
@@ -330,6 +331,7 @@ func TestUpdateRules_MultipleOptions(t *testing.T) {
 		"DeleteEmptySubfolders",
 		"SendFilesToTrash",
 		"LogToFile",
+		"DisableEmoji",
 		"ExitAfterDeletion",
 	}
 

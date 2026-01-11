@@ -26,7 +26,6 @@ func (d *defaultRules) UpdateRules(options ...RuleOption) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -76,6 +75,7 @@ func (d *defaultRules) SetupRulesConfig() error {
 			LogOperations:         options.DefaultCleanOptionState[options.LogOperations],
 			LogToFile:             options.DefaultCleanOptionState[options.LogToFile],
 			ShowStatistics:        options.DefaultCleanOptionState[options.ShowStatistics],
+			DisableEmoji:          options.DefaultCleanOptionState[options.DisableEmoji],
 			ExitAfterDeletion:     options.DefaultCleanOptionState[options.ExitAfterDeletion],
 		}
 

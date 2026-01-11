@@ -8,7 +8,9 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/interfaces"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 type MainTab struct {
@@ -20,7 +22,7 @@ func (t *MainTab) Update(msg tea.Msg) tea.Cmd { return nil }
 
 func (t *MainTab) View() string {
 	var content strings.Builder
-
+	disableEmoji := t.model.GetOptionState()[options.DisableEmoji]
 	// Location input with label
 	pathStyle := styles.StandardInputStyle
 	if t.model.GetFocusedElement() == "locationInput" {
@@ -35,7 +37,14 @@ func (t *MainTab) View() string {
 	if t.model.GetFocusedElement() == "saveButton" {
 		saveButtonStyle = styles.StandardButtonFocusedStyle
 	}
-	buttonContent := saveButtonStyle.Render("💾 Save rules")
+	saveMsg := "💾 Save rules"
+	if disableEmoji {
+		newSaveMsg, err := utils.RemoveEmoji(saveMsg)
+		if err == nil {
+			saveMsg = newSaveMsg
+		}
+	}
+	buttonContent := saveButtonStyle.Render(saveMsg)
 	content.WriteString(zone.Mark("rules_save_button", buttonContent))
 	content.WriteString("\n\n\n")
 

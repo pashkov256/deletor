@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -415,4 +416,12 @@ func GetFileIcon(size int64, path string, isDir bool) string {
 
 func GenerateUUID() string {
 	return uuid.New().String()
+}
+
+func RemoveEmoji(textWithEmoji string) (string, error) {
+	_, textWithoutEmoji, cutSuccess := strings.Cut(textWithEmoji, " ")
+	if !cutSuccess {
+		return textWithEmoji, errors.New("string not in expected form, emoji not removed")
+	}
+	return textWithoutEmoji, nil
 }

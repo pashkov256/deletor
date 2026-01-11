@@ -154,6 +154,7 @@ func TestCleanFilesModel_InitialState(t *testing.T) {
 		options.LogOperations:         false,
 		options.LogToFile:             false,
 		options.ShowStatistics:        false,
+		options.DisableEmoji:          false,
 		options.ExitAfterDeletion:     false,
 	}
 
@@ -430,6 +431,12 @@ func TestCleanFilesModel_Navigation(t *testing.T) {
 				{
 					name:          "Tab_to_option10",
 					initialFocus:  "clean_option_9",
+					key:           "tab",
+					expectedFocus: "clean_option_10",
+				},
+				{
+					name:          "Tab_wrap_to_option1",
+					initialFocus:  "clean_option_10",
 					key:           "tab",
 					expectedFocus: "clean_option_1",
 				},
@@ -816,7 +823,12 @@ func TestCleanFilesModel_OptionsAndSettings(t *testing.T) {
 		model.Init()
 
 		for i := 1; i <= len(options.DefaultCleanOption); i++ {
-			optionKey := fmt.Sprintf("alt+%d", i)
+			var optionKey string
+			if i == 10 {
+				optionKey = "alt+0" // ExitAfterDeletion uses alt+0, not alt+10
+			} else {
+				optionKey = fmt.Sprintf("alt+%d", i)
+			}
 			initialState := model.OptionState[options.DefaultCleanOption[i-1]]
 
 			model.Handle(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(optionKey)})

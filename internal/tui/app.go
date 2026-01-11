@@ -38,7 +38,7 @@ func NewApp(
 	validator *validation.Validator,
 ) *App {
 	return &App{
-		menu:        views.NewMainMenu(),
+		menu:        views.NewMainMenu(rules),
 		rulesModel:  views.NewRulesModel(rules, validator),
 		page:        menuPage,
 		filemanager: filemanager,
@@ -49,7 +49,7 @@ func NewApp(
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
-	a.cacheModel = views.InitialCacheModel(a.filemanager)
+	a.cacheModel = views.InitialCacheModel(a.filemanager, a.rules)
 	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
 }
 
@@ -89,6 +89,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, tea.Batch(cmds...)
 			}
 		}
+	case views.RulesSavedMsg:
+		a.menu = views.NewMainMenu(a.rules)
+		a.cacheModel = views.InitialCacheModel(a.filemanager, a.rules)
+		return a, nil
 	}
 
 	switch a.page {

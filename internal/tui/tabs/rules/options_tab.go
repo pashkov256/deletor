@@ -31,7 +31,10 @@ func (t *OptionsTab) View() string {
 			}
 		}
 
-		emoji := options.GetEmojiByCleanOption(name)
+		emoji := ""
+		if !t.model.GetOptionState()[options.DisableEmoji] { // Selects an emoji if not disabled
+			emoji = options.GetEmojiByCleanOption(name)
+		}
 
 		content.WriteString(fmt.Sprintf("%-4s", fmt.Sprintf("%d.", i+1)))
 		content.WriteString(zone.Mark(fmt.Sprintf("rules_option_%d", i+1), style.Render(fmt.Sprintf("[%s] %s %-20s",

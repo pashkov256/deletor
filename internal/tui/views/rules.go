@@ -122,6 +122,7 @@ func NewRulesModel(rules rules.Rules, validator *validation.Validator) *RulesMod
 			options.LogOperations:         lastestRules.LogOperations,
 			options.LogToFile:             lastestRules.LogToFile,
 			options.ShowStatistics:        lastestRules.ShowStatistics,
+			options.DisableEmoji:          lastestRules.DisableEmoji,
 			options.ExitAfterDeletion:     lastestRules.ExitAfterDeletion,
 		},
 		rules:           rules,
@@ -296,11 +297,18 @@ func (m *RulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *RulesModel) View() string {
 	activeTab := m.TabManager.GetActiveTabIndex()
 	tabNames := []string{"🗂️ [F1] Main", "🧹 [F2] Filters", "⚙️ [F3] Options"}
+	disableEmoji := m.OptionState[options.DisableEmoji]
 	tabs := make([]string, 3)
 	for i, name := range tabNames {
 		style := styles.TabStyle
 		if activeTab == i {
 			style = styles.ActiveTabStyle
+		}
+		if disableEmoji {
+			newName, err := utils.RemoveEmoji(name)
+			if err == nil {
+				name = newName
+			}
 		}
 		tabs[i] = zone.Mark(fmt.Sprintf("tab_%d", i), style.Render(name))
 	}
@@ -595,6 +603,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.OptionState[options.LogOperations],
 				m.OptionState[options.LogToFile],
 				m.OptionState[options.ShowStatistics],
+				m.OptionState[options.DisableEmoji],
 				m.OptionState[options.ExitAfterDeletion],
 			),
 		)
@@ -611,7 +620,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	return m, func() tea.Msg { return RulesSavedMsg{} } //update app with rules
 }
 
 func (m *RulesModel) handleSave() (tea.Model, tea.Cmd) {
@@ -727,3 +736,5 @@ func (m *RulesModel) GetOlderInput() textinput.Model {
 func (m *RulesModel) GetNewerInput() textinput.Model {
 	return m.NewerInput
 }
+
+type RulesSavedMsg struct{}

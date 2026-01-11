@@ -6,18 +6,35 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
+	rules "github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/menu"
+	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 type MainMenu struct {
 	SelectedIndex int
+	OptionState   map[string]bool
 }
 
-func NewMainMenu() *MainMenu {
+func NewMainMenu(rules rules.Rules) *MainMenu {
+	latestRules, _ := rules.GetRules()
 	return &MainMenu{
 		SelectedIndex: 0,
+		OptionState: map[string]bool{
+			options.ShowHiddenFiles:       latestRules.ShowHiddenFiles,
+			options.ConfirmDeletion:       latestRules.ConfirmDeletion,
+			options.IncludeSubfolders:     latestRules.IncludeSubfolders,
+			options.DeleteEmptySubfolders: latestRules.DeleteEmptySubfolders,
+			options.SendFilesToTrash:      latestRules.SendFilesToTrash,
+			options.LogOperations:         latestRules.LogOperations,
+			options.LogToFile:             latestRules.LogToFile,
+			options.ShowStatistics:        latestRules.ShowStatistics,
+			options.DisableEmoji:          latestRules.DisableEmoji,
+			options.ExitAfterDeletion:     latestRules.ExitAfterDeletion,
+		},
 	}
 }
 
@@ -64,8 +81,17 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *MainMenu) View() string {
 	var content strings.Builder
 
+	disableEmoji := m.GetOptionState()[options.DisableEmoji]
+
 	// Title
-	content.WriteString(styles.TitleStyle.Render("🗑️  Deletor v1.5.0"))
+	title := "🗑️ Deletor v1.5.0"
+	if disableEmoji {
+		newTitle, err := utils.RemoveEmoji(title)
+		if err == nil {
+			title = newTitle
+		}
+	}
+	content.WriteString(styles.TitleStyle.Render(title))
 	content.WriteString("\n\n")
 
 	// Menu items from constants
@@ -75,6 +101,13 @@ func (m *MainMenu) View() string {
 		style := styles.MenuItem
 		if i == m.SelectedIndex {
 			style = styles.SelectedMenuItemStyle
+		}
+
+		if disableEmoji { // removing emoji if disabled
+			newItem, err := utils.RemoveEmoji(item)
+			if err == nil {
+				item = newItem
+			}
 		}
 
 		button := style.Render(item)
@@ -106,4 +139,8 @@ func (m *MainMenu) HandleFocusTop() (tea.Model, tea.Cmd) {
 		m.SelectedIndex = len(menu.MenuItems) - 1
 	}
 	return m, nil
+}
+
+func (m *MainMenu) GetOptionState() map[string]bool {
+	return m.OptionState
 }

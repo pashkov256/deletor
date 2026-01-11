@@ -28,7 +28,7 @@ func setupTestModel() *views.RulesModel {
 		rules.WithExclude([]string{}),
 		rules.WithOlderThan(""),
 		rules.WithNewerThan(""),
-		rules.WithOptions(false, false, false, false, false, false, false, false, false),
+		rules.WithOptions(false, false, false, false, false, false, false, false, true, false),
 	); err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func TestRulesModel_View(t *testing.T) {
 				m.TabManager.SetActiveTabIndex(0)
 				m.FocusedElement = "locationInput"
 			},
-			expected: "🗂️ [F1] Main",
+			expected: "[F1] Main",
 		},
 		{
 			name: "Filters tab view",
@@ -86,7 +86,7 @@ func TestRulesModel_View(t *testing.T) {
 				m.TabManager.SetActiveTabIndex(1)
 				m.FocusedElement = "extensionsInput"
 			},
-			expected: "🧹 [F2] Filters",
+			expected: "[F2] Filters",
 		},
 		{
 			name: "Options tab view",
@@ -96,7 +96,7 @@ func TestRulesModel_View(t *testing.T) {
 				m.FocusedElement = "rules_option_1"
 			},
 
-			expected: "⚙️ [F3] Options",
+			expected: "[F3] Options",
 		},
 	}
 

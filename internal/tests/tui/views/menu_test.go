@@ -4,11 +4,14 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/pashkov256/deletor/internal/rules"
 	"github.com/pashkov256/deletor/internal/tui/views"
 )
 
 func setupMenuTestModel() *views.MainMenu {
-	return views.NewMainMenu()
+	rulesInstance := rules.NewRules()
+	_ = rulesInstance.SetupRulesConfig() // Ignore error for test setup
+	return views.NewMainMenu(rulesInstance)
 }
 
 func TestMainMenu_Init(t *testing.T) {
@@ -43,7 +46,9 @@ func TestMainMenu_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := views.NewMainMenu()
+			rulesInstance := rules.NewRules()
+			_ = rulesInstance.SetupRulesConfig()
+			model := views.NewMainMenu(rulesInstance)
 			model.SelectedIndex = tt.initialIndex
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
