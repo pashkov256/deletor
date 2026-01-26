@@ -27,13 +27,7 @@
 ---
 
 <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0;">
-  <a href="https://t.me/OpenSource_Chat">
-    <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/Group%2064.png?raw=true" 
-         width="300" 
-         alt="OSS Community Logo"
-         style="flex-shrink: 0;"/>
-  </a>
-  <div style="text-align: left; max-width: 500px;">
+  
 <b><a href="https://t.me/OpenSource_Chat">Опенсорсеры</a></b> - это сообщество в телеграмме для разработчиков, здесь любой может поделится своими проектами, получить конструктивный разбор проекта, найти первых контрибьюторов и просто лампово общаться об айти и не только.
   </div>
 </div>
