@@ -18,6 +18,27 @@
 
 <a href="https://code2tutorial.com/tutorial/3aac813f-99c2-453f-819f-c80e4322e068/index.md"><b>Deletor</b></a> is a handy file deletion tool that combines a powerful text interface (**TUI**) with visual directory navigation, and classic command line mode (**CLI**). With it, you can quickly find and delete files by filters, send them to the trash or completely erase them, as well as clear the cache, both interactively and through scripts.
 
+
+---
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/deletorv150.gif" alt="Project Banner" />
+</p>
+
+---
+
+<div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0;">
+  <a href="https://t.me/OpenSource_Chat">
+    <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/Group%2064.png?raw=true" 
+         width="300" 
+         alt="OSS Community Logo"
+         style="flex-shrink: 0;"/>
+  </a>
+  <div style="text-align: left; max-width: 500px;">
+<b><a href="https://t.me/OpenSource_Chat">Опенсорсеры</a></b> - это сообщество в телеграмме для разработчиков, здесь любой может поделится своими проектами, получить конструктивный разбор проекта, найти первых контрибьюторов и просто лампово общаться об айти и не только.
+  </div>
+</div>
+
+
 ## Features
 - 🖥️ **Interactive TUI**: Modern text-based user interface for easy file navigation and management
 - 🖱️ **Mouse Support**: Full mouse support for selection, scrolling, and interaction
@@ -34,12 +55,8 @@
 - 🎯 **Quick Selection**: Select and delete files with keyboard shortcuts
 - ✅ **Confirmation Prompt**: Optional confirmation before deleting files
 
----
-<p align="center">
-  <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/deletorv150.gif" alt="Project Banner" />
-</p>
 
-## 
+---
 
 <p align="center">
 <code><b>deletor</b></code> is featured as <b>"Tool of The Week"</b> (June 10, 2025) on <a href="https://terminaltrove.com/deletor/">Terminal Trove</a>
@@ -48,6 +65,9 @@
     <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/open_source/tool_of_week_mini.svg" alt="Terminal Trove Tool of The Week" width="640" />
 </a>
 </p>
+
+
+
 
 
 
