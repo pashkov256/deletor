@@ -27,7 +27,7 @@
 
 <p align="center">
   <a href="https://t.me/OpenSource_Chat">
-    <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/Group%2064.png?raw=true" 
+    <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/OPS_256png.png?raw=true" 
          width="100" 
          alt="OSS Community Logo"/>
   </a>
