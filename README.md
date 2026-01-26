@@ -25,20 +25,17 @@
 
 
 
-<table>
-  <tr>
-    <td style="vertical-align: middle;">
-      <a href="https://t.me/OpenSource_Chat">
-        <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/Group%2064.png?raw=true" 
-             width="200" 
-             alt="OSS Community Logo"/>
-      </a>
-    </td>
-    <td style="vertical-align: middle; padding-left: 20px;">
-    <b><a href="https://t.me/OpenSource_Chat">Опенсорсеры</a></b> - это сообщество в телеграмме для разработчиков, здесь любой может поделится своими проектами, получить конструктивный разбор проекта, найти первых контрибьюторов и просто лампово общаться об айти и не только.
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://t.me/OpenSource_Chat">
+    <img src="https://github.com/OpenSourceDevsHub/media/blob/main/logotypes/Group%2064.png?raw=true" 
+         width="100" 
+         alt="OSS Community Logo"/>
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="https://t.me/OpenSource_Chat">Опенсорсеры</a></b> - это сообщество в телеграмме для разработчиков, здесь любой может поделится своими проектами, получить конструктивный разбор проекта, найти первых контрибьюторов и просто лампово общаться об айти и не только.
+</p>
 
 
 
@@ -69,9 +66,6 @@
     <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/open_source/tool_of_week_mini.svg" alt="Terminal Trove Tool of The Week" width="640" />
 </a>
 </p>
-
-
-
 
 
 
