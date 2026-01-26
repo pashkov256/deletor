@@ -78,9 +78,6 @@
 
 ## 📦 Installation
 
-<a href="https://repology.org/project/deletor/versions">
-    <img src="https://repology.org/badge/vertical-allrepos/deletor.svg" alt="Packaging status">
-</a>
 
 ### Using Go
 ```bash
