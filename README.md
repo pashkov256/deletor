@@ -23,7 +23,6 @@
   <img src="https://raw.githubusercontent.com/pashkov256/media/refs/heads/main/deletor/deletorv150.gif" alt="Project Banner" />
 </p>
 
----
 
 
 <table>
