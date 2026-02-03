@@ -13,6 +13,7 @@ import (
 	"github.com/pashkov256/deletor/internal/cache"
 	"github.com/pashkov256/deletor/internal/filemanager"
 	rules "github.com/pashkov256/deletor/internal/rules"
+	"github.com/pashkov256/deletor/internal/tui/errors"
 	"github.com/pashkov256/deletor/internal/tui/help"
 	"github.com/pashkov256/deletor/internal/tui/options"
 	"github.com/pashkov256/deletor/internal/tui/styles"
@@ -28,6 +29,7 @@ type CacheModel struct {
 	isScanning       bool
 	rulesOptionState map[string]bool
 	status           string
+	Error            *errors.Error
 }
 
 type CachePath struct {
@@ -153,10 +155,14 @@ func (m *CacheModel) View() string {
 		content.WriteString(styles.ScanResultEmptyStyle.Render("Press 'Scan now' to see cache locations \n"))
 	}
 
-	// Show status message if exists
-	if m.status != "" {
+	// Show error or status message
+	if m.Error != nil && m.Error.IsVisible() {
+		errorStyle := errors.GetStyle(m.Error.GetType())
 		content.WriteString("\n")
-		content.WriteString(styles.InfoStyle.Render(m.status))
+		content.WriteString(errorStyle.Render(m.Error.GetMessage()))
+	} else if m.status != "" {
+		content.WriteString("\n")
+		content.WriteString(styles.SuccessStyle.Render(m.status))
 	}
 
 	content.WriteString("\n")
@@ -278,7 +284,8 @@ func (m *CacheModel) handleSpace() (tea.Model, tea.Cmd) {
 	} else if m.FocusedElement == "scanButton" {
 		m.isScanning = true
 		m.scanResults = nil
-		m.status = "" // Clear status when scanning
+		m.status = ""
+		m.Error = nil
 
 		results := m.cacheManager.ScanAllLocations()
 		m.scanResults = results
@@ -286,12 +293,18 @@ func (m *CacheModel) handleSpace() (tea.Model, tea.Cmd) {
 
 		return m, nil
 	} else if m.FocusedElement == "deleteButton" {
+		m.Error = nil
+		m.status = ""
+
 		if runtime.GOOS == "darwin" {
-			m.status = "Currently only Windows and linux is supported for cache clearing\n"
+			m.Error = errors.New(errors.ErrorTypeFileSystem, "Currently only Windows and Linux is supported for cache clearing")
 		} else {
-			m.cacheManager.ClearCache()
-			m.scanResults = []cache.ScanResult{}
-			m.status = "Cache clearing completed\n"
+			if err := m.cacheManager.ClearCache(); err != nil {
+				m.Error = errors.New(errors.ErrorTypeFileSystem, "Not all files were successfully deleted")
+			} else {
+				m.scanResults = []cache.ScanResult{}
+				m.status = "Cache clearing completed"
+			}
 		}
 		return m, nil
 	}
