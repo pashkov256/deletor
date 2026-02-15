@@ -3,9 +3,11 @@ package utils
 import (
 	"bytes"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pashkov256/deletor/internal/cli/output"
 	"github.com/pashkov256/deletor/internal/utils"
@@ -147,4 +149,132 @@ func TestFormatSize(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseTimeDuration(t *testing.T) {
+	// Helper: check that the returned time is approximately `expectedDuration` ago
+	assertDurationAgo := func(t *testing.T, got time.Time, expectedDuration time.Duration) {
+		t.Helper()
+		expected := time.Now().Add(-expectedDuration)
+		diff := math.Abs(float64(got.Sub(expected)))
+		// Allow 2 seconds of tolerance for test execution time
+		if diff > float64(2*time.Second) {
+			t.Errorf("got time %v, expected approximately %v ago (diff: %v)", got, expectedDuration, time.Duration(diff))
+		}
+	}
+
+	t.Run("seconds", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("1sec")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 1*time.Second)
+	})
+
+	t.Run("minutes", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("2min")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 2*time.Minute)
+	})
+
+	t.Run("hours", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("3hour")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 3*time.Hour)
+	})
+
+	t.Run("days", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("4day")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 4*24*time.Hour)
+	})
+
+	t.Run("weeks", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("5week")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 5*7*24*time.Hour)
+	})
+
+	t.Run("months", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("6month")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 6*30*24*time.Hour)
+	})
+
+	t.Run("years", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("7year")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 7*365*24*time.Hour)
+	})
+
+	t.Run("input with space", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("24 hours")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 24*time.Hour)
+	})
+
+	t.Run("input with leading/trailing whitespace", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("  12 min  ")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 12*time.Minute)
+	})
+
+	t.Run("uppercase input normalized", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("5DAY")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 5*24*time.Hour)
+	})
+
+	t.Run("plural units", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("3hours")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		assertDurationAgo(t, got, 3*time.Hour)
+	})
+
+	t.Run("empty string returns zero time", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !got.IsZero() {
+			t.Errorf("expected zero time for empty string, got %v", got)
+		}
+	})
+
+	t.Run("unknown unit returns error", func(t *testing.T) {
+		_, err := utils.ParseTimeDuration("5foobar")
+		if err == nil {
+			t.Error("expected error for unknown unit, got nil")
+		}
+	})
+
+	t.Run("no number returns zero time", func(t *testing.T) {
+		got, err := utils.ParseTimeDuration("days")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !got.IsZero() {
+			t.Errorf("expected zero time for no number, got %v", got)
+		}
+	})
 }
