@@ -148,3 +148,82 @@ func TestFormatSize(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExtToSlice(t *testing.T) {
+	type args struct {
+		extensions string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{"EmptyString", args{""}, []string{}},
+		{"SingleExtWithDot", args{".txt"}, []string{".txt"}},
+		{"SingleExtWithoutDot", args{"txt"}, []string{".txt"}},
+		{"MultipleExtsWithDots", args{".txt,.go,.md"}, []string{".txt", ".go", ".md"}},
+		{"MultipleExtsWithoutDots", args{"txt,go,md"}, []string{".txt", ".go", ".md"}},
+		{"MixedDotsAndNoDots", args{".txt,go,.md"}, []string{".txt", ".go", ".md"}},
+		{"ExtWithSpaces", args{" txt , go , md "}, []string{".txt", ".go", ".md"}},
+		{"UppercaseExt", args{"TXT,GO"}, []string{".txt", ".go"}},
+		{"MixedCase", args{".TxT,Go"}, []string{".txt", ".go"}},
+		{"SingleExtWithSpaces", args{" txt "}, []string{".txt"}},
+		{"EmptyValues", args{"txt,,go"}, []string{".txt", ".go"}},
+		{"OnlyCommas", args{",,"}, []string{}},
+		{"OnlySpaces", args{"   "}, []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := utils.ParseExtToSlice(tt.args.extensions)
+			if len(got) != len(tt.want) {
+				t.Errorf("ParseExtToSlice() length = %v, want %v", len(got), len(tt.want))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("ParseExtToSlice()[%d] = %v, want %v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParseExcludeToSlice(t *testing.T) {
+	type args struct {
+		exclude string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{"EmptyString", args{""}, []string{}},
+		{"SinglePattern", args{"node_modules"}, []string{"node_modules"}},
+		{"MultiplePatterns", args{"node_modules,vendor,.git"}, []string{"node_modules", "vendor", ".git"}},
+		{"PatternsWithSpaces", args{" node_modules , vendor , .git "}, []string{"node_modules", "vendor", ".git"}},
+		{"SinglePatternWithSpaces", args{" node_modules "}, []string{"node_modules"}},
+		{"EmptyValues", args{"node_modules,,vendor"}, []string{"node_modules", "vendor"}},
+		{"OnlyCommas", args{",,"}, []string{}},
+		{"OnlySpaces", args{"   "}, []string{}},
+		{"ComplexPatterns", args{"*.log,temp*,*cache*"}, []string{"*.log", "temp*", "*cache*"}},
+		{"PathPatterns", args{"/usr/local,/tmp"}, []string{"/usr/local", "/tmp"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := utils.ParseExcludeToSlice(tt.args.exclude)
+			if len(got) != len(tt.want) {
+				t.Errorf("ParseExcludeToSlice() length = %v, want %v", len(got), len(tt.want))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("ParseExcludeToSlice()[%d] = %v, want %v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
