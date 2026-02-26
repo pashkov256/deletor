@@ -43,43 +43,43 @@ func FormatSize(bytes int64) string {
 // It supports both "~" for current user and "~username" for a specific user.
 // If the user does not exist or an error occurs, the original path is returned.
 func ExpandTilde(path string) string {
-    if !strings.HasPrefix(path, "~") {
-        return path
-    }
+	if !strings.HasPrefix(path, "~") {
+		return path
+	}
 
-    // Find the first slash (either / or \) to separate tilde part from the rest
-    slashIndex := strings.IndexAny(path, "/\\")
-    var tildePart, suffix string
-    if slashIndex == -1 {
-        tildePart = path
-        suffix = ""
-    } else {
-        tildePart = path[:slashIndex]
-        suffix = path[slashIndex+1:]
-    }
+	// Find the first slash (either / or \) to separate tilde part from the rest
+	slashIndex := strings.IndexAny(path, "/\\")
+	var tildePart, suffix string
+	if slashIndex == -1 {
+		tildePart = path
+		suffix = ""
+	} else {
+		tildePart = path[:slashIndex]
+		suffix = path[slashIndex+1:]
+	}
 
-    var homeDir string
-    if tildePart == "~" {
-        // Current user
-        home, err := os.UserHomeDir()
-        if err != nil {
-            return path
-        }
-        homeDir = home
-    } else {
-        // Specific user: "~username"
-        username := tildePart[1:] // remove leading "~"
-        usr, err := user.Lookup(username)
-        if err != nil {
-            return path // user not found, return unchanged
-        }
-        homeDir = usr.HomeDir
-    }
+	var homeDir string
+	if tildePart == "~" {
+		// Current user
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		homeDir = home
+	} else {
+		// Specific user: "~username"
+		username := tildePart[1:] // remove leading "~"
+		usr, err := user.Lookup(username)
+		if err != nil {
+			return path // user not found, return unchanged
+		}
+		homeDir = usr.HomeDir
+	}
 
-    if suffix == "" {
-        return homeDir
-    }
-    return filepath.Join(homeDir, suffix)
+	if suffix == "" {
+		return homeDir
+	}
+	return filepath.Join(homeDir, suffix)
 }
 
 // ToBytes converts a human-readable size string to bytes
