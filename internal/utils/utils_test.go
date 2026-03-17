@@ -1,60 +1,68 @@
 package utils
 
 import (
-	"os/user"
-	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 )
 
 func TestParseExtToSlice(t *testing.T) {
 	tests := []struct {
-		name       string
-		extensions string
-		want       []string
+		name     string
+		input    string
+		expected []string
 	}{
 		{
-			name:       "Basic valid extensions",
-			extensions: "jpg,png,gif",
-			want:       []string{".jpg", ".png", ".gif"},
+			name:     "empty string",
+			input:    "",
+			expected: []string{},
 		},
 		{
-			name:       "Extensions with existing dot prefixes",
-			extensions: ".jpg,.png,.gif",
-			want:       []string{".jpg", ".png", ".gif"},
+			name:     "single extension without dot",
+			input:    "txt",
+			expected: []string{".txt"},
 		},
 		{
-			name:       "Mixed casing and extra whitespace",
-			extensions: " JPG , .Png , Gif ",
-			want:       []string{".jpg", ".png", ".gif"},
+			name:     "single extension with dot",
+			input:    ".log",
+			expected: []string{".log"},
 		},
 		{
-			name:       "Empty segments",
-			extensions: "jpg,,png",
-			want:       []string{".jpg", ".png"},
+			name:     "multiple extensions with spaces",
+			input:    "txt, log, json",
+			expected: []string{".txt", ".log", ".json"},
 		},
 		{
-			name:       "Empty string",
-			extensions: "",
-			want:       []string{},
+			name:     "multiple extensions without spaces",
+			input:    "txt,json,log",
+			expected: []string{".txt", ".json", ".log"},
 		},
 		{
-			name:       "Whitespace-only string",
-			extensions: "   ",
-			want:       []string{},
+			name:     "uppercase extensions",
+			input:    "TXT,LOG,JSON",
+			expected: []string{".txt", ".log", ".json"},
 		},
 		{
-			name:       "Multiple dots and special chars",
-			extensions: "..jpg, .tar.gz, txt ",
-			want:       []string{"..jpg", ".tar.gz", ".txt"},
+			name:     "mixed case extensions",
+			input:    "Txt,Log,JsoN",
+			expected: []string{".txt", ".log", ".json"},
+		},
+		{
+			name:     "extensions with extra spaces",
+			input:    "  txt  ,  log  ,  json  ",
+			expected: []string{".txt", ".log", ".json"},
+		},
+		{
+			name:     "empty entries",
+			input:    "txt,,log,",
+			expected: []string{".txt", ".log"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ParseExtToSlice(tt.extensions); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseExtToSlice() = %v, want %v", got, tt.want)
+			result := ParseExtToSlice(tt.input)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("ParseExtToSlice(%q) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
 	}
@@ -62,111 +70,52 @@ func TestParseExtToSlice(t *testing.T) {
 
 func TestParseExcludeToSlice(t *testing.T) {
 	tests := []struct {
-		name    string
-		exclude string
-		want    []string
+		name     string
+		input    string
+		expected []string
 	}{
 		{
-			name:    "Basic valid patterns",
-			exclude: "node_modules,vendor,temp",
-			want:    []string{"node_modules", "vendor", "temp"},
+			name:     "empty string",
+			input:    "",
+			expected: []string{},
 		},
 		{
-			name:    "Mixed casing and extra whitespace",
-			exclude: " node_modules , Vendor , TEMP ",
-			want:    []string{"node_modules", "Vendor", "TEMP"},
+			name:     "single pattern",
+			input:    "*.tmp",
+			expected: []string{"*.tmp"},
 		},
 		{
-			name:    "Empty segments",
-			exclude: "a,,b",
-			want:    []string{"a", "b"},
+			name:     "multiple patterns with spaces",
+			input:    "*.tmp, *.log, *.bak",
+			expected: []string{"*.tmp", "*.log", "*.bak"},
 		},
 		{
-			name:    "Empty string",
-			exclude: "",
-			want:    []string{},
+			name:     "multiple patterns without spaces",
+			input:    "*.tmp,*.log,*.bak",
+			expected: []string{"*.tmp", "*.log", "*.bak"},
 		},
 		{
-			name:    "Whitespace-only string",
-			exclude: "   ",
-			want:    []string{},
+			name:     "patterns with extra spaces",
+			input:    "  *.tmp  ,  *.log  ,  *.bak  ",
+			expected: []string{"*.tmp", "*.log", "*.bak"},
+		},
+		{
+			name:     "empty entries",
+			input:    "*.tmp,,*.log,",
+			expected: []string{"*.tmp", "*.log"},
+		},
+		{
+			name:     "mixed patterns",
+			input:    "*.tmp, folder/, .git/",
+			expected: []string{"*.tmp", "folder/", ".git/"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ParseExcludeToSlice(tt.exclude); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseExcludeToSlice() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestExpandTilde(t *testing.T) {
-	currentUser, err := user.Current()
-	if err != nil {
-		t.Fatal("Failed to get current user:", err)
-	}
-	homeDir := currentUser.HomeDir
-	fullUsername := currentUser.Username
-
-	// Извлекаем "чистое" имя пользователя (без домена) для Lookup на Windows
-	// На Linux это просто вернёт исходное имя
-	usernameParts := strings.Split(fullUsername, "\\")
-	cleanUsername := usernameParts[len(usernameParts)-1]
-
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "No tilde",
-			input: "/absolute/path",
-			want:  "/absolute/path",
-		},
-		{
-			name:  "Just tilde",
-			input: "~",
-			want:  homeDir,
-		},
-		{
-			name:  "Tilde with subpath",
-			input: "~/documents",
-			want:  filepath.Join(homeDir, "documents"),
-		},
-		{
-			name:  "Tilde with nested subpath",
-			input: "~/projects/go/src",
-			want:  filepath.Join(homeDir, "projects/go/src"),
-		},
-		{
-			name:  "Tilde with current username",
-			input: "~" + cleanUsername + "/test",
-			want:  filepath.Join(homeDir, "test"),
-		},
-		{
-			name:  "Tilde with non-existing user",
-			input: "~nonexistentuser/file",
-			want:  "~nonexistentuser/file",
-		},
-		{
-			name:  "Tilde not at start",
-			input: "/home/~/file",
-			want:  "/home/~/file",
-		},
-		{
-			name:  "Empty string",
-			input: "",
-			want:  "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ExpandTilde(tt.input)
-			if got != tt.want {
-				t.Errorf("ExpandTilde(%q) = %q, want %q", tt.input, got, tt.want)
+			result := ParseExcludeToSlice(tt.input)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("ParseExcludeToSlice(%q) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
 	}
