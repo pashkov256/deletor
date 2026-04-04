@@ -96,9 +96,11 @@ func TestRunCLI_BasicFileOperations(t *testing.T) {
 		{
 			name: "Delete by size",
 			config: &config.Config{
+				FileFilterOptions: filemanager.FileFilterOptions{
+					MinSize: 1,
+					MaxSize: 5,
+				},
 				Directory:      testDir,
-				MinSize:        1,
-				MaxSize:        5,
 				SkipConfirm:    true,
 				IncludeSubdirs: true,
 			},
@@ -108,8 +110,10 @@ func TestRunCLI_BasicFileOperations(t *testing.T) {
 		{
 			name: "Delete by time",
 			config: &config.Config{
+				FileFilterOptions: filemanager.FileFilterOptions{
+					OlderThan: time.Now().Add(-time.Hour),
+				},
 				Directory:       testDir,
-				OlderThan:       time.Now().Add(-time.Hour),
 				SkipConfirm:     true,
 				IncludeSubdirs:  true,
 				JsonLogsEnabled: true,
@@ -120,9 +124,11 @@ func TestRunCLI_BasicFileOperations(t *testing.T) {
 		{
 			name: "Delete with exclude",
 			config: &config.Config{
+				FileFilterOptions: filemanager.FileFilterOptions{
+					Exclude: []string{"exclude"},
+				},
 				Directory:      testDir,
 				Extensions:     []string{".txt"},
-				Exclude:        []string{"exclude"},
 				SkipConfirm:    true,
 				IncludeSubdirs: true,
 			},

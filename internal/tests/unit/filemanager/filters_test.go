@@ -126,12 +126,14 @@ func TestFileFilter_FullRequirements(t *testing.T) {
 			createTestFilesWithTimes(t, root, tt.files)
 
 			filter := &filemanager.FileFilter{
-				MinSize:    tt.minSize,
-				MaxSize:    tt.maxSize,
+				FileFilterOptions: filemanager.FileFilterOptions{
+					MinSize:   tt.minSize,
+					MaxSize:   tt.maxSize,
+					Exclude:   tt.exclude,
+					OlderThan: tt.olderThan,
+					NewerThan: tt.newerThan,
+				},
 				Extensions: tt.extensions,
-				Exclude:    tt.exclude,
-				OlderThan:  tt.olderThan,
-				NewerThan:  tt.newerThan,
 			}
 
 			for name := range tt.files {

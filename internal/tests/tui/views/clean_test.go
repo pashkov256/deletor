@@ -650,6 +650,39 @@ func TestCleanFilesModel_FileOperations(t *testing.T) {
 		}
 	})
 
+	t.Run("Refresh Preserves Directory View", func(t *testing.T) {
+		model := setupCleanTestModel(t)
+		model.Init()
+
+		for _, dir := range []string{"subdir1", "subdir2"} {
+			dirPath := filepath.Join(model.CurrentPath, dir)
+			if err := os.Mkdir(dirPath, 0755); err != nil {
+				t.Fatalf("Failed to create test directory %s: %v", dir, err)
+			}
+		}
+
+		model.ShowDirs = true
+
+		msg := model.RefreshVisibleList()()
+		items, ok := msg.([]list.Item)
+		if !ok {
+			t.Fatalf("RefreshVisibleList() did not return []list.Item")
+		}
+
+		updatedModel, _ := model.Update(items)
+		model = updatedModel.(*views.CleanFilesModel)
+
+		if !model.ShowDirs {
+			t.Fatal("expected directory view to remain active after refresh")
+		}
+		if len(model.DirList.Items()) == 0 {
+			t.Fatal("expected directories to be loaded into DirList")
+		}
+		if len(model.List.Items()) != 0 {
+			t.Fatal("expected file list to stay untouched while refreshing directories")
+		}
+	})
+
 	t.Run("Directory Size Calculation", func(t *testing.T) {
 		model := setupCleanTestModel(t)
 		model.Init()
@@ -838,6 +871,53 @@ func TestCleanFilesModel_OptionsAndSettings(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestCleanFilesModel_RefreshPreservesDirectoryMode(t *testing.T) {
+	model := setupCleanTestModel(t)
+	model.Init()
+
+	childDir := filepath.Join(model.CurrentPath, "nested")
+	if err := os.Mkdir(childDir, 0755); err != nil {
+		t.Fatalf("Failed to create nested directory: %v", err)
+	}
+
+	model.ShowDirs = true
+	model.FocusedElement = "list"
+
+	newModel, cmd := model.Handle(tea.KeyMsg{Type: tea.KeyCtrlR})
+	updatedModel, ok := newModel.(*views.CleanFilesModel)
+	if !ok {
+		t.Fatal("Failed to convert model to CleanFilesModel")
+	}
+
+	if !updatedModel.ShowDirs {
+		t.Fatal("ctrl+r should preserve directory mode before the refresh command runs")
+	}
+
+	if cmd == nil {
+		t.Fatal("ctrl+r should trigger a refresh command")
+	}
+
+	msg := cmd()
+	items, ok := msg.([]list.Item)
+	if !ok {
+		t.Fatalf("refresh command returned %T, want []list.Item", msg)
+	}
+
+	modelAfterItems, _ := updatedModel.Update(items)
+	refreshedModel, ok := modelAfterItems.(*views.CleanFilesModel)
+	if !ok {
+		t.Fatal("Failed to convert refreshed model to CleanFilesModel")
+	}
+
+	if !refreshedModel.ShowDirs {
+		t.Fatal("refreshing while browsing directories should keep ShowDirs enabled")
+	}
+
+	if len(refreshedModel.DirList.Items()) == 0 {
+		t.Fatal("directory refresh should populate the directory list")
+	}
 }
 
 func compareSlices(a, b []string) bool {

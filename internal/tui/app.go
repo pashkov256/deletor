@@ -18,6 +18,7 @@ const (
 	cleanPage
 	cachePage
 	rulesPage
+	schedulePage
 	statsPage
 )
 
@@ -27,6 +28,7 @@ type App struct {
 	cleanFilesModel *views.CleanFilesModel
 	rulesModel      *views.RulesModel
 	cacheModel      *views.CacheModel
+	scheduleModel   *views.ScheduleCleanModel
 	filemanager     filemanager.FileManager
 	rules           rules.Rules
 	validator       *validation.Validator
@@ -38,19 +40,20 @@ func NewApp(
 	validator *validation.Validator,
 ) *App {
 	return &App{
-		menu:        views.NewMainMenu(rules),
-		rulesModel:  views.NewRulesModel(rules, validator),
-		page:        menuPage,
-		filemanager: filemanager,
-		rules:       rules,
-		validator:   validator,
+		menu:          views.NewMainMenu(rules),
+		rulesModel:    views.NewRulesModel(rules, validator),
+		scheduleModel: views.NewScheduleCleanModel(rules, filemanager, validator),
+		page:          menuPage,
+		filemanager:   filemanager,
+		rules:         rules,
+		validator:     validator,
 	}
 }
 
 func (a *App) Init() tea.Cmd {
 	a.cleanFilesModel = views.InitialCleanModel(a.rules, a.filemanager, a.validator)
 	a.cacheModel = views.InitialCacheModel(a.filemanager, a.rules)
-	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init())
+	return tea.Batch(a.menu.Init(), a.cleanFilesModel.Init(), a.rulesModel.Init(), a.scheduleModel.Init())
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -82,7 +85,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a.page = cachePage
 				case menu.ManageRulesTitle:
 					a.page = rulesPage
-
+				case menu.ScheduleCleanTitle:
+					a.page = schedulePage
 				case menu.ExitTitle:
 					return a, tea.Quit
 				}
@@ -93,6 +97,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.menu = views.NewMainMenu(a.rules)
 		a.cacheModel = views.InitialCacheModel(a.filemanager, a.rules)
 		return a, nil
+	case views.ScheduledCleanTriggerMsg, views.ScheduledCleanCompletedMsg:
+		scheduleModel, scheduleCmd := a.scheduleModel.Update(msg)
+		if m, ok := scheduleModel.(*views.ScheduleCleanModel); ok {
+			a.scheduleModel = m
+		}
+		return a, scheduleCmd
 	}
 
 	switch a.page {
@@ -119,6 +129,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.rulesModel = r
 		}
 		cmd = rulesCmd
+	case schedulePage:
+		scheduleModel, scheduleCmd := a.scheduleModel.Update(msg)
+		if s, ok := scheduleModel.(*views.ScheduleCleanModel); ok {
+			a.scheduleModel = s
+		}
+		cmd = scheduleCmd
 	}
 
 	return a, tea.Batch(cmd, tea.Batch(cmds...))
@@ -135,6 +151,8 @@ func (a *App) View() string {
 		content = a.cacheModel.View()
 	case rulesPage:
 		content = a.rulesModel.View()
+	case schedulePage:
+		content = a.scheduleModel.View()
 	}
 
 	return styles.AppStyle.Render(content)

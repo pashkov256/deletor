@@ -5,3 +5,17 @@
 build/
 vendor/
 deletor.json
+.agents/
+.claude/
+.crush/
+.openhands/
+.serena/
+.pi/
+dogfood-output/
+docs/plans/
+task_plan.md
+findings.md
+progress.md
+.playwright-mcp/
+content/
+.omx/

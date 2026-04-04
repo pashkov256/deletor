@@ -132,7 +132,7 @@ func TestBooleanFlags(t *testing.T) {
 		check func(*config.Config) bool
 	}{
 		{"--cli", func(c *config.Config) bool { return c.IsCLIMode }},
-		{"--progress", func(c *config.Config) bool { return c.HaveProgress }}, // FIXED HERE
+		{"--progress", func(c *config.Config) bool { return c.ShowProgress && c.HaveProgress }},
 		{"--subdirs", func(c *config.Config) bool { return c.IncludeSubdirs }},
 		{"--skip-confirm", func(c *config.Config) bool { return c.SkipConfirm }},
 		{"--prune-empty", func(c *config.Config) bool { return c.DeleteEmptyFolders }},
@@ -189,6 +189,7 @@ func TestAllFlagsTogether(t *testing.T) {
 	assert.WithinDuration(t, expectedNewer, cfg.NewerThan, 5*time.Second)
 
 	assert.True(t, cfg.IsCLIMode)
+	assert.True(t, cfg.ShowProgress)
 	assert.True(t, cfg.HaveProgress)
 	assert.True(t, cfg.IncludeSubdirs)
 	assert.True(t, cfg.SkipConfirm)
