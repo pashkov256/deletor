@@ -26,16 +26,7 @@ func RunCLI(
 		config = config.GetWithRules(rules)
 	}
 
-	extMap := utils.ParseExtToMap(config.Extensions)
-
-	filter := fm.NewFileFilter(
-		config.MinSize,
-		config.MaxSize,
-		extMap,
-		config.Exclude,
-		config.OlderThan,
-		config.NewerThan,
-	)
+	filter := config.BuildFileFilter()
 
 	fileScanner := filemanager.NewFileScanner(fm, filter, config.ShowProgress)
 	printer := output.NewPrinter()
