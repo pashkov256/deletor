@@ -61,7 +61,7 @@ func (m *MainMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		if msg.Action == tea.MouseActionRelease && msg.Button == tea.MouseButtonLeft {
 			// Check each menu item for click
-			for i := 0; i < 5; i++ {
+			for i := 0; i < len(menu.MenuItems); i++ {
 				if zone.Get(fmt.Sprintf("menu_button_%d", i)).InBounds(msg) {
 					m.SelectedIndex = i
 					// Emulate Enter key press
