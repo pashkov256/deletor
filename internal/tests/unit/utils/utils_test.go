@@ -186,6 +186,9 @@ func TestParseTimeDuration(t *testing.T) {
 
 		// Upper case input (function lowercases)
 		{"uppercase", "5DAY", 5 * 24 * time.Hour, false, false},
+		{"short day", "10d", 10 * 24 * time.Hour, false, false},
+		{"short hour", "3h", 3 * time.Hour, false, false},
+		{"short month", "2mo", 2 * 30 * 24 * time.Hour, false, false},
 
 		// Edge: empty string → unitIndex==0 → returns zero time
 		{"empty string", "", 0, false, true},

@@ -294,20 +294,20 @@ func ParseTimeDuration(timeStr string) (time.Time, error) {
 
 	// Calculate the duration
 	var duration time.Duration
-	switch {
-	case strings.HasPrefix(unit, "sec"):
+	switch unit {
+	case "s", "sec", "secs", "second", "seconds":
 		duration = time.Duration(num) * time.Second
-	case strings.HasPrefix(unit, "min"):
+	case "m", "min", "mins", "minute", "minutes":
 		duration = time.Duration(num) * time.Minute
-	case strings.HasPrefix(unit, "hour"):
+	case "h", "hr", "hrs", "hour", "hours":
 		duration = time.Duration(num) * time.Hour
-	case strings.HasPrefix(unit, "day"):
+	case "d", "day", "days":
 		duration = time.Duration(num) * 24 * time.Hour
-	case strings.HasPrefix(unit, "week"):
+	case "w", "week", "weeks":
 		duration = time.Duration(num) * 7 * 24 * time.Hour
-	case strings.HasPrefix(unit, "month"):
+	case "mo", "month", "months":
 		duration = time.Duration(num) * 30 * 24 * time.Hour
-	case strings.HasPrefix(unit, "year"):
+	case "y", "year", "years":
 		duration = time.Duration(num) * 365 * 24 * time.Hour
 	default:
 		return time.Time{}, fmt.Errorf("unknown time unit: %s", unit)

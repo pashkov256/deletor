@@ -256,8 +256,8 @@ func TestUpdateRules_MultipleOptions(t *testing.T) {
 		rules.WithPath(testPath),
 		rules.WithMinSize("1GB"),
 		rules.WithMaxSize("10GB"),
-		rules.WithOlderThan("10d"),
-		rules.WithNewerThan("10d"),
+		rules.WithOlderThan("10day"),
+		rules.WithNewerThan("10day"),
 		rules.WithExtensions(testExtensions),
 		rules.WithOptions(true, true, true, false, false, true, false, true, false, false),
 		rules.WithExclude(testExclude),
@@ -345,8 +345,8 @@ func TestUpdateRules_MultipleOptions(t *testing.T) {
 	stringFields := map[string]string{
 		"MinSize":   "1GB",
 		"MaxSize":   "10GB",
-		"OlderThan": "10d",
-		"NewerThan": "10d",
+		"OlderThan": "10day",
+		"NewerThan": "10day",
 	}
 	for field, expectedValue := range stringFields {
 		if value, ok := config[field].(string); !ok || value != expectedValue {
@@ -354,6 +354,86 @@ func TestUpdateRules_MultipleOptions(t *testing.T) {
 		}
 	}
 
+}
+
+func TestUpdateRules_PreservesExistingValues(t *testing.T) {
+	cleanup := setupTempConfigDir()
+	defer cleanup()
+
+	rs := rules.NewRules()
+	if err := rs.SetupRulesConfig(); err != nil {
+		t.Fatalf("Failed to setup default config: %v", err)
+	}
+
+	if err := rs.UpdateRules(rules.WithPath("/test/path")); err != nil {
+		t.Fatalf("UpdateRules(path) failed: %v", err)
+	}
+	if err := rs.UpdateRules(rules.WithExtensions([]string{".txt", ".md"})); err != nil {
+		t.Fatalf("UpdateRules(extensions) failed: %v", err)
+	}
+
+	currentRules, err := rs.GetRules()
+	if err != nil {
+		t.Fatalf("GetRules failed: %v", err)
+	}
+
+	if currentRules.Path != "/test/path" {
+		t.Errorf("Path = %q, want %q", currentRules.Path, "/test/path")
+	}
+	if len(currentRules.Extensions) != 2 {
+		t.Fatalf("Extensions length = %d, want 2", len(currentRules.Extensions))
+	}
+	if currentRules.Extensions[0] != ".txt" || currentRules.Extensions[1] != ".md" {
+		t.Errorf("Extensions = %v, want [.txt .md]", currentRules.Extensions)
+	}
+}
+
+func TestGetRules_UsesCache(t *testing.T) {
+	cleanup := setupTempConfigDir()
+	defer cleanup()
+
+	rs := rules.NewRules()
+
+	configPath := rs.GetRulesPath()
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	initialConfig, err := json.Marshal(map[string]interface{}{
+		"Path": "/cached/path",
+	})
+	if err != nil {
+		t.Fatalf("Failed to marshal initial config: %v", err)
+	}
+	if err := os.WriteFile(configPath, initialConfig, 0644); err != nil {
+		t.Fatalf("Failed to write initial config: %v", err)
+	}
+
+	firstRead, err := rs.GetRules()
+	if err != nil {
+		t.Fatalf("First GetRules failed: %v", err)
+	}
+	if firstRead.Path != "/cached/path" {
+		t.Fatalf("Path = %q, want %q", firstRead.Path, "/cached/path")
+	}
+
+	replacedConfig, err := json.Marshal(map[string]interface{}{
+		"Path": "/changed/on/disk",
+	})
+	if err != nil {
+		t.Fatalf("Failed to marshal replacement config: %v", err)
+	}
+	if err := os.WriteFile(configPath, replacedConfig, 0644); err != nil {
+		t.Fatalf("Failed to overwrite config: %v", err)
+	}
+
+	cachedRead, err := rs.GetRules()
+	if err != nil {
+		t.Fatalf("Second GetRules failed: %v", err)
+	}
+	if cachedRead.Path != "/cached/path" {
+		t.Errorf("cached Path = %q, want %q", cachedRead.Path, "/cached/path")
+	}
 }
 
 func TestUpdateRules_InvalidJSON(t *testing.T) {
@@ -416,10 +496,14 @@ func TestGetRules_MissingFile(t *testing.T) {
 	configPath := rs.GetRulesPath()
 	os.RemoveAll(filepath.Dir(configPath))
 
-	// Try to get rules from the file that doesn't exist
-	_, err = rs.GetRules()
-	if err == nil {
-		t.Error("Expected error when reading non-existent file, got nil")
+	// GetRules should still return the cached configuration even if the file
+	// disappears after setup.
+	loadedRules, err := rs.GetRules()
+	if err != nil {
+		t.Fatalf("Expected cached rules when config file is removed, got error: %v", err)
+	}
+	if loadedRules == nil {
+		t.Fatal("Expected cached rules when config file is removed, got nil")
 	}
 }
 

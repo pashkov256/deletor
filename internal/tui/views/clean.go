@@ -432,7 +432,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					// If this is the options.ShowHiddenFiles option, reload files
 					if option == options.ShowHiddenFiles {
-						return m, m.LoadFiles()
+						return m, m.RefreshVisibleList()
 					}
 					return m, nil
 				}
@@ -449,7 +449,7 @@ func (m *CleanFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.List.SetSize(msg.Width-h, listHeight)
 		m.DirList.SetSize(msg.Width-h, listHeight)
 
-		cmds = append(cmds, m.LoadFiles())
+		cmds = append(cmds, m.RefreshVisibleList())
 		cmds = append(cmds, m.CalculateDirSizeAsync())
 		return m, tea.Batch(cmds...)
 
@@ -1119,7 +1119,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "f5":
 		return m.handleF5()
 	case "ctrl+r":
-		return m, m.LoadFiles()
+		return m, m.RefreshVisibleList()
 	case "ctrl+s": //toogle dir mode or files mode
 		if m.ShowDirs {
 			m.ShowDirs = false
@@ -1136,7 +1136,7 @@ func (m *CleanFilesModel) Handle(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleAltC()
 	case "alt+1": // Toggle hidden files
 		m.OptionState[options.ShowHiddenFiles] = !m.OptionState[options.ShowHiddenFiles]
-		return m, m.LoadFiles()
+		return m, m.RefreshVisibleList()
 	case "alt+2": // Toggle confirm deletion
 		m.OptionState[options.ConfirmDeletion] = !m.OptionState[options.ConfirmDeletion]
 		return m, nil
@@ -1393,7 +1393,7 @@ func (m *CleanFilesModel) handleSpace() (tea.Model, tea.Cmd) {
 
 		// If this is the options.ShowHiddenFiles option, reload files
 		if optName == options.ShowHiddenFiles {
-			return m, m.LoadFiles()
+			return m, m.RefreshVisibleList()
 		}
 		return m, nil
 	}
@@ -1523,7 +1523,7 @@ func (m *CleanFilesModel) handleF5() (tea.Model, tea.Cmd) {
 func (m *CleanFilesModel) handleAltC() (tea.Model, tea.Cmd) {
 	m.MinSizeInput.SetValue("")
 	m.ExcludeInput.SetValue("")
-	return m, m.LoadFiles()
+	return m, m.RefreshVisibleList()
 }
 
 func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
@@ -1635,7 +1635,7 @@ func (m *CleanFilesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.FocusedElement = "clean_option_" + optionNum
 
 				if optName == options.ShowHiddenFiles {
-					return m, m.LoadFiles()
+					return m, m.RefreshVisibleList()
 				}
 				return m, nil
 			}
@@ -1674,6 +1674,13 @@ func (m *CleanFilesModel) HandlePressStartButton() (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *CleanFilesModel) RefreshVisibleList() tea.Cmd {
+	if m.ShowDirs {
+		return m.LoadDirs()
+	}
+	return m.LoadFiles()
 }
 
 func (m *CleanFilesModel) blurAllInputs() {

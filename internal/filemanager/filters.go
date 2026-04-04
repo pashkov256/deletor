@@ -7,25 +7,37 @@ import (
 	"time"
 )
 
+// FileFilterOptions groups the shared runtime filter settings used by the CLI
+// config and file-scanning code.
+type FileFilterOptions struct {
+	MinSize   int64     // Minimum file size in bytes
+	MaxSize   int64     // Maximum file size in bytes
+	Exclude   []string  // Patterns to exclude from results
+	OlderThan time.Time // Only include files older than this time
+	NewerThan time.Time // Only include files newer than this time
+}
+
 // FileFilter defines criteria for filtering files
 type FileFilter struct {
-	MinSize    int64               // Minimum file size in bytes
-	MaxSize    int64               // Maximum file size in bytes
+	FileFilterOptions
 	Extensions map[string]struct{} // Set of allowed file extensions
-	Exclude    []string            // Patterns to exclude from results
-	OlderThan  time.Time           // Only include files older than this time
-	NewerThan  time.Time           // Only include files newer than this time
+}
+
+func NewFileFilterWithOptions(options FileFilterOptions, extensions map[string]struct{}) *FileFilter {
+	return &FileFilter{
+		FileFilterOptions: options,
+		Extensions:        extensions,
+	}
 }
 
 func (d *defaultFileManager) NewFileFilter(minSize, maxSize int64, extensions map[string]struct{}, exclude []string, olderThan, newerThan time.Time) *FileFilter {
-	return &FileFilter{
-		MinSize:    minSize,
-		MaxSize:    maxSize,
-		Exclude:    exclude,
-		Extensions: extensions,
-		OlderThan:  olderThan,
-		NewerThan:  newerThan,
-	}
+	return NewFileFilterWithOptions(FileFilterOptions{
+		MinSize:   minSize,
+		MaxSize:   maxSize,
+		Exclude:   exclude,
+		OlderThan: olderThan,
+		NewerThan: newerThan,
+	}, extensions)
 }
 
 // MatchesFilters checks if a file matches all filter criteria

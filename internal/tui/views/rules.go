@@ -586,7 +586,7 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 
 		// Save rules
-		m.rules.UpdateRules(
+		err := m.rules.UpdateRules(
 			rules.WithPath(m.LocationInput.Value()),
 			rules.WithMinSize(m.MinSizeInput.Value()),
 			rules.WithMaxSize(m.MaxSizeInput.Value()),
@@ -607,6 +607,12 @@ func (m *RulesModel) handleEnter() (tea.Model, tea.Cmd) {
 				m.OptionState[options.ExitAfterDeletion],
 			),
 		)
+		if err != nil {
+			m.SuccessSaveText = ""
+			return m, func() tea.Msg {
+				return errors.New(errors.ErrorTypeFileSystem, fmt.Sprintf("Failed to save rules: %v", err))
+			}
+		}
 		m.SuccessSaveText = "Rules saved successfully!" // Set success message
 		m.Error = nil                                   // Clear any existing error
 	} else if activeTab == 2 { // Options tab

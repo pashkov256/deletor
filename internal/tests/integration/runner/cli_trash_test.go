@@ -29,12 +29,14 @@ func (m *mockFileManager) MoveFileToTrash(filePath string) {
 
 func (m *mockFileManager) NewFileFilter(minSize, maxSize int64, extensions map[string]struct{}, exclude []string, olderThan, newerThan time.Time) *filemanager.FileFilter {
 	return &filemanager.FileFilter{
-		MinSize:    minSize,
-		MaxSize:    maxSize,
-		Exclude:    exclude,
+		FileFilterOptions: filemanager.FileFilterOptions{
+			MinSize:   minSize,
+			MaxSize:   maxSize,
+			Exclude:   exclude,
+			OlderThan: olderThan,
+			NewerThan: newerThan,
+		},
 		Extensions: extensions,
-		OlderThan:  olderThan,
-		NewerThan:  newerThan,
 	}
 }
 

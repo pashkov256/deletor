@@ -89,6 +89,7 @@ func GetFlags() *Config {
 	}
 
 	config.IsCLIMode = *isCLIMode
+	config.ShowProgress = *progress
 	config.HaveProgress = *progress
 	config.IncludeSubdirs = *includeSubdirsScan
 	config.Directory = *dir
