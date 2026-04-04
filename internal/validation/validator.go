@@ -5,6 +5,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/pashkov256/deletor/internal/utils"
 )
 
 // Validator provides methods for validating various input parameters
@@ -51,10 +53,14 @@ func (v *Validator) ValidateExtension(ext string) error {
 // ValidateSize checks if a size string is in a valid format
 // Valid format: number followed by unit (e.g., "1.5MB", "2GB")
 func (v *Validator) ValidateSize(size string) error {
-	re := regexp.MustCompile(`^\d+(\.\d+)?\s*(mb|kb|b|gb)$`)
-	if !re.MatchString(size) {
+	if strings.TrimSpace(size) == "" {
 		return errors.New("invalid size format")
 	}
+
+	if _, err := utils.ToBytes(size); err != nil {
+		return errors.New("invalid size format")
+	}
+
 	return nil
 }
 
@@ -62,8 +68,17 @@ func (v *Validator) ValidateSize(size string) error {
 // Valid format: number (optional space) followed by time unit (sec, min, hour, day, week, month, year)
 // Examples: "7days", "24 hours", "1min", "2 weeks"
 func (v *Validator) ValidateTimeDuration(timeStr string) error {
-	re := regexp.MustCompile(`^\d+\s*(sec|min|hour|day|week|month|year)s?$`)
-	if !re.MatchString(strings.ToLower(timeStr)) {
+	trimmed := strings.TrimSpace(timeStr)
+	if trimmed == "" {
+		return errors.New("expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
+	}
+
+	if trimmed[0] < '0' || trimmed[0] > '9' {
+		return errors.New("expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
+	}
+
+	parsedTime, err := utils.ParseTimeDuration(trimmed)
+	if err != nil || parsedTime.IsZero() {
 		return errors.New("expected format: number followed by time unit (sec, min, hour, day, week, month, year)")
 	}
 

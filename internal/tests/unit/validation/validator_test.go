@@ -39,10 +39,11 @@ func TestValidator_ValidateSize(t *testing.T) {
 		{"valid size with GB", "1 gb", false},
 		{"valid size with KB", "100 kb", false},
 		{"valid size with B", "1024 b", false},
+		{"valid size with TB", "10 tb", false},
+		{"valid size uppercase", "10MB", false},
 
 		// Invalid cases
 		{"invalid format", "10m", true},
-		{"invalid unit", "10 tb", true},
 		{"empty size", "", true},
 		{"negative size", "-10 mb", true},
 		{"invalid decimal", "10.5.5 mb", true},
@@ -153,6 +154,9 @@ func TestValidateTimeDuration(t *testing.T) {
 		{"Valid no space", "5sec", nil},
 		{"Valid minimal space", "5 sec", nil},
 		{"Valid extra space", "5  sec", nil},
+		{"Valid shorthand day", "10d", nil},
+		{"Valid shorthand hour", "2h", nil},
+		{"Valid shorthand year", "1y", nil},
 		{"Newline character", "10\nsec", nil},
 		{"Tab character", "10\tsec", nil},
 		{"Unit without s", "2 year", nil},

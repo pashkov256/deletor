@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/pashkov256/deletor/internal/path"
 	"github.com/pashkov256/deletor/internal/tui/options"
@@ -43,6 +44,7 @@ func (d *defaultRules) clone() *defaultRules {
 	clone.Extensions = append([]string(nil), d.Extensions...)
 	clone.Exclude = append([]string(nil), d.Exclude...)
 	clone.cached = nil
+	clone.mu = sync.RWMutex{}
 	return &clone
 }
 
@@ -187,7 +189,7 @@ func (d *defaultRules) GetRules() (*defaultRules, error) {
 
 	rules, err := d.readRulesFromDisk()
 	if err != nil {
-		return nil, err
+		return defaultRuleValues(), err
 	}
 
 	d.setCache(rules)
