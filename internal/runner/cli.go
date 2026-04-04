@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/pashkov256/deletor/internal/cli/config"
 	"github.com/pashkov256/deletor/internal/cli/output"
@@ -37,6 +38,7 @@ func RunCLI(
 
 	var toDeleteMap map[string]string
 	var totalClearSize int64
+	var reportEntries []utils.ReportEntry
 
 	if config.IncludeSubdirs {
 		toDeleteMap, totalClearSize = fileScanner.ScanFilesRecursively(config.Directory)
@@ -61,22 +63,50 @@ func RunCLI(
 		}
 
 		if actionIsDelete {
+			actionName := "delete"
 			if config.MoveFileToTrash {
-				for path := range toDeleteMap {
-					fm.MoveFileToTrash(path)
-				}
-				printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
-			} else {
-				for path := range toDeleteMap {
-					fm.DeleteFile(path)
-				}
-				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
+				actionName = "trash"
+			}
+			if config.DryRun {
+				actionName = "planned " + actionName
 			}
 
-			if config.JsonLogsEnabled {
-				utils.LogDeletionToFileAsJson(toDeleteMap, config.JsonLogsPath)
+			for path := range toDeleteMap {
+				if config.ReportPath != "" {
+					info, err := os.Stat(path)
+					if err == nil {
+						reportEntries = append(reportEntries, utils.ReportEntry{
+							Path:      path,
+							Action:    actionName,
+							Size:      info.Size(),
+							Timestamp: info.ModTime(),
+						})
+					}
+				}
+
+				if !config.DryRun {
+					if config.MoveFileToTrash {
+						fm.MoveFileToTrash(path)
+					} else {
+						fm.DeleteFile(path)
+					}
+				}
+			}
+
+			if !config.DryRun {
+				if config.MoveFileToTrash {
+					printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
+				} else {
+					printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
+				}
+
+				if config.JsonLogsEnabled {
+					utils.LogDeletionToFileAsJson(toDeleteMap, config.JsonLogsPath)
+				} else {
+					utils.LogDeletionToFile(toDeleteMap)
+				}
 			} else {
-				utils.LogDeletionToFile(toDeleteMap)
+				printer.PrintInfo("Dry run: no files were actually deleted or moved.")
 			}
 		}
 
@@ -96,14 +126,46 @@ func RunCLI(
 			}
 
 			if actionIsEmptyDeleteFolders {
-				for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
-					os.Remove(toDeleteEmptyFolders[i])
+				actionName := "delete empty folder"
+				if config.DryRun {
+					actionName = "planned delete empty folder"
 				}
-				fmt.Println()
-				printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
+
+				for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
+					path := toDeleteEmptyFolders[i]
+					if config.ReportPath != "" {
+						info, err := os.Stat(path)
+						if err == nil {
+							reportEntries = append(reportEntries, utils.ReportEntry{
+								Path:      path,
+								Action:    actionName,
+								Size:      0,
+								Timestamp: info.ModTime(),
+							})
+						}
+					}
+
+					if !config.DryRun {
+						os.Remove(path)
+					}
+				}
+
+				if !config.DryRun {
+					fmt.Println()
+					printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
+				} else {
+					printer.PrintInfo("Dry run: empty folders were not deleted.")
+				}
 			}
 		} else {
 			printer.PrintWarning("Empty folders not found")
+		}
+	}
+	if config.ReportPath != "" {
+		if err := utils.GenerateReport(reportEntries, config.ReportPath, config.ReportFormat); err != nil {
+			printer.PrintError("Failed to generate report: %v", err)
+		} else {
+			printer.PrintSuccess("Report exported to: %s", config.ReportPath)
 		}
 	}
 }

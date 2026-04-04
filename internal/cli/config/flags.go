@@ -27,6 +27,9 @@ func GetFlags() *Config {
 	moveToTrash := flag.Bool("trash", false, "Move files to trash?")
 	useRules := flag.Bool("rules", false, "Use rules from configuration file")
 	jsonLogsEnabled := flag.Bool("log-json", false, "Enable JSON-formatted logging. Use --log-json or --log-json \"/path/to/file\" to specify a path to write logs.")
+	reportPath := flag.String("report", "", "Export a report of files selected and action taken/planned to a specified path")
+	reportFormat := flag.String("report-format", "json", "Format of the report (json or csv)")
+	dryRun := flag.Bool("dry-run", false, "Perform a dry run without actually deleting or moving files")
 
 	flag.Parse()
 
@@ -97,6 +100,9 @@ func GetFlags() *Config {
 	config.DeleteEmptyFolders = *deleteEmptyFolders
 	config.MoveFileToTrash = *moveToTrash
 	config.UseRules = *useRules
+	config.ReportPath = *reportPath
+	config.ReportFormat = *reportFormat
+	config.DryRun = *dryRun
 
 	return config
 }
