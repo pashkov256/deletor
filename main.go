@@ -22,7 +22,7 @@ func main() {
 		runner.RunCLI(fm, rules, config)
 	} else {
 		if err := runner.RunTUI(fm, rules, validator); err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("Error:    %v\n", err)
 			os.Exit(1)
 		}
 	}
