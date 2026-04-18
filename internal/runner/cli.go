@@ -49,7 +49,7 @@ func RunCLI(
 		actionIsDelete := true
 
 		fmt.Println() // This is required for formatting
-		if !config.SkipConfirm {
+		if !config.SkipConfirm && !config.DryRun {
 			fmt.Println(utils.FormatSize(totalClearSize), "will be cleared.")
 			var msg string
 			if config.MoveFileToTrash {
@@ -61,22 +61,27 @@ func RunCLI(
 		}
 
 		if actionIsDelete {
-			if config.MoveFileToTrash {
-				for path := range toDeleteMap {
-					fm.MoveFileToTrash(path)
-				}
-				printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
+			if config.DryRun {
+				printer.PrintSuccess("[DRY-RUN] Would delete %d file(s) (%s) from %s",
+					len(toDeleteMap), utils.FormatSize(totalClearSize), config.Directory)
 			} else {
-				for path := range toDeleteMap {
-					fm.DeleteFile(path)
+				if config.MoveFileToTrash {
+					for path := range toDeleteMap {
+						fm.MoveFileToTrash(path)
+					}
+					printer.PrintSuccess("Moved to trash: %s", utils.FormatSize(totalClearSize))
+				} else {
+					for path := range toDeleteMap {
+						fm.DeleteFile(path)
+					}
+					printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
 				}
-				printer.PrintSuccess("Deleted: %s", utils.FormatSize(totalClearSize))
-			}
 
-			if config.JsonLogsEnabled {
-				utils.LogDeletionToFileAsJson(toDeleteMap, config.JsonLogsPath)
-			} else {
-				utils.LogDeletionToFile(toDeleteMap)
+				if config.JsonLogsEnabled {
+					utils.LogDeletionToFileAsJson(toDeleteMap, config.JsonLogsPath)
+				} else {
+					utils.LogDeletionToFile(toDeleteMap)
+				}
 			}
 		}
 
@@ -91,16 +96,20 @@ func RunCLI(
 
 			actionIsEmptyDeleteFolders := true
 
-			if !config.SkipConfirm {
+			if !config.SkipConfirm && !config.DryRun {
 				actionIsEmptyDeleteFolders = printer.AskForConfirmation("Delete these empty folders?")
 			}
 
 			if actionIsEmptyDeleteFolders {
-				for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
-					os.Remove(toDeleteEmptyFolders[i])
+				if config.DryRun {
+					printer.PrintSuccess("[DRY-RUN] Would delete %d empty folder(s)", len(toDeleteEmptyFolders))
+				} else {
+					for i := len(toDeleteEmptyFolders) - 1; i >= 0; i-- {
+						os.Remove(toDeleteEmptyFolders[i])
+					}
+					fmt.Println()
+					printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
 				}
-				fmt.Println()
-				printer.PrintSuccess("Number of deleted empty folders: %d", len(toDeleteEmptyFolders))
 			}
 		} else {
 			printer.PrintWarning("Empty folders not found")
