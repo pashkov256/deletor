@@ -21,6 +21,7 @@ type Config struct {
 	UseRules           bool     // Whether to use rules from configuration file
 	JsonLogsEnabled    bool     // Whether to generates JSON-formatted logs
 	JsonLogsPath       string   // Path to append JSON-formatted logs
+	DryRun             bool     // If true, only preview files without modifying filesystem
 }
 
 // LoadConfig initializes and returns a new Config instance with values from command-line flags
